@@ -20,6 +20,35 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
 
   const store = useBracketStore();
 
+  const restoreSession = useCallback(async (): Promise<boolean> => {
+    if (!accessToken) return false;
+    try {
+      const result = await bracketApi.getMySession(accessToken);
+      store.initSession(result.session_id, result.bracket);
+      store.setIsAnonymous(false);
+      if (result.credits !== undefined && result.credits !== null) {
+        store.setCredits(result.credits);
+      }
+      // Restore each completed agent's picks
+      for (const [agentName, cb] of Object.entries(result.completed_brackets ?? {})) {
+        const b = cb as { picks: Record<string, BracketPick>; champion: TeamEntry | null };
+        store.setAgentComplete(agentName as AgentName, b.champion, b.picks);
+      }
+      // Restore evaluation if present
+      const evalText = (result.evaluation as { written_analysis?: string } | null)?.written_analysis;
+      if (evalText) {
+        store.appendEvaluationChunk(evalText);
+        store.setEvaluationDone();
+        store.setAllComplete();
+      }
+      if (result.status === 'complete') setPhase('done');
+      else if (result.status === 'evaluating') setPhase('evaluating');
+      return true;
+    } catch {
+      return false; // 404 = no previous session, start fresh
+    }
+  }, [store, accessToken]);
+
   const startSession = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -135,5 +164,5 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     evalEsRef.current?.close();
   }, []);
 
-  return { loading, error, phase, startSession, startAllAgents, cleanup };
+  return { loading, error, phase, restoreSession, startSession, startAllAgents, cleanup };
 }

@@ -1,7 +1,10 @@
 """Base agent class using Anthropic async streaming SDK."""
+import logging
 from typing import AsyncGenerator
 import anthropic
 from ..core.config import get_settings
+
+log = logging.getLogger(__name__)
 
 MODEL = "claude-opus-4-6"
 
@@ -24,6 +27,12 @@ class BaseAgent:
         ) as stream:
             async for text in stream.text_stream:
                 yield text
+            final = await stream.get_final_message()
+            u = final.usage
+            log.info(
+                "claude tokens model=%s in=%d out=%d total=%d",
+                MODEL, u.input_tokens, u.output_tokens, u.input_tokens + u.output_tokens,
+            )
 
     async def complete(self, messages: list[dict]) -> str:
         response = await self.client.messages.create(
@@ -32,5 +41,10 @@ class BaseAgent:
             system=self.system_prompt,
             messages=messages,
             temperature=self.temperature,
+        )
+        u = response.usage
+        log.info(
+            "claude tokens model=%s in=%d out=%d total=%d",
+            MODEL, u.input_tokens, u.output_tokens, u.input_tokens + u.output_tokens,
         )
         return response.content[0].text

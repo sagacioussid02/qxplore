@@ -17,6 +17,12 @@ export const bracketApi = {
       accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
     ).then(r => r.data),
 
+  getMySession: (accessToken: string): Promise<SessionResponse & { status: string; completed_brackets: Record<string, unknown>; evaluation: unknown }> =>
+    apiClient.get(
+      '/bracket/session/mine',
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    ).then(r => r.data),
+
   getSession: (sessionId: string) =>
     apiClient.get(`/bracket/session/${sessionId}`).then(r => r.data),
 

@@ -116,6 +116,49 @@ async def deduct_credit(user_id: str) -> int:
     return current - 1
 
 
+async def save_bracket_session(session) -> None:
+    """Upsert a BracketSession to Supabase for the owning user."""
+    settings = get_settings()
+    if not settings.supabase_url or not session.user_id:
+        return
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{settings.supabase_url}/rest/v1/bracket_sessions",
+            headers={**_supabase_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"},
+            json={
+                "session_id": session.session_id,
+                "user_id": session.user_id,
+                "session_data": session.model_dump(mode="json"),
+                "updated_at": "now()",
+            },
+        )
+        if resp.status_code not in (200, 201, 204):
+            log.error("save_bracket_session failed: %s %s", resp.status_code, resp.text)
+
+
+async def load_bracket_session(user_id: str) -> dict | None:
+    """Load the most recent BracketSession for a user from Supabase."""
+    settings = get_settings()
+    if not settings.supabase_url:
+        return None
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{settings.supabase_url}/rest/v1/bracket_sessions",
+            headers=_supabase_headers(),
+            params={
+                "user_id": f"eq.{user_id}",
+                "select": "session_data",
+                "order": "updated_at.desc",
+                "limit": "1",
+            },
+        )
+        if resp.status_code != 200:
+            log.error("load_bracket_session failed: %s %s", resp.status_code, resp.text)
+            return None
+        rows = resp.json()
+        return rows[0]["session_data"] if rows else None
+
+
 async def add_credits(user_id: str, amount: int) -> int:
     """Add credits to a user (called from Stripe webhook)."""
     settings = get_settings()

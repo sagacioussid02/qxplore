@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 import logging
-from fastapi import FastAPI
+import time
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .routers import quantum, games, agents, bracket, stripe_router
@@ -9,6 +10,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+log = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -26,6 +29,17 @@ app.add_middleware(
     allow_headers=["*", "text/event-stream", "Cache-Control", "X-Accel-Buffering"],
     expose_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    ms = (time.perf_counter() - start) * 1000
+    # Skip health check noise
+    if request.url.path != "/health":
+        log.info("%s %s → %d (%.0fms)", request.method, request.url.path, response.status_code, ms)
+    return response
+
 
 app.include_router(quantum.router)
 app.include_router(games.router)

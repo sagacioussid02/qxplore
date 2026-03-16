@@ -4,7 +4,7 @@ import json
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
-from ..bracket.session_store import create_session, get_session, save_session
+from ..bracket.session_store import create_session, get_session, save_session, save_session_async, load_session_for_user
 from ..bracket.agents.claude_bracket import ClaudeBracketAgent
 from ..bracket.agents.openai_bracket import OpenAIBracketAgent
 from ..bracket.agents.gemini_bracket import GeminiBracketAgent
@@ -15,7 +15,7 @@ from ..bracket.bracket_engine import get_round_matchups
 from ..data.sports_data_client import get_bracket, load_fallback_bracket
 from ..data.team_research import enrich_bracket_with_news
 from ..models.bracket import BracketSession, AgentName, CompletedBracket, BracketPick
-from ..core.supabase_auth import get_optional_user, get_credits, deduct_credit
+from ..core.supabase_auth import get_optional_user, require_user, get_credits, deduct_credit
 
 router = APIRouter(prefix="/bracket", tags=["bracket"])
 
@@ -42,7 +42,7 @@ async def create_bracket_session(user: dict | None = Depends(get_optional_user))
         bracket = load_fallback_bracket()
         credits = None  # not applicable for anon
 
-    session = create_session(bracket)
+    session = create_session(bracket, user_id=user["sub"] if user else None)
     return {
         "session_id": session.session_id,
         "bracket": bracket.model_dump(),
@@ -50,6 +50,15 @@ async def create_bracket_session(user: dict | None = Depends(get_optional_user))
         "is_anonymous": user is None,
         "credits": credits,
     }
+
+
+@router.get("/session/mine")
+async def get_my_session(user: dict = Depends(require_user)) -> dict:
+    """Return the authenticated user's most recent bracket session, or 404."""
+    session = await load_session_for_user(user["sub"])
+    if not session:
+        raise HTTPException(status_code=404, detail="No session found")
+    return session.model_dump()
 
 
 @router.get("/session/{session_id}")
@@ -142,7 +151,7 @@ async def stream_agent_bracket(session_id: str, agent: AgentName):
                         session.status = "evaluating"
                     else:
                         session.status = "picking"
-                    save_session(session)
+                    await save_session_async(session)
             except Exception:
                 pass
 
@@ -175,7 +184,7 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
         remaining = None
 
     session.status = "picking"
-    save_session(session)
+    await save_session_async(session)
     bracket = session.bracket
 
     async def generate():
@@ -227,7 +236,7 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
                     session.completed_brackets[agent_name] = completed
                     if len(session.completed_brackets) == 5:
                         session.status = "evaluating"
-                    save_session(session)
+                    await save_session_async(session)
             except Exception:
                 pass
 
@@ -267,7 +276,7 @@ async def stream_evaluation(session_id: str):
         evaluation = EvaluationResult(session_id=session_id, written_analysis=analysis)
         session.evaluation = evaluation
         session.status = "complete"
-        save_session(session)
+        await save_session_async(session)
 
         yield {"data": json.dumps({"type": "evaluation_chunk", "chunk": "", "done": True})}
         yield {"data": json.dumps({"type": "evaluation_complete", "analysis": analysis})}

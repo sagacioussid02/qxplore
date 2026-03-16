@@ -90,6 +90,7 @@ class EvaluationResult(BaseModel):
 
 class BracketSession(BaseModel):
     session_id: str
+    user_id: Optional[str] = None   # set for authenticated users; None = anonymous
     bracket: BracketData
     status: Literal["pending", "picking", "evaluating", "complete"] = "pending"
     completed_brackets: dict[str, CompletedBracket] = {}

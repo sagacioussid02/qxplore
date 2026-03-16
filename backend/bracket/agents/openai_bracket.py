@@ -2,9 +2,12 @@
 from __future__ import annotations
 import json
 import copy
+import logging
 from typing import AsyncGenerator
 from openai import AsyncOpenAI
 from ...core.config import get_settings
+
+log = logging.getLogger(__name__)
 from ...models.bracket import BracketData, BracketPick, Matchup
 from ..bracket_engine import get_round_matchups, advance_winner, build_completed_bracket
 
@@ -53,6 +56,11 @@ class OpenAIBracketAgent:
             temperature=0.7,
         )
         raw = resp.choices[0].message.content or "{}"
+        if resp.usage:
+            log.info(
+                "openai tokens model=%s in=%d out=%d total=%d",
+                "gpt-4o", resp.usage.prompt_tokens, resp.usage.completion_tokens, resp.usage.total_tokens,
+            )
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
