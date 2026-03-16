@@ -99,7 +99,7 @@ async def stream_agent_bracket(session_id: str, agent: AgentName):
 
     # ── Cache hit: replay existing picks without re-running ────────────────
     if agent in session.completed_brackets:
-        return EventSourceResponse(_replay_completed(session_id, agent, session.completed_brackets[agent]))
+        return EventSourceResponse(_replay_completed(session_id, agent, session.completed_brackets[agent]), ping=30)
 
     agent_instance = agent_cls()
     bracket = session.bracket
@@ -148,7 +148,7 @@ async def stream_agent_bracket(session_id: str, agent: AgentName):
 
         yield {"data": json.dumps({"type": "stream_done", "agent": agent})}
 
-    return EventSourceResponse(generate())
+    return EventSourceResponse(generate(), ping=30)
 
 
 @router.get("/session/{session_id}/all-agents/stream")
@@ -239,7 +239,7 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
             "credits_remaining": remaining,
         })}
 
-    return EventSourceResponse(generate())
+    return EventSourceResponse(generate(), ping=30)
 
 
 @router.get("/session/{session_id}/evaluate/stream")
@@ -272,7 +272,7 @@ async def stream_evaluation(session_id: str):
         yield {"data": json.dumps({"type": "evaluation_chunk", "chunk": "", "done": True})}
         yield {"data": json.dumps({"type": "evaluation_complete", "analysis": analysis})}
 
-    return EventSourceResponse(generate())
+    return EventSourceResponse(generate(), ping=30)
 
 
 @router.get("/session/{session_id}/consensus")
