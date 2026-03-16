@@ -148,8 +148,8 @@ jobs:
 
     # Pauses here until an approver clicks "Review deployments" in GitHub Actions.
     # Set up required reviewers at:
-    #   GitHub → Settings → Environments → test-apply / prod-apply → Required reviewers
-    environment: ${{ needs.setup.outputs.environment }}-apply
+    #   GitHub → Settings → Environments → test / prod → Required reviewers
+    environment: ${{ needs.setup.outputs.environment }}
 
     env:
       DEPLOY_ENV:     ${{ needs.setup.outputs.environment }}
