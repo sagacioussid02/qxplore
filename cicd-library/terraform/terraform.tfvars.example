@@ -1,0 +1,111 @@
+# ============================================================================
+# TERRAFORM VARIABLES - EXAMPLE CONFIGURATION
+# ============================================================================
+#
+# INSTRUCTIONS:
+# 1. Copy this file to terraform.tfvars at your project root
+# 2. Update all the values to match your configuration
+# 3. DO NOT store terraform.tfvars in git (add to .gitignore)
+# 4. Run: terraform plan -var-file=../terraform.tfvars
+#
+# ============================================================================
+
+# REQUIRED: Project name (used as prefix for all AWS resources)
+# Example: "my-ai-twin", "awesome-bot", "saas-assistant"
+project_name = "your-project-name"
+
+# Environment name (used for tagging and naming)
+# Recommended: "dev", "staging", "prod"
+environment = "dev"
+
+# AWS region where resources will be created
+# Examples: "us-east-1", "us-west-2", "eu-west-1"
+aws_region = "us-east-1"
+
+# ============================================================================
+# LAMBDA DEPLOYMENT ZIP PATH
+# ============================================================================
+# Path to your built Lambda deployment ZIP file
+#
+# RELATIVE PATHS (Recommended):
+#   - "./backend/lambda-deployment.zip"      (from project root)
+#   - "../backend/lambda-deployment.zip"     (from terraform/ directory)
+#
+# ABSOLUTE PATHS:
+#   - "/Users/username/projects/my-bot/backend/lambda-deployment.zip"
+#
+# NOTE: The ZIP file must be built BEFORE running terraform apply
+#       See backend/build.sh or your build process
+#
+lambda_zip_path = "./backend/lambda-deployment.zip"
+
+# ============================================================================
+# BEDROCK AI MODEL
+# ============================================================================
+# Which Bedrock model to use for AI responses
+#
+# AVAILABLE MODELS:
+#   AWS Nova (Recommended - Fast & Cheap):
+#     - "us.amazon.nova-2-lite-v1:0"       (Fastest, cheapest)
+#     - "us.amazon.nova-2-pro-v1:0"        (Balanced)
+#     - "us.amazon.nova-pro-v1:0"          (Most capable)
+#
+#   Anthropic Claude (High quality):
+#     - "anthropic.claude-3-haiku-20240307-v1:0"     (Fast)
+#     - "anthropic.claude-3-sonnet-20240229-v1:0"    (Balanced)
+#     - "anthropic.claude-3-opus-20240229-v1:0"      (Most capable)
+#
+bedrock_model_id = "us.amazon.nova-2-lite-v1:0"
+
+# ============================================================================
+# LAMBDA CONFIGURATION (Optional)
+# ============================================================================
+
+# Lambda function timeout in seconds (max: 900)
+# Default: 60 seconds
+# Increase if your AI responses take longer
+lambda_timeout = 60
+
+# ============================================================================
+# API GATEWAY THROTTLING (Optional)
+# ============================================================================
+
+# Maximum requests per second (burst)
+# Default: 10 requests per second
+api_throttle_burst_limit = 10
+
+# Sustained request rate per second
+# Default: 5 requests per second
+api_throttle_rate_limit = 5
+
+# ============================================================================
+# CUSTOM DOMAIN CONFIGURATION (Optional)
+# ============================================================================
+
+# Set to true if you want to use a custom domain (requires Route53)
+# Default: false
+use_custom_domain = false
+
+# Your root domain name (e.g., "myproject.com")
+# Only required if use_custom_domain = true
+# Must be registered with Route53 in the same AWS account
+# Default: "" (empty - CloudFront domain will be used)
+root_domain = ""
+
+# ============================================================================
+# ADVANCED OPTIONS
+# ============================================================================
+# Most users don't need to change these values
+#
+# To use advanced options, uncomment and modify:
+#
+# # Custom Lambda handler (if not using default)
+# lambda_handler = "lambda_handler.handler"
+#
+# # Lambda runtime environment
+# lambda_runtime = "python3.12"
+#
+# # Lambda architectures
+# lambda_architectures = ["arm64"]  # or ["x86_64"]
+#
+# ============================================================================

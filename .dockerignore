@@ -1,0 +1,14 @@
+**/__pycache__
+**/*.py[cod]
+**/*.pyo
+**/.pytest_cache
+venv/
+frontend/
+cicd-library/
+terraform/
+.github/
+.git/
+*.md
+.env
+.env.*
+**/.DS_Store

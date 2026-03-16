@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    @apply bg-quantum-navy text-white font-sans;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-quantum-dark; }
+  ::-webkit-scrollbar-thumb { @apply bg-quantum-border rounded-full; }
+}
+
+@layer components {
+  .card-quantum {
+    @apply bg-quantum-surface border border-quantum-border rounded-xl;
+  }
+  .btn-quantum {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200 cursor-pointer border-0;
+  }
+  .btn-cyan {
+    @apply btn-quantum bg-quantum-cyan text-quantum-navy hover:shadow-cyan-lg hover:scale-105;
+  }
+  .btn-purple {
+    @apply btn-quantum bg-quantum-purple text-white hover:shadow-purple-lg hover:scale-105;
+  }
+  .btn-outline {
+    @apply btn-quantum border border-quantum-border text-quantum-cyan hover:border-quantum-cyan hover:shadow-cyan;
+  }
+  .quantum-text { @apply font-mono text-quantum-cyan; }
+}

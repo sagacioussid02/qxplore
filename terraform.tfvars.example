@@ -1,0 +1,27 @@
+# Copy this to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars — it contains secrets.
+# In CI/CD, pass secrets via TF_VAR_* environment variables instead.
+
+project_name   = "quantumanic"
+environment    = "prod"
+aws_region     = "us-east-1"
+aws_account_id = "123456789012"   # your 12-digit AWS account ID
+
+apprunner_cpu    = "1 vCPU"
+apprunner_memory = "2 GB"
+
+use_custom_domain = false
+root_domain       = ""   # e.g. "quantumanic.com" if use_custom_domain = true
+
+# ── Secrets: set these via TF_VAR_* env vars in CI/CD ──────────────────────
+# anthropic_api_key         = "sk-ant-..."
+# openai_api_key            = "sk-..."
+# google_api_key            = "AIza..."
+# sporttsdataio_api_key     = "..."
+# supabase_url              = "https://xxx.supabase.co"
+# supabase_anon_key         = "eyJ..."
+# supabase_service_role_key = "eyJ..."
+# stripe_secret_key         = "sk_live_..." or "sk_test_..."
+# stripe_webhook_secret     = "whsec_..."
+# stripe_price_id           = "price_..."
+# stripe_credits_per_pack   = 5

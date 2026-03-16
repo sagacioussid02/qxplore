@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 show qiskit anthropic fastapi)",
+      "Bash(pip3 list)",
+      "Bash(python3 -c \"import sys; print\\(sys.version_info\\)\")"
+    ]
+  }
+}

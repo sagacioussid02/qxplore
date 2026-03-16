@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/protect-env.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
