@@ -15,10 +15,10 @@ on:
         options: [test, prod]
 
 permissions:
-  id-token: write   # required for OIDC AWS auth
+  id-token: write
   contents: read
 
-# ── Resolve target environment from branch or manual input ───────────────────
+# ── Job 1: Resolve environment ────────────────────────────────────────────────
 jobs:
   setup:
     name: Resolve environment
@@ -36,21 +36,17 @@ jobs:
             echo "environment=test" >> $GITHUB_OUTPUT
           fi
 
-# ── Build and deploy ──────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy → ${{ needs.setup.outputs.environment }}
+# ── Job 2: Build Docker image + Terraform plan ────────────────────────────────
+  plan:
+    name: Plan → ${{ needs.setup.outputs.environment }}
     needs: setup
     runs-on: ubuntu-latest
-
-    # Activates the matching GitHub Environment (Settings → Environments → test/prod)
-    # Each environment holds its own secrets (e.g. test uses sk_test_*, prod uses sk_live_*)
     environment: ${{ needs.setup.outputs.environment }}
 
     env:
       DEPLOY_ENV:     ${{ needs.setup.outputs.environment }}
       AWS_REGION:     ${{ secrets.AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      # Terraform variables — resolved from the active GitHub Environment's secrets
       TF_VAR_environment:               ${{ needs.setup.outputs.environment }}
       TF_VAR_aws_account_id:            ${{ secrets.AWS_ACCOUNT_ID }}
       TF_VAR_aws_region:                ${{ secrets.AWS_REGION }}
@@ -66,34 +62,20 @@ jobs:
       TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────
       - uses: actions/checkout@v4
 
-      # ── 2. AWS credentials via OIDC ───────────────────────────────────────
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region:     ${{ env.AWS_REGION }}
 
-      # ── 3. Login to ECR ───────────────────────────────────────────────────
+      # ── Build Docker image (no push yet — just verify it builds) ──────────
       - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      # ── 4. Bootstrap ECR repo (first-run only) ────────────────────────────
-      - name: Ensure ECR repository exists
-        run: |
-          REPO="quantumanic-${DEPLOY_ENV}-backend"
-          aws ecr describe-repositories --repository-names "$REPO" \
-            --region "$AWS_REGION" 2>/dev/null \
-          || aws ecr create-repository --repository-name "$REPO" \
-               --region "$AWS_REGION" \
-               --image-scanning-configuration scanOnPush=true
-
-      # ── 5. Build & push Docker image ──────────────────────────────────────
-      - name: Build and push backend image
-        id: docker-build
+      - name: Build Docker image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG:     ${{ github.sha }}
@@ -102,10 +84,8 @@ jobs:
           docker build \
             -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
             -t "$ECR_REGISTRY/$REPO:latest" .
-          docker push "$ECR_REGISTRY/$REPO:latest"
-          docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
 
-      # ── 6. Terraform ─────────────────────────────────────────────────────
+      # ── Terraform plan ─────────────────────────────────────────────────────
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -122,11 +102,127 @@ jobs:
             -backend-config="dynamodb_table=terraform-state-lock" \
             -backend-config="encrypt=true"
 
+      # Import ECR repo if it already exists outside Terraform state (e.g. created
+      # manually or by a previous run before Terraform took ownership).
+      - name: Import existing ECR repo into state (if needed)
+        working-directory: terraform
+        run: |
+          REPO="quantumanic-${DEPLOY_ENV}-backend"
+          # Check if repo exists in AWS
+          if aws ecr describe-repositories --repository-names "$REPO" \
+               --region "$AWS_REGION" 2>/dev/null; then
+            # Check if it is already tracked in Terraform state
+            if ! terraform state show module.apprunner.aws_ecr_repository.backend 2>/dev/null; then
+              echo "Importing existing ECR repo $REPO into Terraform state..."
+              terraform import module.apprunner.aws_ecr_repository.backend "$REPO"
+            else
+              echo "ECR repo already in Terraform state — skipping import"
+            fi
+          else
+            echo "ECR repo does not exist yet — Terraform will create it"
+          fi
+
+      - name: Terraform plan
+        working-directory: terraform
+        run: |
+          terraform plan -out=tfplan -no-color 2>&1 | tee plan-output.txt
+          echo "## Terraform Plan — \`${DEPLOY_ENV}\`" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -60 plan-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.setup.outputs.environment }}-${{ github.sha }}
+          path: |
+            terraform/tfplan
+            terraform/plan-output.txt
+          retention-days: 3
+
+# ── Job 3: Apply (manual approval gate) ──────────────────────────────────────
+  apply:
+    name: Apply → ${{ needs.setup.outputs.environment }}
+    needs: [setup, plan]
+    runs-on: ubuntu-latest
+
+    # Pauses here until an approver clicks "Review deployments" in GitHub Actions.
+    # Set up required reviewers at:
+    #   GitHub → Settings → Environments → test-apply / prod-apply → Required reviewers
+    environment: ${{ needs.setup.outputs.environment }}-apply
+
+    env:
+      DEPLOY_ENV:     ${{ needs.setup.outputs.environment }}
+      AWS_REGION:     ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      TF_VAR_environment:               ${{ needs.setup.outputs.environment }}
+      TF_VAR_aws_account_id:            ${{ secrets.AWS_ACCOUNT_ID }}
+      TF_VAR_aws_region:                ${{ secrets.AWS_REGION }}
+      TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
+      TF_VAR_openai_api_key:            ${{ secrets.OPENAI_API_KEY }}
+      TF_VAR_google_api_key:            ${{ secrets.GOOGLE_API_KEY }}
+      TF_VAR_sporttsdataio_api_key:     ${{ secrets.SPORTTSDATAIO_API_KEY }}
+      TF_VAR_supabase_url:              ${{ secrets.SUPABASE_URL }}
+      TF_VAR_supabase_anon_key:         ${{ secrets.SUPABASE_ANON_KEY }}
+      TF_VAR_supabase_service_role_key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TF_VAR_stripe_secret_key:         ${{ secrets.STRIPE_SECRET_KEY }}
+      TF_VAR_stripe_webhook_secret:     ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      # ── Push Docker image ─────────────────────────────────────────────────
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG:     ${{ github.sha }}
+        run: |
+          REPO="quantumanic-${DEPLOY_ENV}-backend"
+          docker build \
+            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$REPO:latest" .
+          docker push "$ECR_REGISTRY/$REPO:latest"
+          docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
+
+      # ── Terraform apply (using the saved plan) ────────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${AWS_ACCOUNT_ID}-terraform-state" \
+            -backend-config="key=quantumanic/${DEPLOY_ENV}/terraform.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="dynamodb_table=terraform-state-lock" \
+            -backend-config="encrypt=true"
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.setup.outputs.environment }}-${{ github.sha }}
+          path: terraform/
+
       - name: Terraform apply
         working-directory: terraform
-        run: terraform apply -auto-approve
+        run: terraform apply tfplan
 
-      # ── 7. Capture Terraform outputs ──────────────────────────────────────
+      # ── Capture outputs ────────────────────────────────────────────────────
       - name: Get deployment URLs
         id: tf-outputs
         working-directory: terraform
@@ -136,7 +232,7 @@ jobs:
           echo "cf_domain=$(terraform output -raw cloudfront_domain)"           >> $GITHUB_OUTPUT
           echo "cf_dist_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
 
-      # ── 8. Build frontend ─────────────────────────────────────────────────
+      # ── Build and deploy frontend ──────────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -154,29 +250,22 @@ jobs:
           npm ci
           npm run build
 
-      # ── 9. Deploy frontend to S3 ──────────────────────────────────────────
       - name: Deploy frontend to S3
         run: |
           BUCKET="${{ steps.tf-outputs.outputs.frontend_bucket }}"
-
-          # Assets (JS/CSS/images) — long cache, immutable
           aws s3 sync frontend/dist/ "s3://$BUCKET/" \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html"
-
-          # index.html — never cache so users always get the latest shell
           aws s3 cp frontend/dist/index.html "s3://$BUCKET/index.html" \
             --cache-control "no-cache, no-store, must-revalidate"
 
-      # ── 10. Invalidate CloudFront cache ───────────────────────────────────
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
             --distribution-id "${{ steps.tf-outputs.outputs.cf_dist_id }}" \
             --paths "/*"
 
-      # ── 11. Summary ───────────────────────────────────────────────────────
       - name: Deployment summary
         run: |
           echo "## Deployed to \`${DEPLOY_ENV}\`" >> $GITHUB_STEP_SUMMARY
