@@ -23,7 +23,6 @@ interface Props {
 const BRACKET_H = 640;  // total height of bracket area
 const CARD_W    = 148;  // matchup card width
 const COL_GAP   = 2;    // gap between columns
-const COLOR_DIM = 'rgba(255,255,255,0.08)';
 
 // ── Team row ──────────────────────────────────────────────────────────────────
 function TeamRow({
