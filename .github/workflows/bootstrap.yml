@@ -1,0 +1,80 @@
+name: Bootstrap Terraform State
+
+# Run ONCE per AWS account to create the S3 state bucket + DynamoDB lock table.
+# After running, commit the terraform.tfstate artifact back to the repo (or store
+# it in a safe location) so the bootstrap resources are tracked.
+#
+# For existing resources: re-running with IMPORT_EXISTING=true imports them.
+
+on:
+  workflow_dispatch:
+    inputs:
+      import_existing:
+        description: "Import already-created state resources into Terraform?"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: write   # needed to commit tfstate back to repo
+
+jobs:
+  bootstrap:
+    name: Bootstrap state infrastructure
+    runs-on: ubuntu-latest
+    # Bootstrap uses repo-level secrets (not environment-scoped)
+    # since environments don't exist yet on first run
+    env:
+      AWS_REGION:     ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region:     ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+          terraform_wrapper: false
+
+      - name: Terraform init (local state)
+        working-directory: terraform/bootstrap
+        run: terraform init
+
+      - name: Import existing resources (if requested)
+        if: ${{ inputs.import_existing }}
+        working-directory: terraform/bootstrap
+        run: |
+          BUCKET="${AWS_ACCOUNT_ID}-terraform-state"
+          TABLE="terraform-state-lock"
+          # Import S3 bucket
+          terraform import aws_s3_bucket.state "$BUCKET" || true
+          terraform import aws_s3_bucket_versioning.state "$BUCKET" || true
+          terraform import aws_s3_bucket_server_side_encryption_configuration.state "$BUCKET" || true
+          terraform import aws_s3_bucket_public_access_block.state "$BUCKET" || true
+          # Import DynamoDB table
+          terraform import aws_dynamodb_table.lock "$TABLE" || true
+
+      - name: Terraform apply
+        working-directory: terraform/bootstrap
+        run: terraform apply -auto-approve
+
+      - name: Show outputs
+        working-directory: terraform/bootstrap
+        run: terraform output
+
+      # Commit the bootstrap tfstate back to the repo so it is not lost
+      - name: Commit bootstrap state
+        working-directory: terraform/bootstrap
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add terraform.tfstate terraform.tfstate.backup 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: update bootstrap terraform state [skip ci]"
+          git push

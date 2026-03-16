@@ -24,6 +24,16 @@ frontend/dist/
 .vscode/
 .idea/
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!terraform.tfvars.example
+# Exception: bootstrap uses local state and must be committed
+!terraform/bootstrap/terraform.tfstate
+!terraform/bootstrap/terraform.tfstate.backup
+
 .env
 .env.local
 .env.development.local
