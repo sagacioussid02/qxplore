@@ -118,7 +118,9 @@ jobs:
           terraform init \
             -backend-config="bucket=${AWS_ACCOUNT_ID}-terraform-state" \
             -backend-config="key=quantumanic/${DEPLOY_ENV}/terraform.tfstate" \
-            -backend-config="region=us-east-1"
+            -backend-config="region=us-east-1" \
+            -backend-config="dynamodb_table=terraform-state-lock" \
+            -backend-config="encrypt=true"
 
       - name: Terraform apply
         working-directory: terraform

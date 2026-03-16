@@ -1,0 +1,119 @@
+name: Destroy Quantumanic
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to destroy"
+        required: true
+        type: choice
+        options: [test, prod]
+      confirm:
+        description: "Type the environment name to confirm (e.g. 'test' or 'prod')"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    name: Validate confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation matches environment
+        run: |
+          if [ "${{ inputs.confirm }}" != "${{ inputs.environment }}" ]; then
+            echo "ERROR: Confirmation '${{ inputs.confirm }}' does not match environment '${{ inputs.environment }}'"
+            exit 1
+          fi
+          echo "Confirmation valid. Proceeding with destroy of ${{ inputs.environment }}."
+
+  destroy:
+    name: Destroy → ${{ inputs.environment }}
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    env:
+      DEPLOY_ENV:     ${{ inputs.environment }}
+      AWS_REGION:     ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      # Terraform needs variable values even for destroy (to resolve references)
+      TF_VAR_environment:               ${{ inputs.environment }}
+      TF_VAR_aws_account_id:            ${{ secrets.AWS_ACCOUNT_ID }}
+      TF_VAR_aws_region:                ${{ secrets.AWS_REGION }}
+      TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
+      TF_VAR_openai_api_key:            ${{ secrets.OPENAI_API_KEY }}
+      TF_VAR_google_api_key:            ${{ secrets.GOOGLE_API_KEY }}
+      TF_VAR_sporttsdataio_api_key:     ${{ secrets.SPORTTSDATAIO_API_KEY }}
+      TF_VAR_supabase_url:              ${{ secrets.SUPABASE_URL }}
+      TF_VAR_supabase_anon_key:         ${{ secrets.SUPABASE_ANON_KEY }}
+      TF_VAR_supabase_service_role_key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TF_VAR_stripe_secret_key:         ${{ secrets.STRIPE_SECRET_KEY }}
+      TF_VAR_stripe_webhook_secret:     ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── 2. AWS credentials via OIDC ───────────────────────────────────────
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      # ── 3. Empty S3 frontend bucket (must be empty before Terraform destroys it)
+      - name: Empty frontend S3 bucket
+        run: |
+          BUCKET="quantumanic-${DEPLOY_ENV}-frontend-${AWS_ACCOUNT_ID}"
+          if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            echo "Emptying s3://$BUCKET ..."
+            aws s3 rm "s3://$BUCKET" --recursive
+          else
+            echo "Bucket $BUCKET not found — skipping"
+          fi
+
+      # ── 4. Terraform destroy ───────────────────────────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${AWS_ACCOUNT_ID}-terraform-state" \
+            -backend-config="key=quantumanic/${DEPLOY_ENV}/terraform.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="dynamodb_table=terraform-state-lock" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform destroy
+        working-directory: terraform
+        run: terraform destroy -auto-approve
+
+      # ── 5. Delete ECR repository ──────────────────────────────────────────
+      - name: Delete ECR repository
+        run: |
+          REPO="quantumanic-${DEPLOY_ENV}-backend"
+          if aws ecr describe-repositories --repository-names "$REPO" \
+               --region "$AWS_REGION" 2>/dev/null; then
+            echo "Deleting ECR repo $REPO (force-deletes all images)..."
+            aws ecr delete-repository \
+              --repository-name "$REPO" \
+              --region "$AWS_REGION" \
+              --force
+          else
+            echo "ECR repo $REPO not found — skipping"
+          fi
+
+      # ── 6. Summary ───────────────────────────────────────────────────────
+      - name: Destroy summary
+        run: |
+          echo "## Destroyed \`${DEPLOY_ENV}\` environment" >> $GITHUB_STEP_SUMMARY
+          echo "All AWS resources for quantumanic-${DEPLOY_ENV} have been removed." >> $GITHUB_STEP_SUMMARY
