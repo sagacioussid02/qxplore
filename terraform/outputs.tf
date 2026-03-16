@@ -15,7 +15,7 @@ output "cloudfront_domain" {
 
 output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID (for cache invalidation)"
-  value       = module.cdn.distribution_id
+  value       = module.cdn.cloudfront_distribution_id
 }
 
 output "frontend_bucket" {
