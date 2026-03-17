@@ -19,7 +19,7 @@ export default function NCAABracketPage() {
   const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const { loading, error, canResume, phase, startSession, startAllAgents, resumeAgents, runCommissioner, cleanup } = useBracketSession({
+  const { loading, error, evaluationError, canResume, phase, startSession, startAllAgents, resumeAgents, startSingleAgent, runCommissioner, cleanup } = useBracketSession({
     accessToken,
     onCreditsUpdate: refreshCredits,
   });
@@ -252,6 +252,38 @@ export default function NCAABracketPage() {
               <span className="ml-2 text-gray-600">
                 {Object.values(agentStatuses).filter(s => s === 'complete').length}/5 done
               </span>
+            </div>
+          )}
+
+          {/* Per-agent resume buttons — shown when agents are in error state and phase is idle */}
+          {phase === 'idle' && AGENTS.some(a => agentStatuses[a] === 'error') && (
+            <div className="flex flex-wrap gap-2 px-1">
+              <span className="text-xs text-gray-500 self-center">Resume individual agents:</span>
+              {AGENTS.filter(a => agentStatuses[a] === 'error').map(a => (
+                <button
+                  key={a}
+                  onClick={() => startSingleAgent(a)}
+                  className="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-white"
+                  style={{ backgroundColor: AGENT_COLORS[a] + 'cc' }}
+                >
+                  ↺ {a.charAt(0).toUpperCase() + a.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Evaluation error */}
+          {evaluationError && (
+            <div className="px-3 py-2 bg-yellow-900/30 border border-yellow-700/40 rounded-lg text-yellow-400 text-sm flex items-center justify-between gap-3">
+              <span>{evaluationError}</span>
+              {completedCount > 0 && (
+                <button
+                  onClick={runCommissioner}
+                  className="shrink-0 px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded-md text-xs font-semibold text-white"
+                >
+                  ↺ Retry Commissioner
+                </button>
+              )}
             </div>
           )}
 

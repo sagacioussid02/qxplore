@@ -9,6 +9,7 @@ from .routers import quantum, games, agents, bracket, stripe_router
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    force=True,   # override any handlers uvicorn already installed
 )
 
 log = logging.getLogger(__name__)

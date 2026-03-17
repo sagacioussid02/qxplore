@@ -14,11 +14,11 @@ interface UseBracketSessionOptions {
 export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSessionOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
   const [canResume, setCanResume] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'picking' | 'evaluating' | 'done'>('idle');
   const esRef = useRef<EventSource | null>(null);
   const evalEsRef = useRef<EventSource | null>(null);
-  // Track whether any agent completed in the current SSE connection
   const anyCompleteRef = useRef(false);
 
   const store = useBracketStore();
@@ -32,12 +32,10 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       if (result.credits !== undefined && result.credits !== null) {
         store.setCredits(result.credits);
       }
-      // Restore each completed agent's picks
       for (const [agentName, cb] of Object.entries(result.completed_brackets ?? {})) {
         const b = cb as { picks: Record<string, BracketPick>; champion: TeamEntry | null };
         store.setAgentComplete(agentName as AgentName, b.champion, b.picks);
       }
-      // Restore evaluation if present
       const evalText = (result.evaluation as { written_analysis?: string } | null)?.written_analysis;
       if (evalText) {
         store.appendEvaluationChunk(evalText);
@@ -48,7 +46,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       else if (result.status === 'evaluating') setPhase('evaluating');
       return true;
     } catch {
-      return false; // 404 = no previous session, start fresh
+      return false;
     }
   }, [store, accessToken]);
 
@@ -70,14 +68,56 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     }
   }, [store, accessToken]);
 
+  // Defined first so connectAgentStream and runCommissioner can safely reference it
+  const startEvaluation = useCallback((sessionId: string) => {
+    setEvaluationError(null);
+    evalEsRef.current?.close();
+    const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+    const url = `${API_BASE}/bracket/session/${sessionId}/evaluate/stream${tokenParam}`;
+    const es = new EventSource(url);
+    evalEsRef.current = es;
+
+    let receivedEvalData = false;
+
+    es.onmessage = (e) => {
+      receivedEvalData = true;
+      try {
+        const event = JSON.parse(e.data) as BracketSSEEvent;
+        if (event.type === 'evaluation_chunk') {
+          if (!event.done && event.chunk) {
+            store.appendEvaluationChunk(event.chunk);
+          } else if (event.done) {
+            store.setEvaluationDone();
+            es.close();
+            setPhase('done');
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      if (!receivedEvalData) {
+        // Connection failed before any data — backend error or session not found
+        setEvaluationError('Commissioner failed to start. Try again or reload the bracket.');
+        setPhase('idle');
+      } else {
+        // Stream cut mid-way — mark done with whatever we got
+        store.setEvaluationDone();
+        setPhase('done');
+      }
+    };
+  }, [store, accessToken]);
+
   const connectAgentStream = useCallback((sessionId: string, resumeMode = false) => {
     esRef.current?.close();
     anyCompleteRef.current = false;
 
     AGENTS.forEach(a => {
       const s = useBracketStore.getState().agents[a];
-      if (resumeMode && s.status === 'complete') return; // keep completed agents intact
-      // Clear stale picks before the new run — prevents pickCount carrying over
+      if (resumeMode && s.status === 'complete') return;
       store.resetAgentPicks(a);
       store.setAgentStatus(a, 'running');
     });
@@ -85,7 +125,6 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     setError(null);
     setCanResume(false);
 
-    // EventSource can't set headers — pass JWT as query param
     const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
     const url = `${API_BASE}/bracket/session/${sessionId}/all-agents/stream${tokenParam}`;
     const es = new EventSource(url);
@@ -137,25 +176,66 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       const state = useBracketStore.getState();
       const hasRunningAgents = AGENTS.some(a => state.agents[a].status === 'running');
 
+      AGENTS.forEach(a => {
+        if (state.agents[a].status === 'running') store.setAgentStatus(a, 'error');
+      });
+
       if (receivedAnyMessage && hasRunningAgents) {
-        // Data was flowing then connection dropped — timeout/network blip, resumable
-        AGENTS.forEach(a => {
-          if (state.agents[a].status === 'running') store.setAgentStatus(a, 'error');
-        });
         setError('Connection timed out. Some agents did not finish.');
         setCanResume(true);
-        setPhase('idle');
       } else {
-        // Error before any data arrived — likely 402 or backend unavailable
-        AGENTS.forEach(a => {
-          if (state.agents[a].status === 'running') store.setAgentStatus(a, 'error');
-        });
-        setError('Could not start agents. You may be out of credits.');
+        setError('Could not start agents. Check credits or try reloading the bracket.');
         setCanResume(false);
-        setPhase('idle');
+      }
+      setPhase('idle');
+    };
+  }, [store, accessToken, onCreditsUpdate, startEvaluation]);
+
+  // Single-agent stream — for per-agent resume buttons
+  const startSingleAgent = useCallback((agentName: AgentName) => {
+    const { sessionId } = useBracketStore.getState();
+    if (!sessionId) return;
+
+    store.resetAgentPicks(agentName);
+    store.setAgentStatus(agentName, 'running');
+
+    const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+    const url = `${API_BASE}/bracket/session/${sessionId}/agent/${agentName}/stream${tokenParam}`;
+    const es = new EventSource(url);
+
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data) as BracketSSEEvent;
+        if (event.type === 'pick') {
+          store.applyPick(agentName, event.game_id, {
+            session_id: sessionId,
+            game_id: event.game_id,
+            winner_team_id: event.winner_team_id,
+            winner_name: event.winner_name,
+            confidence: event.confidence,
+            reasoning: event.reasoning,
+            pick_metadata: event.circuit ?? event.sim_data ?? {},
+          });
+        } else if (event.type === 'agent_complete') {
+          store.setAgentComplete(
+            agentName,
+            event.champion as TeamEntry | null,
+            event.picks as Record<string, BracketPick>,
+          );
+        } else if (event.type === 'stream_done') {
+          es.close();
+          store.setAgentStatus(agentName, 'complete');
+        }
+      } catch {
+        // ignore
       }
     };
-  }, [store, accessToken, onCreditsUpdate]);
+
+    es.onerror = () => {
+      es.close();
+      store.setAgentStatus(agentName, 'error');
+    };
+  }, [store, accessToken]);
 
   const startAllAgents = useCallback(() => {
     const { sessionId } = useBracketStore.getState();
@@ -166,50 +246,24 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
   const resumeAgents = useCallback(() => {
     const { sessionId } = useBracketStore.getState();
     if (!sessionId) return;
-    connectAgentStream(sessionId, true); // resume mode: keep completed agents intact
+    connectAgentStream(sessionId, true);
   }, [connectAgentStream]);
 
   const runCommissioner = useCallback(() => {
     const { sessionId } = useBracketStore.getState();
     if (!sessionId) return;
-    startEvaluation(sessionId);
     setPhase('evaluating');
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
-
-  const startEvaluation = useCallback((sessionId: string) => {
-    const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-    const url = `${API_BASE}/bracket/session/${sessionId}/evaluate/stream${tokenParam}`;
-    const es = new EventSource(url);
-    evalEsRef.current = es;
-
-    es.onmessage = (e) => {
-      try {
-        const event = JSON.parse(e.data) as BracketSSEEvent;
-        if (event.type === 'evaluation_chunk') {
-          if (!event.done && event.chunk) {
-            store.appendEvaluationChunk(event.chunk);
-          } else if (event.done) {
-            store.setEvaluationDone();
-            es.close();
-            setPhase('done');
-          }
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    es.onerror = () => {
-      es.close();
-      store.setEvaluationDone();
-      setPhase('done');
-    };
-  }, [store, accessToken]);
+    startEvaluation(sessionId);
+  }, [startEvaluation]);
 
   const cleanup = useCallback(() => {
     esRef.current?.close();
     evalEsRef.current?.close();
   }, []);
 
-  return { loading, error, canResume, phase, restoreSession, startSession, startAllAgents, resumeAgents, runCommissioner, cleanup };
+  return {
+    loading, error, evaluationError, canResume, phase,
+    restoreSession, startSession, startAllAgents, resumeAgents,
+    startSingleAgent, runCommissioner, cleanup,
+  };
 }

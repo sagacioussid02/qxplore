@@ -97,9 +97,17 @@ def _replay_completed(session_id: str, agent: AgentName, completed: "CompletedBr
 
 
 @router.get("/session/{session_id}/agent/{agent}/stream")
-async def stream_agent_bracket(session_id: str, agent: AgentName):
-    """SSE: stream one agent filling the bracket pick-by-pick."""
+async def stream_agent_bracket(
+    session_id: str,
+    agent: AgentName,
+    user: dict | None = Depends(get_optional_user),
+):
+    """SSE: stream one agent filling the bracket pick-by-pick (supports resume from partial picks)."""
     session = get_session(session_id)
+    if not session and user:
+        loaded = await load_session_for_user(user["sub"])
+        if loaded and loaded.session_id == session_id:
+            session = loaded
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -107,52 +115,57 @@ async def stream_agent_bracket(session_id: str, agent: AgentName):
     if not agent_cls:
         raise HTTPException(status_code=400, detail=f"Unknown agent: {agent}")
 
+    log.info("stream_agent_bracket: session=%s agent=%s user=%s", session_id, agent, user.get("sub") if user else "anon")
+
     # ── Cache hit: replay existing picks without re-running ────────────────
     if agent in session.completed_brackets:
+        log.info("stream_agent_bracket: replaying cached %s", agent)
         return EventSourceResponse(_replay_completed(session_id, agent, session.completed_brackets[agent]), ping=30)
 
     agent_instance = agent_cls()
     bracket = session.bracket
+    existing = dict(session.partial_picks.get(agent, {}))
+    log.info("stream_agent_bracket: running %s fresh (resume=%s, partial=%d)", agent, bool(existing), len(existing))
 
     async def generate():
         picks: dict[str, BracketPick] = {}
-        champion = None
 
-        async for event_json in agent_instance.fill_bracket(session_id, bracket):
+        gen = (
+            fill_bracket_resumable(agent, agent_instance, session_id, bracket, existing)
+            if existing else agent_instance.fill_bracket(session_id, bracket)
+        )
+
+        async for event_json in gen:
             yield {"data": event_json}
-
-            # Track picks and completion in session store
             try:
                 event = json.loads(event_json)
-                if event.get("type") == "pick":
-                    picks[event["game_id"]] = BracketPick(
-                        session_id=session_id,
-                        agent=agent,
+                if event.get("type") == "pick" and not event.get("from_cache"):
+                    bp = BracketPick(
+                        session_id=session_id, agent=agent,
                         game_id=event["game_id"],
                         winner_team_id=event["winner_team_id"],
                         winner_name=event["winner_name"],
                         confidence=event["confidence"],
                         reasoning=event.get("reasoning", ""),
-                        pick_metadata=event.get("circuit") or event.get("sim_data") or {},
+                        pick_metadata={"round": event.get("round", 0)},
                     )
+                    picks[event["game_id"]] = bp
+                    session.partial_picks.setdefault(agent, {})[event["game_id"]] = bp
+                    await save_session_async(session)
                 elif event.get("type") == "agent_complete":
-                    champion = event.get("champion")
-                    from ..models.bracket import CompletedBracket
-                    from ..models.bracket import TeamEntry
-                    champ_team = TeamEntry(**champion) if champion else None
+                    session.partial_picks.pop(agent, None)
+                    from ..models.bracket import CompletedBracket, TeamEntry
+                    champ_data = event.get("champion")
+                    picks_obj = {gid: BracketPick(**p) for gid, p in event.get("picks", {}).items()}
                     completed = CompletedBracket(
-                        session_id=session_id,
-                        agent=agent,
-                        picks=picks,
-                        champion=champ_team,
-                        agent_metadata=event.get("agent_metadata", {}),
+                        session_id=session_id, agent=agent,
+                        picks=picks_obj,
+                        champion=TeamEntry(**champ_data) if champ_data else None,
                     )
                     session.completed_brackets[agent] = completed
-                    if len(session.completed_brackets) == 5:
-                        session.status = "evaluating"
-                    else:
-                        session.status = "picking"
+                    session.status = "evaluating" if len(session.completed_brackets) == 5 else "picking"
                     await save_session_async(session)
+                    log.info("stream_agent_bracket: %s complete (%d total)", agent, len(session.completed_brackets))
             except Exception:
                 pass
 
@@ -316,17 +329,25 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
 
 
 @router.get("/session/{session_id}/evaluate/stream")
-async def stream_evaluation(session_id: str):
-    """SSE: Commissioner evaluates all 5 completed brackets."""
+async def stream_evaluation(
+    session_id: str,
+    user: dict | None = Depends(get_optional_user),
+):
+    """SSE: Commissioner evaluates completed brackets (requires at least 1)."""
     session = get_session(session_id)
+    if not session and user:
+        loaded = await load_session_for_user(user["sub"])
+        if loaded and loaded.session_id == session_id:
+            session = loaded
+            log.info("stream_evaluation: restored session %s from Supabase", session_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    if len(session.completed_brackets) < 1:
-        raise HTTPException(
-            status_code=400,
-            detail="No completed brackets yet. Run at least one agent first."
-        )
-    log.info("stream_evaluation: session %s has %d/%d completed brackets", session_id, len(session.completed_brackets), 5)
+        log.error("stream_evaluation: session %s not found", session_id)
+        raise HTTPException(status_code=404, detail="Session not found — reload the bracket")
+    n_complete = len(session.completed_brackets)
+    if n_complete < 1:
+        log.warning("stream_evaluation: session %s has 0 completed brackets", session_id)
+        raise HTTPException(status_code=400, detail="No completed brackets yet. Run at least one agent first.")
+    log.info("stream_evaluation: session %s has %d/%d completed brackets — starting commissioner", session_id, n_complete, 5)
 
     commissioner = CommissionerAgent()
 
