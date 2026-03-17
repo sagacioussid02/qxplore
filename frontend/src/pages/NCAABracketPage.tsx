@@ -19,7 +19,7 @@ export default function NCAABracketPage() {
   const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const { loading, error, evaluationError, canResume, phase, startSession, startAllAgents, resumeAgents, startSingleAgent, runCommissioner, cleanup } = useBracketSession({
+  const { loading, error, evaluationError, canResume, phase, startSession, startAllAgents, resumeAgents, startSingleAgent, completeAgentRandomly, runCommissioner, cleanup } = useBracketSession({
     accessToken,
     onCreditsUpdate: refreshCredits,
   });
@@ -255,19 +255,28 @@ export default function NCAABracketPage() {
             </div>
           )}
 
-          {/* Per-agent resume buttons — shown when agents are in error state and phase is idle */}
-          {phase === 'idle' && AGENTS.some(a => agentStatuses[a] === 'error') && (
-            <div className="flex flex-wrap gap-2 px-1">
-              <span className="text-xs text-gray-500 self-center">Resume individual agents:</span>
-              {AGENTS.filter(a => agentStatuses[a] === 'error').map(a => (
-                <button
-                  key={a}
-                  onClick={() => startSingleAgent(a)}
-                  className="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-white"
-                  style={{ backgroundColor: AGENT_COLORS[a] + 'cc' }}
-                >
-                  ↺ {a.charAt(0).toUpperCase() + a.slice(1)}
-                </button>
+          {/* Per-agent controls — shown when any agent hasn't completed and we're idle */}
+          {phase === 'idle' && completedCount > 0 && AGENTS.some(a => agentStatuses[a] !== 'complete' && agentStatuses[a] !== 'running') && (
+            <div className="flex flex-wrap gap-2 px-1 items-center">
+              <span className="text-xs text-gray-500">Individual agents:</span>
+              {AGENTS.filter(a => agentStatuses[a] !== 'complete' && agentStatuses[a] !== 'running').map(a => (
+                <div key={a} className="flex gap-1">
+                  <button
+                    onClick={() => startSingleAgent(a)}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-l-md transition-colors text-white"
+                    style={{ backgroundColor: AGENT_COLORS[a] + 'cc' }}
+                    title={`Resume ${a} from checkpoint`}
+                  >
+                    ↺ {a.charAt(0).toUpperCase() + a.slice(1)}
+                  </button>
+                  <button
+                    onClick={() => completeAgentRandomly(a)}
+                    className="px-2 py-1 text-xs font-semibold rounded-r-md transition-colors text-white bg-gray-600 hover:bg-gray-500 border-l border-black/20"
+                    title={`Fill ${a}'s remaining picks with seed-based random`}
+                  >
+                    🎲
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -287,12 +296,43 @@ export default function NCAABracketPage() {
             </div>
           )}
 
-          {/* Commissioner panel */}
-          <CommissionerPanel
-            text={store.evaluationText}
-            done={store.evaluationDone}
-            phase={phase}
-          />
+          {/* Bottom section: live reasoning + Commissioner side by side */}
+          <div className={`grid gap-4 ${(phase === 'evaluating' || phase === 'done' || store.evaluationDone) && store.agents[activeAgent].liveReasoning ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+            {/* Live reasoning panel — shows while an agent is picking */}
+            {store.agents[activeAgent].liveReasoning && (
+              <div className="rounded-xl border border-gray-700/40 bg-gray-900/60 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-700/30 bg-gray-800/40">
+                  <span className="text-cyan-400 text-sm">⚛</span>
+                  <span className="text-cyan-400 font-semibold text-sm">
+                    {store.agents[activeAgent].status === 'running' ? 'Live Reasoning' : 'Last Reasoning'}
+                  </span>
+                  <span className="text-xs text-gray-500 ml-1">— {activeAgent}</span>
+                  {store.agents[activeAgent].status === 'running' && (
+                    <motion.span
+                      className="ml-auto text-xs text-cyan-600"
+                      animate={{ opacity: [1, 0.4, 1] }}
+                      transition={{ repeat: Infinity, duration: 1 }}
+                    >
+                      thinking…
+                    </motion.span>
+                  )}
+                </div>
+                <div className="px-4 py-3 max-h-48 overflow-y-auto">
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    {store.agents[activeAgent].liveReasoning}
+                  </p>
+                  {store.agents[activeAgent].status === 'running' && (
+                    <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse" />
+                  )}
+                </div>
+              </div>
+            )}
+            <CommissionerPanel
+              text={store.evaluationText}
+              done={store.evaluationDone}
+              phase={phase}
+            />
+          </div>
         </div>
       )}
     </div>

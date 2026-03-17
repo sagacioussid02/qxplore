@@ -12,7 +12,7 @@ from ..bracket.agents.gemini_bracket import GeminiBracketAgent
 from ..bracket.agents.montecarlo_bracket import MonteCarloAgent
 from ..bracket.agents.quantum_bracket import QuantumBracketAgent
 from ..bracket.agents.commissioner import CommissionerAgent
-from ..bracket.bracket_engine import get_round_matchups, advance_winner, build_completed_bracket, fill_bracket_resumable
+from ..bracket.bracket_engine import get_round_matchups, advance_winner, build_completed_bracket, fill_bracket_resumable, fill_bracket_random_completion
 from ..data.sports_data_client import get_bracket, load_fallback_bracket
 from ..data.team_research import enrich_bracket_with_news
 from ..models.bracket import BracketSession, AgentName, CompletedBracket, BracketPick
@@ -169,6 +169,53 @@ async def stream_agent_bracket(
             except Exception:
                 pass
 
+        yield {"data": json.dumps({"type": "stream_done", "agent": agent})}
+
+    return EventSourceResponse(generate(), ping=30)
+
+
+@router.get("/session/{session_id}/agent/{agent}/complete-randomly")
+async def complete_agent_randomly(
+    session_id: str,
+    agent: AgentName,
+    user: dict | None = Depends(get_optional_user),
+):
+    """SSE: Fill remaining un-picked games for an agent with seed-based picks (instant, no LLM)."""
+    session = get_session(session_id)
+    if not session and user:
+        loaded = await load_session_for_user(user["sub"])
+        if loaded and loaded.session_id == session_id:
+            session = loaded
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if agent in session.completed_brackets:
+        return EventSourceResponse(_replay_completed(session_id, agent, session.completed_brackets[agent]), ping=30)
+
+    existing = dict(session.partial_picks.get(agent, {}))
+    log.info("complete_agent_randomly: session=%s agent=%s existing_picks=%d", session_id, agent, len(existing))
+    bracket = session.bracket
+
+    async def generate():
+        async for event_json in fill_bracket_random_completion(agent, session_id, bracket, existing):
+            yield {"data": event_json}
+            try:
+                event = json.loads(event_json)
+                if event.get("type") == "agent_complete":
+                    session.partial_picks.pop(agent, None)
+                    from ..models.bracket import CompletedBracket, TeamEntry
+                    champ_data = event.get("champion")
+                    picks_obj = {gid: BracketPick(**p) for gid, p in event.get("picks", {}).items()}
+                    completed = CompletedBracket(
+                        session_id=session_id, agent=agent,
+                        picks=picks_obj,
+                        champion=TeamEntry(**champ_data) if champ_data else None,
+                    )
+                    session.completed_brackets[agent] = completed
+                    session.status = "evaluating" if len(session.completed_brackets) == 5 else "picking"
+                    await save_session_async(session)
+                    log.info("complete_agent_randomly: %s complete with random fill", agent)
+            except Exception:
+                pass
         yield {"data": json.dumps({"type": "stream_done", "agent": agent})}
 
     return EventSourceResponse(generate(), ping=30)

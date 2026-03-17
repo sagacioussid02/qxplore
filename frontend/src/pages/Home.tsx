@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
+// Update with your GitHub repo URL
+const GITHUB_REPO = 'https://github.com/YOUR_USERNAME/quantumanic';
 const GAMES = [
   {
     to: '/coin',
@@ -183,6 +186,36 @@ export default function Home() {
           The TTT AI opponent is also powered by Claude.
         </p>
       </div>
+
+      {/* Contribute CTA */}
+      <motion.a
+        href={`${GITHUB_REPO}/blob/main/CONTRIBUTING.md`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block card-quantum p-5 no-underline group transition-all duration-300 hover:scale-[1.01]"
+        style={{ background: 'rgba(0,255,255,0.03)', borderColor: 'rgba(0,255,255,0.2)' }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">🎮</span>
+              <span className="font-mono font-bold text-quantum-cyan">Add your own game!</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-mono border border-cyan-500/20">
+                Open Source
+              </span>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Build a quantum game with Qiskit + Claude AI agents. Full setup guide — no API keys needed to get started.
+            </p>
+          </div>
+          <span className="text-quantum-cyan font-mono text-sm group-hover:translate-x-1 transition-transform">
+            Contribute →
+          </span>
+        </div>
+      </motion.a>
     </div>
   );
 }

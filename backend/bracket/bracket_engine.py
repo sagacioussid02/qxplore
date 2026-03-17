@@ -161,3 +161,75 @@ async def fill_bracket_resumable(
         "champion": completed.champion.model_dump() if completed.champion else None,
         "picks": {gid: p.model_dump() for gid, p in picks.items()},
     })
+
+
+async def fill_bracket_random_completion(
+    agent_name: str,
+    session_id: str,
+    bracket: BracketData,
+    existing_picks: dict[str, "BracketPick"],
+) -> AsyncGenerator[str, None]:
+    """Fill any un-picked games with deterministic seed-based picks (no LLM).
+    Used when an agent timed out and the user wants to complete the bracket instantly.
+    """
+    working = copy.deepcopy(bracket)
+    picks: dict[str, "BracketPick"] = {}
+
+    # Replay existing picks first to build working bracket state
+    for round_num in range(1, 7):
+        matchups = get_round_matchups(working, round_num)
+        for matchup in matchups:
+            if not matchup.team_a or not matchup.team_b:
+                continue
+            if matchup.game_id in existing_picks:
+                pick = existing_picks[matchup.game_id]
+                winner_team = (
+                    matchup.team_a if matchup.team_a.team_id == pick.winner_team_id
+                    else matchup.team_b
+                )
+                advance_winner(working, matchup.game_id, winner_team)
+                picks[matchup.game_id] = pick
+                yield json.dumps({
+                    "type": "pick",
+                    "agent": agent_name,
+                    "game_id": matchup.game_id,
+                    "winner_team_id": pick.winner_team_id,
+                    "winner_name": pick.winner_name,
+                    "confidence": pick.confidence,
+                    "reasoning": pick.reasoning,
+                    "round": round_num,
+                    "from_cache": True,
+                })
+            else:
+                # Seed-based fallback: lower seed (better team) wins
+                winner_team = matchup.team_a if matchup.team_a.seed <= matchup.team_b.seed else matchup.team_b
+                pick = BracketPick(
+                    session_id=session_id,
+                    agent=agent_name,
+                    game_id=matchup.game_id,
+                    winner_team_id=winner_team.team_id,
+                    winner_name=winner_team.name,
+                    confidence=0.5,
+                    reasoning=f"Seed-based fill: #{winner_team.seed} {winner_team.name} over #{(matchup.team_b if winner_team == matchup.team_a else matchup.team_a).seed}",
+                )
+                advance_winner(working, matchup.game_id, winner_team)
+                picks[matchup.game_id] = pick
+                yield json.dumps({
+                    "type": "pick",
+                    "agent": agent_name,
+                    "game_id": matchup.game_id,
+                    "winner_team_id": pick.winner_team_id,
+                    "winner_name": pick.winner_name,
+                    "confidence": pick.confidence,
+                    "reasoning": pick.reasoning,
+                    "round": round_num,
+                    "random_fill": True,
+                })
+
+    completed = build_completed_bracket(session_id, agent_name, picks, working)
+    yield json.dumps({
+        "type": "agent_complete",
+        "agent": agent_name,
+        "champion": completed.champion.model_dump() if completed.champion else None,
+        "picks": {gid: p.model_dump() for gid, p in picks.items()},
+    })

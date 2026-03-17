@@ -58,18 +58,6 @@ export function AgentBracketView({ agent, bracket, picks, champion, pickCount, l
         )}
       </div>
 
-      {/* Live reasoning ticker */}
-      {status === 'running' && liveReasoning && (
-        <motion.div
-          className="text-[10px] text-gray-500 italic px-2 py-1 rounded bg-gray-800/40 border border-gray-700/30 truncate"
-          key={liveReasoning}
-          initial={{ opacity: 0.5 }}
-          animate={{ opacity: 1 }}
-        >
-          ↳ {liveReasoning.slice(0, 120)}
-        </motion.div>
-      )}
-
       {/* The bracket */}
       <TournamentBracket bracket={bracket} picks={picks} agent={agent} />
     </div>

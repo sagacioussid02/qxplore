@@ -237,6 +237,50 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     };
   }, [store, accessToken]);
 
+  const completeAgentRandomly = useCallback((agentName: AgentName) => {
+    const { sessionId } = useBracketStore.getState();
+    if (!sessionId) return;
+
+    store.setAgentStatus(agentName, 'running');
+
+    const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+    const url = `${API_BASE}/bracket/session/${sessionId}/agent/${agentName}/complete-randomly${tokenParam}`;
+    const es = new EventSource(url);
+
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data) as BracketSSEEvent;
+        if (event.type === 'pick') {
+          store.applyPick(agentName, event.game_id, {
+            session_id: sessionId,
+            game_id: event.game_id,
+            winner_team_id: event.winner_team_id,
+            winner_name: event.winner_name,
+            confidence: event.confidence,
+            reasoning: event.reasoning,
+            pick_metadata: {},
+          });
+        } else if (event.type === 'agent_complete') {
+          store.setAgentComplete(
+            agentName,
+            event.champion as TeamEntry | null,
+            event.picks as Record<string, BracketPick>,
+          );
+        } else if (event.type === 'stream_done') {
+          es.close();
+          store.setAgentStatus(agentName, 'complete');
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      store.setAgentStatus(agentName, 'error');
+    };
+  }, [store, accessToken]);
+
   const startAllAgents = useCallback(() => {
     const { sessionId } = useBracketStore.getState();
     if (!sessionId) return;
@@ -264,6 +308,6 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
   return {
     loading, error, evaluationError, canResume, phase,
     restoreSession, startSession, startAllAgents, resumeAgents,
-    startSingleAgent, runCommissioner, cleanup,
+    startSingleAgent, completeAgentRandomly, runCommissioner, cleanup,
   };
 }
