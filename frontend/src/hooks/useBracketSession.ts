@@ -76,8 +76,10 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
 
     AGENTS.forEach(a => {
       const s = useBracketStore.getState().agents[a];
-      // In resume mode, keep already-complete agents as-is; otherwise reset all
-      if (!resumeMode || s.status !== 'complete') store.setAgentStatus(a, 'running');
+      if (resumeMode && s.status === 'complete') return; // keep completed agents intact
+      // Clear stale picks before the new run — prevents pickCount carrying over
+      store.resetAgentPicks(a);
+      store.setAgentStatus(a, 'running');
     });
     setPhase('picking');
     setError(null);

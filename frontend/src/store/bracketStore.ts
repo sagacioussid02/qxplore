@@ -78,6 +78,7 @@ interface BracketStore {
   setCredits: (val: number) => void;
   applyPick: (agent: AgentName, gameId: string, pick: Omit<BracketPick, 'session_id' | 'agent'> & { session_id: string }) => void;
   setAgentStatus: (agent: AgentName, status: AgentStatus) => void;
+  resetAgentPicks: (agent: AgentName) => void;
   setAgentComplete: (agent: AgentName, champion: TeamEntry | null, picks: Record<string, BracketPick>) => void;
   setLiveReasoning: (agent: AgentName, text: string) => void;
   appendEvaluationChunk: (chunk: string) => void;
@@ -161,14 +162,19 @@ export const useBracketStore = create<BracketStore>((set) => ({
   applyPick: (agent, gameId, pick) => set(state => {
     const agentState = state.agents[agent];
     const isNew = !(gameId in agentState.picks);
+    const newPicks = { ...agentState.picks, [gameId]: pick as BracketPick };
+    const newPickCount = isNew ? agentState.pickCount + 1 : agentState.pickCount;
+    // Auto-complete when all 63 bracket games are picked (guards against missed agent_complete)
+    const autoComplete = newPickCount >= 63;
     return {
       agents: {
         ...state.agents,
         [agent]: {
           ...agentState,
-          picks: { ...agentState.picks, [gameId]: pick as BracketPick },
+          picks: newPicks,
           liveReasoning: pick.reasoning || agentState.liveReasoning,
-          pickCount: isNew ? agentState.pickCount + 1 : agentState.pickCount,
+          pickCount: newPickCount,
+          status: autoComplete ? 'complete' : agentState.status,
         },
       },
     };
@@ -176,6 +182,13 @@ export const useBracketStore = create<BracketStore>((set) => ({
 
   setAgentStatus: (agent, status) => set(state => ({
     agents: { ...state.agents, [agent]: { ...state.agents[agent], status } },
+  })),
+
+  resetAgentPicks: (agent) => set(state => ({
+    agents: {
+      ...state.agents,
+      [agent]: { ...state.agents[agent], picks: {}, pickCount: 0, champion: null, liveReasoning: '' },
+    },
   })),
 
   setAgentComplete: (agent, champion, picks) => set(state => {
