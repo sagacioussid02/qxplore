@@ -9,7 +9,7 @@ export function useCoinGame() {
   const [phase, setPhase] = useState<CoinPhase>('idle');
   const [result, setResult] = useState<CoinQuantumResult | null>(null);
   const [betAmount] = useState(10);
-  const { credits, deductCredits, addCredits } = useCreditStore();
+  const { credits, deductCredits } = useCreditStore();
 
   const flip = useCallback(async () => {
     if (phase === 'flipping') return;
@@ -21,12 +21,7 @@ export function useCoinGame() {
     const quantum = await quantumApi.flipCoin();
     setResult(quantum);
     setPhase('revealing');
-
-    // Payout: heads doubles, tails loses
-    if (quantum.result === 0) {
-      addCredits(betAmount * 2);
-    }
-  }, [phase, betAmount, deductCredits, addCredits]);
+  }, [phase, betAmount, deductCredits]);
 
   const reset = useCallback(() => {
     setPhase('idle');

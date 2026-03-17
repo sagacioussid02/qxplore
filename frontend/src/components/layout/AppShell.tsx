@@ -7,11 +7,11 @@ import { UserMenu } from '../auth/UserMenu';
 import { useAuth } from '../../hooks/useAuth';
 
 const NAV_LINKS = [
-  { to: '/', label: 'Arcade', icon: '🕹' },
-  { to: '/coin', label: 'Quantum Coin', icon: '🪙' },
-  { to: '/roulette', label: 'Roulette', icon: '🎡' },
-  { to: '/ttt', label: 'Quantum TTT', icon: '⊗' },
-  { to: '/ncaa', label: 'Bracket', icon: '🏀' },
+  { to: '/', label: 'Arcade', icon: '🕹', inDev: false },
+  { to: '/coin', label: 'Quantum Coin', icon: '🪙', inDev: false },
+  { to: '/roulette', label: 'Roulette', icon: '🎡', inDev: true },
+  { to: '/ttt', label: 'Quantum TTT', icon: '⊗', inDev: false },
+  { to: '/ncaa', label: 'March Madness', icon: '🏀', inDev: false },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -40,17 +40,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all no-underline ${
-                    location.pathname === link.to
-                      ? 'bg-quantum-surface text-quantum-cyan border border-quantum-border'
-                      : 'text-gray-400 hover:text-white hover:bg-quantum-surface'
-                  }`}
-                >
-                  {link.icon} {link.label}
-                </Link>
+                link.inDev ? (
+                  <span
+                    key={link.to}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 cursor-not-allowed relative group"
+                    title="In Development"
+                  >
+                    {link.icon} {link.label}
+                    <span className="absolute -top-1 -right-1 text-[9px] px-1 rounded bg-gray-700 text-gray-400 font-mono leading-tight">dev</span>
+                  </span>
+                ) : (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all no-underline ${
+                      location.pathname === link.to
+                        ? 'bg-quantum-surface text-quantum-cyan border border-quantum-border'
+                        : 'text-gray-400 hover:text-white hover:bg-quantum-surface'
+                    }`}
+                  >
+                    {link.icon} {link.label}
+                  </Link>
+                )
               ))}
             </nav>
           </div>

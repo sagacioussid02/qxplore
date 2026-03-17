@@ -13,6 +13,8 @@ const GAMES = [
     bg: 'rgba(0,255,255,0.05)',
     border: 'rgba(0,255,255,0.2)',
     concept: '|0⟩ ── H ── Measure',
+    cost: 10,
+    inDev: false,
   },
   {
     to: '/roulette',
@@ -24,6 +26,8 @@ const GAMES = [
     bg: 'rgba(139,92,246,0.05)',
     border: 'rgba(139,92,246,0.2)',
     concept: 'H⊗6 → Measure → n mod 37',
+    cost: 0,
+    inDev: true,
   },
   {
     to: '/ttt',
@@ -35,6 +39,8 @@ const GAMES = [
     bg: 'rgba(236,72,153,0.05)',
     border: 'rgba(236,72,153,0.2)',
     concept: 'Entanglement → Cycle → Collapse',
+    cost: 45,
+    inDev: false,
   },
 ];
 
@@ -59,12 +65,15 @@ export default function Home() {
         >
           <h1 className="text-5xl font-mono font-bold">
             <span className="text-quantum-cyan" style={{ textShadow: '0 0 30px rgba(0,255,255,0.5)' }}>
-              ⚛ QUANTUM
+              ⚛ Quantum
             </span>
             <span className="text-quantum-purple" style={{ textShadow: '0 0 30px rgba(139,92,246,0.4)' }}>
-              {' '}ARCADE
+              {' '}Expedition
             </span>
           </h1>
+          <p className="text-quantum-amber font-mono text-sm mt-1 tracking-widest uppercase opacity-70">
+            into the Arcade
+          </p>
           <p className="text-gray-400 text-lg mt-3 max-w-md mx-auto">
             Learn quantum computing through games. Every mechanic is backed by real quantum circuits.
           </p>
@@ -72,35 +81,84 @@ export default function Home() {
         </motion.div>
       </div>
 
+      {/* March Madness banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Link
+          to="/ncaa"
+          className="no-underline block card-quantum p-5 border-l-4 group transition-all duration-300 hover:scale-[1.01]"
+          style={{ borderLeftColor: '#f97316', background: 'rgba(249,115,22,0.06)', borderColor: 'rgba(249,115,22,0.3)' }}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl">🏀</span>
+                <span className="font-mono font-bold text-orange-400 text-lg">March Madness 2026</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-mono border border-orange-500/30">
+                  Featured
+                </span>
+              </div>
+              <p className="text-gray-400 text-sm">
+                5 AI agents — Claude, GPT-4o, Gemini, Monte Carlo & Quantum — battle it out to predict the bracket.
+              </p>
+            </div>
+            <span className="text-orange-400 font-mono text-sm group-hover:translate-x-1 transition-transform">
+              Fill bracket →
+            </span>
+          </div>
+        </Link>
+      </motion.div>
+
       {/* Games */}
       <section>
-        <h2 className="text-sm font-mono text-gray-500 uppercase tracking-wider mb-4">Games</h2>
+        <h2 className="text-sm font-mono text-gray-500 uppercase tracking-wider mb-4">Arcade Games</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GAMES.map((game, i) => (
             <motion.div
               key={game.to}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+              transition={{ delay: i * 0.1 + 0.3 }}
             >
-              <Link
-                to={game.to}
-                className="block card-quantum p-5 no-underline group transition-all duration-300 hover:scale-[1.02]"
-                style={{ background: game.bg, borderColor: game.border }}
-              >
-                <div className="text-4xl mb-3">{game.icon}</div>
-                <h3 className="font-mono font-bold text-white text-lg group-hover:text-current transition-colors"
-                    style={{ color: game.color }}>
-                  {game.title}
-                </h3>
-                <p className="text-xs font-mono mb-2" style={{ color: game.color, opacity: 0.7 }}>
-                  {game.subtitle}
-                </p>
-                <p className="text-gray-400 text-sm">{game.description}</p>
-                <p className="font-mono text-xs mt-3 opacity-50" style={{ color: game.color }}>
-                  {game.concept}
-                </p>
-              </Link>
+              {game.inDev ? (
+                <div
+                  className="block card-quantum p-5 relative overflow-hidden opacity-60 cursor-not-allowed"
+                  style={{ background: game.bg, borderColor: game.border }}
+                >
+                  <div className="absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-mono border"
+                       style={{ color: game.color, borderColor: game.border, background: game.bg }}>
+                    In Development
+                  </div>
+                  <div className="text-4xl mb-3">{game.icon}</div>
+                  <h3 className="font-mono font-bold text-lg" style={{ color: game.color }}>{game.title}</h3>
+                  <p className="text-xs font-mono mb-2" style={{ color: game.color, opacity: 0.7 }}>{game.subtitle}</p>
+                  <p className="text-gray-400 text-sm">{game.description}</p>
+                  <p className="font-mono text-xs mt-3 opacity-50" style={{ color: game.color }}>{game.concept}</p>
+                </div>
+              ) : (
+                <Link
+                  to={game.to}
+                  className="block card-quantum p-5 no-underline group transition-all duration-300 hover:scale-[1.02]"
+                  style={{ background: game.bg, borderColor: game.border }}
+                >
+                  <div className="text-4xl mb-3">{game.icon}</div>
+                  <h3 className="font-mono font-bold text-white text-lg group-hover:text-current transition-colors"
+                      style={{ color: game.color }}>
+                    {game.title}
+                  </h3>
+                  <p className="text-xs font-mono mb-2" style={{ color: game.color, opacity: 0.7 }}>{game.subtitle}</p>
+                  <p className="text-gray-400 text-sm">{game.description}</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <p className="font-mono text-xs opacity-50" style={{ color: game.color }}>{game.concept}</p>
+                    <span className="text-xs font-mono opacity-60" style={{ color: game.color }}>
+                      ⚛ {game.cost} credits
+                    </span>
+                  </div>
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>

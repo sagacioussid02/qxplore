@@ -4,6 +4,7 @@ import { useTicTacToe } from '../hooks/useTicTacToe';
 import { GameMasterBanner } from '../components/agents/GameMasterBanner';
 import { TutorPanel } from '../components/agents/TutorPanel';
 import { useAgentStore } from '../store/agentStore';
+import { useCreditStore } from '../store/creditStore';
 import { agentApi } from '../api/agentApi';
 import type { TutorContext, GameMasterEvent } from '../types/agents';
 import type { TTTCell } from '../types/games';
@@ -138,9 +139,12 @@ function EntanglementLines({ cells }: { cells: TTTCell[]; moves: unknown[] }) {
   );
 }
 
+const TTT_COST = 45;
+
 export default function TicTacToePage() {
   const { game, selectedCells, isLoading, error, initGame, selectCell, submitMove, resetGame, detectedCycleLocal } = useTicTacToe();
   const { clearTutor, clearGameMaster, appendTutor, setTutorStreaming, appendGameMaster, setGameMasterStreaming } = useAgentStore();
+  const { credits, deductCredits } = useCreditStore();
   const prevPhaseRef = useRef<string | null>(null);
 
   const triggerAgents = useCallback((eventType: string, details: Record<string, unknown>) => {
@@ -208,9 +212,14 @@ export default function TicTacToePage() {
             <p>• After collapse, classical tic-tac-toe win conditions apply</p>
             <p>• AI opponent (Claude) plays strategically as O</p>
           </div>
-          <button onClick={() => initGame(true)} className="btn-cyan text-lg px-10 py-4">
+          <button
+            onClick={() => { if (deductCredits(TTT_COST)) initGame(true); }}
+            disabled={credits < TTT_COST}
+            className="btn-cyan text-lg px-10 py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Start Game vs AI
           </button>
+          <p className="text-xs text-gray-500 font-mono">costs {TTT_COST} credits · you have {credits}</p>
         </div>
       </div>
     );

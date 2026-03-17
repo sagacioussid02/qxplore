@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBracketSession } from '../hooks/useBracketSession';
 import { useBracketStore } from '../store/bracketStore';
+import { useCreditStore } from '../store/creditStore';
 import { AgentTabBar } from '../components/bracket/AgentTabBar';
 import { AgentBracketView } from '../components/bracket/AgentBracketView';
 import { CommissionerPanel } from '../components/bracket/CommissionerPanel';
@@ -11,9 +12,11 @@ import type { AgentName } from '../types/bracket';
 import { AGENT_COLORS } from '../types/bracket';
 
 const AGENTS: AgentName[] = ['claude', 'openai', 'gemini', 'montecarlo', 'quantum'];
+const BRACKET_COST = 450;
 
 export default function NCAABracketPage() {
   const { isAuthenticated, accessToken, credits, refreshCredits } = useAuth();
+  const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
   const { loading, error, phase, startSession, startAllAgents, cleanup } = useBracketSession({
@@ -50,7 +53,8 @@ export default function NCAABracketPage() {
   const outOfCredits = isAuthenticated && credits !== null && credits <= 0;
 
   function handleStartAgents() {
-    if (outOfCredits) return; // button disabled, but guard anyway
+    if (outOfCredits) return;
+    if (!deductCredits(BRACKET_COST)) return;
     startAllAgents();
   }
 
