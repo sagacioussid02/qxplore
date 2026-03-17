@@ -225,7 +225,6 @@ export default function NCAABracketPage() {
                 picks={activeAgentState.picks}
                 champion={activeAgentState.champion}
                 pickCount={activeAgentState.pickCount}
-                liveReasoning={activeAgentState.liveReasoning}
                 status={activeAgentState.status}
               />
             </motion.div>

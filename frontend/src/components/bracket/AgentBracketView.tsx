@@ -9,13 +9,12 @@ interface Props {
   picks: Record<string, BracketPick>;
   champion: TeamEntry | null;
   pickCount: number;
-  liveReasoning: string;
   status: 'idle' | 'running' | 'complete' | 'error';
 }
 
 const TOTAL_GAMES = 63;
 
-export function AgentBracketView({ agent, bracket, picks, champion, pickCount, liveReasoning, status }: Props) {
+export function AgentBracketView({ agent, bracket, picks, champion, pickCount, status }: Props) {
   const color = AGENT_COLORS[agent];
   const progress = Math.round((pickCount / TOTAL_GAMES) * 100);
 
