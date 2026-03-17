@@ -90,8 +90,8 @@ export default function AccountPage() {
         <div className="border-t border-gray-700/40 pt-3 grid grid-cols-3 gap-3 text-center">
           {[
             { game: 'Bracket', cost: 450, icon: '🏀' },
-            { game: 'Quantum TTT', cost: 45, icon: '⊗' },
-            { game: 'Coin Flip', cost: 10, icon: '🪙' },
+            { game: 'Quantum TTT', cost: 250, icon: '⊗' },
+            { game: 'Coin Flip', cost: 25, icon: '🪙' },
           ].map(({ game, cost, icon }) => (
             <div key={game} className="bg-gray-800/40 rounded-lg p-3">
               <p className="text-lg mb-1">{icon}</p>

@@ -72,6 +72,14 @@ class GeminiBracketAgent:
             log.error("Gemini API error on game %s: %s", matchup.game_id, exc, exc_info=True)
             raise
 
+        if resp.usage_metadata:
+            u = resp.usage_metadata
+            log.info(
+                "gemini tokens model=gemini-2.0-flash in=%d out=%d total=%d",
+                u.prompt_token_count or 0,
+                u.candidates_token_count or 0,
+                u.total_token_count or 0,
+            )
         raw = resp.text or "{}"
         log.debug("Gemini raw response game=%s: %s", matchup.game_id, raw)
         try:

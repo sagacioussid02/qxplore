@@ -57,6 +57,8 @@ class OpenAIBracketAgent:
             response_format={"type": "json_object"},
             max_tokens=200,
             temperature=1.0,
+            store=True,
+            metadata={"session_id": session_id, "agent": "openai", "game_id": matchup.game_id},
         )
         raw = resp.choices[0].message.content or "{}"
         if resp.usage:

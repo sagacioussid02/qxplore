@@ -2,8 +2,13 @@ import { apiClient } from './client';
 import type { TTTGameState, MoveResponse } from '../types/games';
 
 export const gameApi = {
-  newTTTGame: (vs_ai = true) =>
-    apiClient.post<TTTGameState>('/games/ttt/new', null, { params: { vs_ai } }).then(r => r.data),
+  newTTTGame: (vs_ai = true, accessToken?: string | null) =>
+    apiClient
+      .post<TTTGameState>('/games/ttt/new', null, {
+        params: { vs_ai },
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      })
+      .then(r => r.data),
 
   getTTTGame: (game_id: string) =>
     apiClient.get<TTTGameState>(`/games/ttt/${game_id}`).then(r => r.data),

@@ -53,7 +53,7 @@ type TicTacToeHook = {
   selectedCells: number[];
   isLoading: boolean;
   error: string | null;
-  initGame: (vsAI?: boolean) => Promise<void>;
+  initGame: (vsAI?: boolean, accessToken?: string | null) => Promise<void>;
   selectCell: (idx: number) => void;
   submitMove: () => Promise<void>;
   resetGame: () => void;
@@ -67,12 +67,12 @@ export function useTicTacToe(): TicTacToeHook {
   const [error, setError] = useState<string | null>(null);
   const [detectedCycleLocal, setDetectedCycleLocal] = useState<number[] | null>(null);
 
-  const initGame = useCallback(async (vsAI = true) => {
+  const initGame = useCallback(async (vsAI = true, accessToken?: string | null) => {
     setIsLoading(true);
     setError(null);
     setSelectedCells([]);
     setDetectedCycleLocal(null);
-    const state = await gameApi.newTTTGame(vsAI);
+    const state = await gameApi.newTTTGame(vsAI, accessToken);
     setGame(state);
     setIsLoading(false);
   }, []);

@@ -1,17 +1,24 @@
 """Quantum circuit endpoints."""
-from fastapi import APIRouter
+import logging
+from fastapi import APIRouter, Depends
 from ..quantum.coin import run_coin_flip
 from ..quantum.roulette import run_roulette
 from ..quantum.ttt_collapse import collapse_cycle
 from ..models.quantum_state import CoinQuantumResult, RouletteQuantumResult, TTTCollapseResult
 from ..models.game_state import EntangledMove
+from ..core.supabase_auth import get_optional_user, deduct_credit
 from pydantic import BaseModel
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/quantum", tags=["quantum"])
 
+COIN_COST = 25
 
 @router.post("/coin", response_model=CoinQuantumResult)
-async def quantum_coin():
+async def quantum_coin(user: dict | None = Depends(get_optional_user)):
+    if user:
+        log.info("quantum_coin: deducting %d credits from user %s", COIN_COST, user["sub"])
+        await deduct_credit(user["sub"], amount=COIN_COST)
     return run_coin_flip()
 
 

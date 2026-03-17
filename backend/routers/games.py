@@ -1,12 +1,14 @@
 """Game state management endpoints."""
+import logging
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from ..models.game_state import (
     TTTGameState, TTTCell, EntangledMove, QuantumMarker,
     OpponentRequest
 )
 from ..quantum.ttt_collapse import collapse_cycle
 from ..agents.opponent import AIOpponent
+from ..core.supabase_auth import get_optional_user, deduct_credit
 from pydantic import BaseModel
 from typing import Literal
 
@@ -74,8 +76,14 @@ def _check_classical_win(board: list[TTTCell]) -> str | None:
     return None
 
 
+TTT_COST = 250
+log = logging.getLogger(__name__)
+
 @router.post("/ttt/new", response_model=TTTGameState)
-async def new_ttt_game(vs_ai: bool = True):
+async def new_ttt_game(vs_ai: bool = True, user: dict | None = Depends(get_optional_user)):
+    if user:
+        log.info("new_ttt_game: deducting %d credits from user %s", TTT_COST, user["sub"])
+        await deduct_credit(user["sub"], amount=TTT_COST)
     game_id = str(uuid.uuid4())
     board = [TTTCell(index=i) for i in range(9)]
     state = TTTGameState(game_id=game_id, board=board, is_vs_ai=vs_ai)
