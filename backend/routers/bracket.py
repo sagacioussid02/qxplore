@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import asyncio
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 from ..bracket.session_store import create_session, get_session, save_session, save_session_async, load_session_for_user
@@ -160,6 +161,9 @@ async def stream_agent_bracket(session_id: str, agent: AgentName):
     return EventSourceResponse(generate(), ping=30)
 
 
+log = logging.getLogger(__name__)
+
+
 @router.get("/session/{session_id}/all-agents/stream")
 async def stream_all_agents(session_id: str, user: dict | None = Depends(get_optional_user)):
     """SSE: launch all 5 agents concurrently, multiplex their picks into one stream.
@@ -167,21 +171,53 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
     Credit rules:
     - Anonymous: allowed (uses fallback data already locked in at session creation)
     - Authenticated + already completed (cache replay): allowed, no credit deducted
+    - Authenticated + resume (partial_picks exist): allowed, no extra credit deducted
     - Authenticated + fresh run: deduct 450 credits; 402 if insufficient
     """
+    log.info("stream_all_agents called: session_id=%s user=%s", session_id, user.get("sub") if user else "anon")
+
     session = get_session(session_id)
+    # If not in memory cache, try loading from Supabase for authenticated users
+    if not session and user:
+        log.info("Session %s not in memory cache, trying Supabase for user %s", session_id, user["sub"])
+        loaded = await load_session_for_user(user["sub"])
+        if loaded and loaded.session_id == session_id:
+            session = loaded
+            log.info("Restored session %s from Supabase", session_id)
+        else:
+            log.warning("Session %s not found in memory or Supabase", session_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        log.error("Session %s not found", session_id)
+        raise HTTPException(status_code=404, detail="Session not found — please reload the bracket")
 
     # Determine if any fresh (non-cached) agents need to run
     fresh_agents = [n for n in _AGENT_CLASSES if n not in session.completed_brackets]
-    needs_credits = user is not None and len(fresh_agents) > 0
+    # A "resume" means partial picks already exist — credits were charged on the original run
+    is_resume = any(a in session.partial_picks for a in fresh_agents)
+    needs_credits = user is not None and len(fresh_agents) > 0 and not is_resume
+
+    log.info(
+        "session %s: completed=%s fresh=%s partial=%s is_resume=%s needs_credits=%s",
+        session_id,
+        list(session.completed_brackets.keys()),
+        fresh_agents,
+        list(session.partial_picks.keys()),
+        is_resume,
+        needs_credits,
+    )
 
     if needs_credits:
+        credits_before = await get_credits(user["sub"])
+        log.info("User %s has %d credits before deduction (need 450)", user["sub"], credits_before)
+        if credits_before < 450:
+            log.warning("User %s has insufficient credits: %d < 450", user["sub"], credits_before)
         # This raises 402 if insufficient credits
         remaining = await deduct_credit(user["sub"], amount=450)
+        log.info("Deducted 450 credits from user %s, remaining=%d", user["sub"], remaining)
     else:
         remaining = None
+        if user:
+            log.info("No credit deduction needed for user %s (resume=%s fresh_count=%d)", user["sub"], is_resume, len(fresh_agents))
 
     session.status = "picking"
     await save_session_async(session)
@@ -191,14 +227,20 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
         queue: asyncio.Queue[str | None] = asyncio.Queue()
 
         async def run_agent(agent_name: str, agent_cls):
-            agent_instance = agent_cls()
-            existing = dict(session.partial_picks.get(agent_name, {}))
-            gen = (
-                fill_bracket_resumable(agent_name, agent_instance, session_id, bracket, existing)
-                if existing else agent_instance.fill_bracket(session_id, bracket)
-            )
-            async for event_json in gen:
-                await queue.put(event_json)
+            try:
+                agent_instance = agent_cls()
+                existing = dict(session.partial_picks.get(agent_name, {}))
+                log.info("Starting agent %s (resume=%s, existing_picks=%d)", agent_name, bool(existing), len(existing))
+                gen = (
+                    fill_bracket_resumable(agent_name, agent_instance, session_id, bracket, existing)
+                    if existing else agent_instance.fill_bracket(session_id, bracket)
+                )
+                async for event_json in gen:
+                    await queue.put(event_json)
+                log.info("Agent %s finished streaming", agent_name)
+            except Exception as exc:
+                log.exception("Agent %s crashed: %s", agent_name, exc)
+                await queue.put(json.dumps({"type": "error", "agent": agent_name, "message": str(exc)}))
             await queue.put(json.dumps({"type": "agent_done", "agent": agent_name}))
 
         async def replay_agent(agent_name: str, completed: CompletedBracket):
@@ -279,11 +321,12 @@ async def stream_evaluation(session_id: str):
     session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    if len(session.completed_brackets) < 5:
+    if len(session.completed_brackets) < 1:
         raise HTTPException(
             status_code=400,
-            detail=f"Only {len(session.completed_brackets)}/5 brackets complete. Run all agents first."
+            detail="No completed brackets yet. Run at least one agent first."
         )
+    log.info("stream_evaluation: session %s has %d/%d completed brackets", session_id, len(session.completed_brackets), 5)
 
     commissioner = CommissionerAgent()
 

@@ -169,6 +169,13 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     connectAgentStream(sessionId, true); // resume mode: keep completed agents intact
   }, [connectAgentStream]);
 
+  const runCommissioner = useCallback(() => {
+    const { sessionId } = useBracketStore.getState();
+    if (!sessionId) return;
+    startEvaluation(sessionId);
+    setPhase('evaluating');
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   const startEvaluation = useCallback((sessionId: string) => {
     const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
     const url = `${API_BASE}/bracket/session/${sessionId}/evaluate/stream${tokenParam}`;
@@ -204,5 +211,5 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     evalEsRef.current?.close();
   }, []);
 
-  return { loading, error, canResume, phase, restoreSession, startSession, startAllAgents, resumeAgents, cleanup };
+  return { loading, error, canResume, phase, restoreSession, startSession, startAllAgents, resumeAgents, runCommissioner, cleanup };
 }

@@ -19,7 +19,7 @@ export default function NCAABracketPage() {
   const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const { loading, error, canResume, phase, startSession, startAllAgents, resumeAgents, cleanup } = useBracketSession({
+  const { loading, error, canResume, phase, startSession, startAllAgents, resumeAgents, runCommissioner, cleanup } = useBracketSession({
     accessToken,
     onCreditsUpdate: refreshCredits,
   });
@@ -50,7 +50,9 @@ export default function NCAABracketPage() {
 
   const activeAgent = store.activeTab;
   const activeAgentState = store.agents[activeAgent];
-  const outOfCredits = isAuthenticated && credits !== null && credits <= 0;
+  const outOfCredits = isAuthenticated && credits !== null && credits < BRACKET_COST;
+  const completedCount = AGENTS.filter(a => store.agents[a].status === 'complete').length;
+  const hasPartialResults = completedCount > 0 && phase === 'idle';
 
   function handleStartAgents() {
     if (outOfCredits) return;
@@ -165,6 +167,14 @@ export default function NCAABracketPage() {
                   className="px-3 py-1 bg-orange-600 hover:bg-orange-500 rounded-md text-xs font-semibold text-white"
                 >
                   ↺ Resume
+                </button>
+              )}
+              {hasPartialResults && !canResume && (
+                <button
+                  onClick={runCommissioner}
+                  className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded-md text-xs font-semibold text-white"
+                >
+                  ⚖ Run Commissioner ({completedCount}/5)
                 </button>
               )}
               {!isAuthenticated && error.includes('credits') && (
