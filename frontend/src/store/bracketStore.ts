@@ -160,6 +160,7 @@ export const useBracketStore = create<BracketStore>((set) => ({
 
   applyPick: (agent, gameId, pick) => set(state => {
     const agentState = state.agents[agent];
+    const isNew = !(gameId in agentState.picks);
     return {
       agents: {
         ...state.agents,
@@ -167,7 +168,7 @@ export const useBracketStore = create<BracketStore>((set) => ({
           ...agentState,
           picks: { ...agentState.picks, [gameId]: pick as BracketPick },
           liveReasoning: pick.reasoning || agentState.liveReasoning,
-          pickCount: agentState.pickCount + 1,
+          pickCount: isNew ? agentState.pickCount + 1 : agentState.pickCount,
         },
       },
     };
@@ -181,7 +182,13 @@ export const useBracketStore = create<BracketStore>((set) => ({
     const next = {
       agents: {
         ...state.agents,
-        [agent]: { ...state.agents[agent], status: 'complete' as AgentStatus, champion, picks },
+        [agent]: {
+          ...state.agents[agent],
+          status: 'complete' as AgentStatus,
+          champion,
+          picks,
+          pickCount: Object.keys(picks).length,
+        },
       },
     };
     saveCache({ ...state, ...next });

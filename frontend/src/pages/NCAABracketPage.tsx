@@ -80,7 +80,7 @@ export default function NCAABracketPage() {
                   ? 'bg-green-900/40 text-green-400'
                   : 'bg-yellow-900/40 text-yellow-500'
               }`}>
-                {store.bracket.source === 'sportsdata_io' ? '⚡ Live Data' : '📁 Demo Data'}
+                {store.bracket.source === 'sportsdata_io' ? '⚡ Live Data' : '📋 NCAA Released Data 2026'}
               </span>
             )}
           </div>

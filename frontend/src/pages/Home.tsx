@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useCreditStore } from '../store/creditStore';
-
 const GAMES = [
   {
     to: '/coin',
@@ -52,8 +50,6 @@ const CONCEPTS = [
 ];
 
 export default function Home() {
-  const credits = useCreditStore(s => s.credits);
-
   return (
     <div className="space-y-10 max-w-4xl">
       {/* Hero */}
@@ -77,7 +73,6 @@ export default function Home() {
           <p className="text-gray-400 text-lg mt-3 max-w-md mx-auto">
             Learn quantum computing through games. Every mechanic is backed by real quantum circuits.
           </p>
-          <p className="text-quantum-amber font-mono mt-2">⚛ {credits} credits ready</p>
         </motion.div>
       </div>
 

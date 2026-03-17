@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id: str = ""       # Price ID for credit pack (e.g. price_xxx)
-    stripe_credits_per_pack: int = 5  # How many credits per purchased pack
+    stripe_credits_per_pack: int = 5000  # How many credits per purchased pack ($7 = 5000 credits)
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
