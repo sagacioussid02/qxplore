@@ -164,22 +164,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region:     ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG:     ${{ github.sha }}
-        run: |
-          REPO="quantumanic-test-backend"
-          docker build \
-            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
-            -t "$ECR_REGISTRY/$REPO:latest" .
-          docker push "$ECR_REGISTRY/$REPO:latest"
-          docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -195,6 +179,31 @@ jobs:
             -backend-config="region=us-east-1" \
             -backend-config="dynamodb_table=terraform-state-lock" \
             -backend-config="encrypt=true"
+
+      # Create ECR repo first so we can push the image before App Runner is provisioned
+      - name: Ensure ECR repo exists
+        working-directory: terraform
+        run: |
+          terraform apply \
+            -target=module.apprunner.aws_ecr_repository.backend \
+            -auto-approve \
+            -no-color
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG:     ${{ github.sha }}
+        run: |
+          REPO="quantumanic-test-backend"
+          docker build \
+            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$REPO:latest" .
+          docker push "$ECR_REGISTRY/$REPO:latest"
+          docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
 
       - name: Download plan artifact
         uses: actions/download-artifact@v4
@@ -404,22 +413,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region:     ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG:     ${{ github.sha }}
-        run: |
-          REPO="quantumanic-prod-backend"
-          docker build \
-            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
-            -t "$ECR_REGISTRY/$REPO:latest" .
-          docker push "$ECR_REGISTRY/$REPO:latest"
-          docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -435,6 +428,31 @@ jobs:
             -backend-config="region=us-east-1" \
             -backend-config="dynamodb_table=terraform-state-lock" \
             -backend-config="encrypt=true"
+
+      # Create ECR repo first so we can push the image before App Runner is provisioned
+      - name: Ensure ECR repo exists
+        working-directory: terraform
+        run: |
+          terraform apply \
+            -target=module.apprunner.aws_ecr_repository.backend \
+            -auto-approve \
+            -no-color
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG:     ${{ github.sha }}
+        run: |
+          REPO="quantumanic-prod-backend"
+          docker build \
+            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$REPO:latest" .
+          docker push "$ECR_REGISTRY/$REPO:latest"
+          docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
 
       - name: Download plan artifact
         uses: actions/download-artifact@v4
