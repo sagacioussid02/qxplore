@@ -70,14 +70,14 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     }
   }, [store, accessToken]);
 
-  const connectAgentStream = useCallback((sessionId: string) => {
+  const connectAgentStream = useCallback((sessionId: string, resumeMode = false) => {
     esRef.current?.close();
     anyCompleteRef.current = false;
 
-    // Only set non-complete agents to running
     AGENTS.forEach(a => {
       const s = useBracketStore.getState().agents[a];
-      if (s.status !== 'complete') store.setAgentStatus(a, 'running');
+      // In resume mode, keep already-complete agents as-is; otherwise reset all
+      if (!resumeMode || s.status !== 'complete') store.setAgentStatus(a, 'running');
     });
     setPhase('picking');
     setError(null);
@@ -89,7 +89,10 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     const es = new EventSource(url);
     esRef.current = es;
 
+    let receivedAnyMessage = false;
+
     es.onmessage = (e) => {
+      receivedAnyMessage = true;
       try {
         const event = JSON.parse(e.data) as BracketSSEEvent;
 
@@ -132,8 +135,8 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       const state = useBracketStore.getState();
       const hasRunningAgents = AGENTS.some(a => state.agents[a].status === 'running');
 
-      if (hasRunningAgents) {
-        // Connection dropped mid-run (timeout, network blip) — not a credits error
+      if (receivedAnyMessage && hasRunningAgents) {
+        // Data was flowing then connection dropped — timeout/network blip, resumable
         AGENTS.forEach(a => {
           if (state.agents[a].status === 'running') store.setAgentStatus(a, 'error');
         });
@@ -141,9 +144,13 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
         setCanResume(true);
         setPhase('idle');
       } else {
-        // All agents were already done — 402 or other non-SSE error before stream started
+        // Error before any data arrived — likely 402 or backend unavailable
+        AGENTS.forEach(a => {
+          if (state.agents[a].status === 'running') store.setAgentStatus(a, 'error');
+        });
         setError('Could not start agents. You may be out of credits.');
         setCanResume(false);
+        setPhase('idle');
       }
     };
   }, [store, accessToken, onCreditsUpdate]);
@@ -157,7 +164,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
   const resumeAgents = useCallback(() => {
     const { sessionId } = useBracketStore.getState();
     if (!sessionId) return;
-    connectAgentStream(sessionId);
+    connectAgentStream(sessionId, true); // resume mode: keep completed agents intact
   }, [connectAgentStream]);
 
   const startEvaluation = useCallback((sessionId: string) => {
