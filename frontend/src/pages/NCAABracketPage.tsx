@@ -19,7 +19,7 @@ export default function NCAABracketPage() {
   const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const { loading, error, phase, startSession, startAllAgents, cleanup } = useBracketSession({
+  const { loading, error, canResume, phase, startSession, startAllAgents, resumeAgents, cleanup } = useBracketSession({
     accessToken,
     onCreditsUpdate: refreshCredits,
   });
@@ -157,12 +157,22 @@ export default function NCAABracketPage() {
         {error && (
           <div className="mt-3 px-3 py-2 bg-red-900/30 border border-red-700/40 rounded-lg text-red-400 text-sm flex items-center justify-between gap-3">
             <span>{error}</span>
-            {!isAuthenticated && error.includes('credits') && (
-              <button onClick={() => setAuthOpen(true)}
-                className="shrink-0 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-md text-xs font-semibold text-white">
-                Sign up
-              </button>
-            )}
+            <div className="flex gap-2 shrink-0">
+              {canResume && (
+                <button
+                  onClick={resumeAgents}
+                  className="px-3 py-1 bg-orange-600 hover:bg-orange-500 rounded-md text-xs font-semibold text-white"
+                >
+                  ↺ Resume
+                </button>
+              )}
+              {!isAuthenticated && error.includes('credits') && (
+                <button onClick={() => setAuthOpen(true)}
+                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-md text-xs font-semibold text-white">
+                  Sign up
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

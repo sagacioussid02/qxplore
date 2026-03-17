@@ -12,17 +12,18 @@ from ...models.bracket import BracketData, BracketPick, Matchup
 from ..bracket_engine import get_round_matchups, advance_winner, build_completed_bracket
 
 _SYSTEM = """You are a data-driven quant analyst who treats NCAA brackets as a pure statistics problem.
-You ONLY trust KenPom rankings, Adjusted Efficiency Margin (AdjEM), and Strength of Schedule. Seeds are largely irrelevant noise.
+You ONLY trust KenPom rankings, Adjusted Efficiency Margin (AdjEM), Strength of Schedule, and Luck scores. Seeds are largely irrelevant noise.
 
 Respond ONLY with a JSON object — no markdown, no extra text:
 {"winner_id": "<team_id>", "winner_name": "<team name>", "confidence": 0.0-1.0, "reasoning": "1-2 sentences"}
 
 Your rules:
-- The team with the better KenPom rank ALWAYS wins unless the margin is under 10 ranks — then it's a coin flip.
-- Conference record is a proxy for strength of schedule: ACC/Big Ten/Big 12/SEC > everyone else.
-- Ignore narrative, ignore "hot streaks", ignore ESPN storylines — they are noise.
-- A 12-seed with KenPom #40 beats a 5-seed with KenPom #60 every time.
-- Express confidence as a function of the KenPom rank gap: >30 ranks apart → 0.85+, <10 ranks → 0.52-0.58.
+- The team with the better KenPom rank wins unless the margin is under 10 ranks — then apply the Luck correction.
+- KenPom Luck is a regression signal: Luck > +0.04 means the team has been winning MORE than their efficiency predicts — statistically they are due to underperform. Luck < -0.04 means they have been unlucky and will regress UP.
+- When two teams are within 15 KenPom ranks of each other, the team with the lower (less positive) Luck score wins.
+- Conference record is a proxy for SOS: ACC/Big Ten/Big 12/SEC > everyone else.
+- Statistically, the #1 KenPom team wins the championship only ~20% of the time. Do not pick them as champion unless their Luck score is negative (genuinely dominant). Pick a team ranked #3–#25 KenPom as your champion.
+- Express confidence as a function of KenPom rank gap: >30 ranks → 0.85+, <10 ranks → 0.52-0.58.
 - When KenPom data is unavailable, use seed as fallback."""
 
 
@@ -33,10 +34,12 @@ class OpenAIBracketAgent:
 
     def _format_matchup(self, matchup: Matchup) -> str:
         a, b = matchup.team_a, matchup.team_b
+        a_luck = f"{a.luck:+.3f}" if a.luck is not None else "?"
+        b_luck = f"{b.luck:+.3f}" if b.luck is not None else "?"
         lines = [
             f"Round {matchup.round}, Game {matchup.game_id}:",
-            f"  ({a.seed}) {a.name} [{a.conference}] {a.record} KenPom#{a.kenpom_rank or '?'} SOS:{a.strength_of_schedule or '?'}",
-            f"  ({b.seed}) {b.name} [{b.conference}] {b.record} KenPom#{b.kenpom_rank or '?'} SOS:{b.strength_of_schedule or '?'}",
+            f"  ({a.seed}) {a.name} [{a.conference}] {a.record} KenPom#{a.kenpom_rank or '?'} SOS:{a.strength_of_schedule or '?'} Luck:{a_luck}",
+            f"  ({b.seed}) {b.name} [{b.conference}] {b.record} KenPom#{b.kenpom_rank or '?'} SOS:{b.strength_of_schedule or '?'} Luck:{b_luck}",
         ]
         if a.recent_news:
             lines.append(f"  {a.name} news: {a.recent_news[:150]}")
@@ -53,7 +56,7 @@ class OpenAIBracketAgent:
             ],
             response_format={"type": "json_object"},
             max_tokens=200,
-            temperature=0.7,
+            temperature=1.0,
         )
         raw = resp.choices[0].message.content or "{}"
         if resp.usage:

@@ -19,6 +19,8 @@ Your philosophy:
 - Be aggressive: pick at least ONE upset per round that shocks the bracket world.
 - You HATE predictable chalk. Never pick all 1/2/3 seeds in the same round.
 - Momentum matters: a team on a 10-game win streak beats a higher seed who limped in.
+- KenPom Luck is your secret weapon: a team with Luck > +0.04 has been winning more than their efficiency justifies — they WILL regress. Fade them hard in late rounds. A team with Luck < -0.04 is unlucky and dangerous — back them.
+- #1 seeds win the championship only ~25% of the time historically. Your champion pick MUST be a seed ≥ 3. If a #1 seed reaches your Final Four, they lose there.
 - Be decisive — no ties, own the pick."""
 
 
@@ -28,10 +30,12 @@ class ClaudeBracketAgent(BaseAgent):
 
     def _format_matchup(self, matchup: Matchup) -> str:
         a, b = matchup.team_a, matchup.team_b
+        a_luck = f"{a.luck:+.3f}" if a.luck is not None else "?"
+        b_luck = f"{b.luck:+.3f}" if b.luck is not None else "?"
         lines = [
             f"Round {matchup.round}, Game {matchup.game_id}:",
-            f"  ({a.seed}) {a.name} [{a.conference}] {a.record} KenPom#{a.kenpom_rank or '?'} SOS:{a.strength_of_schedule or '?'}",
-            f"  ({b.seed}) {b.name} [{b.conference}] {b.record} KenPom#{b.kenpom_rank or '?'} SOS:{b.strength_of_schedule or '?'}",
+            f"  ({a.seed}) {a.name} [{a.conference}] {a.record} KenPom#{a.kenpom_rank or '?'} SOS:{a.strength_of_schedule or '?'} Luck:{a_luck}",
+            f"  ({b.seed}) {b.name} [{b.conference}] {b.record} KenPom#{b.kenpom_rank or '?'} SOS:{b.strength_of_schedule or '?'} Luck:{b_luck}",
         ]
         if a.recent_news:
             lines.append(f"  {a.name} news: {a.recent_news[:150]}")

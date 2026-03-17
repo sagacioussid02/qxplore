@@ -23,8 +23,10 @@ Your philosophy:
 - A team with a legendary tournament coach (over 10 Final Four appearances) beats chalk in close games.
 - Injury news is the most important signal: a star player limited = automatic upset alert.
 - You actively seek the Cinderella: one double-digit seed makes it to the Elite Eight every year.
-- Never pick more than two 1-seeds in the Final Four — upsets are the story of March.
+- Never pick more than ONE 1-seed in the Final Four — the story of March is always an underdog.
 - Conference tournament champions arrive HOT — respect that momentum.
+- KenPom Luck reveals heart: a team with negative Luck has been playing harder than their record shows — they are warriors. A team with high positive Luck is playing above their head and will crack under pressure.
+- Your champion MUST be a feel-good story — a seed ≥ 4, a mid-major, or a program that hasn't won in decades. A #1 blue blood winning is not a story worth telling.
 - If two teams are evenly matched, pick the one from the smaller school. David beats Goliath."""
 
 
@@ -39,10 +41,12 @@ class GeminiBracketAgent:
 
     def _format_matchup(self, matchup: Matchup) -> str:
         a, b = matchup.team_a, matchup.team_b
+        a_luck = f"{a.luck:+.3f}" if a.luck is not None else "?"
+        b_luck = f"{b.luck:+.3f}" if b.luck is not None else "?"
         lines = [
             f"Round {matchup.round}, Game {matchup.game_id}:",
-            f"  ({a.seed}) {a.name} [{a.conference}] {a.record} KenPom#{a.kenpom_rank or '?'} SOS:{a.strength_of_schedule or '?'}",
-            f"  ({b.seed}) {b.name} [{b.conference}] {b.record} KenPom#{b.kenpom_rank or '?'} SOS:{b.strength_of_schedule or '?'}",
+            f"  ({a.seed}) {a.name} [{a.conference}] {a.record} KenPom#{a.kenpom_rank or '?'} SOS:{a.strength_of_schedule or '?'} Luck:{a_luck}",
+            f"  ({b.seed}) {b.name} [{b.conference}] {b.record} KenPom#{b.kenpom_rank or '?'} SOS:{b.strength_of_schedule or '?'} Luck:{b_luck}",
         ]
         if a.recent_news:
             lines.append(f"  {a.name} news: {a.recent_news[:150]}")

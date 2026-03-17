@@ -14,9 +14,12 @@ interface UseBracketSessionOptions {
 export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSessionOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canResume, setCanResume] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'picking' | 'evaluating' | 'done'>('idle');
   const esRef = useRef<EventSource | null>(null);
   const evalEsRef = useRef<EventSource | null>(null);
+  // Track whether any agent completed in the current SSE connection
+  const anyCompleteRef = useRef(false);
 
   const store = useBracketStore();
 
@@ -67,12 +70,18 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     }
   }, [store, accessToken]);
 
-  const startAllAgents = useCallback(() => {
-    const { sessionId } = useBracketStore.getState();
-    if (!sessionId) return;
+  const connectAgentStream = useCallback((sessionId: string) => {
+    esRef.current?.close();
+    anyCompleteRef.current = false;
 
-    AGENTS.forEach(a => store.setAgentStatus(a, 'running'));
+    // Only set non-complete agents to running
+    AGENTS.forEach(a => {
+      const s = useBracketStore.getState().agents[a];
+      if (s.status !== 'complete') store.setAgentStatus(a, 'running');
+    });
     setPhase('picking');
+    setError(null);
+    setCanResume(false);
 
     // EventSource can't set headers — pass JWT as query param
     const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
@@ -95,6 +104,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
             pick_metadata: event.circuit ?? event.sim_data ?? {},
           });
         } else if (event.type === 'agent_complete') {
+          anyCompleteRef.current = true;
           store.setAgentComplete(
             event.agent,
             event.champion as TeamEntry | null,
@@ -118,16 +128,37 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     };
 
     es.onerror = () => {
-      // 402 means out of credits — the browser fires onerror on non-200 SSE
       es.close();
-      // Try to surface the error message
-      setError('Could not start agents. You may be out of credits.');
-      AGENTS.forEach(a => {
-        const s = useBracketStore.getState().agents[a];
-        if (s.status === 'running') store.setAgentStatus(a, 'error');
-      });
+      const state = useBracketStore.getState();
+      const hasRunningAgents = AGENTS.some(a => state.agents[a].status === 'running');
+
+      if (hasRunningAgents) {
+        // Connection dropped mid-run (timeout, network blip) — not a credits error
+        AGENTS.forEach(a => {
+          if (state.agents[a].status === 'running') store.setAgentStatus(a, 'error');
+        });
+        setError('Connection timed out. Some agents did not finish.');
+        setCanResume(true);
+        setPhase('idle');
+      } else {
+        // All agents were already done — 402 or other non-SSE error before stream started
+        setError('Could not start agents. You may be out of credits.');
+        setCanResume(false);
+      }
     };
   }, [store, accessToken, onCreditsUpdate]);
+
+  const startAllAgents = useCallback(() => {
+    const { sessionId } = useBracketStore.getState();
+    if (!sessionId) return;
+    connectAgentStream(sessionId);
+  }, [connectAgentStream]);
+
+  const resumeAgents = useCallback(() => {
+    const { sessionId } = useBracketStore.getState();
+    if (!sessionId) return;
+    connectAgentStream(sessionId);
+  }, [connectAgentStream]);
 
   const startEvaluation = useCallback((sessionId: string) => {
     const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
@@ -164,5 +195,5 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     evalEsRef.current?.close();
   }, []);
 
-  return { loading, error, phase, restoreSession, startSession, startAllAgents, cleanup };
+  return { loading, error, canResume, phase, restoreSession, startSession, startAllAgents, resumeAgents, cleanup };
 }
