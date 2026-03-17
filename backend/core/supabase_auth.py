@@ -122,7 +122,7 @@ async def deduct_credit(user_id: str, amount: int = 1) -> int:
         if resp.status_code not in (200, 204):
             log.error("deduct_credit failed: %s %s", resp.status_code, resp.text)
             raise HTTPException(status_code=500, detail="Credit deduction failed")
-    return current - 1
+    return current - amount
 
 
 async def save_bracket_session(session) -> None:

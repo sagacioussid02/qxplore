@@ -295,43 +295,12 @@ export default function NCAABracketPage() {
             </div>
           )}
 
-          {/* Bottom section: live reasoning + Commissioner side by side */}
-          <div className={`grid gap-4 ${(phase === 'evaluating' || phase === 'done' || store.evaluationDone) && store.agents[activeAgent].liveReasoning ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-            {/* Live reasoning panel — shows while an agent is picking */}
-            {store.agents[activeAgent].liveReasoning && (
-              <div className="rounded-xl border border-gray-700/40 bg-gray-900/60 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-700/30 bg-gray-800/40">
-                  <span className="text-cyan-400 text-sm">⚛</span>
-                  <span className="text-cyan-400 font-semibold text-sm">
-                    {store.agents[activeAgent].status === 'running' ? 'Live Reasoning' : 'Last Reasoning'}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">— {activeAgent}</span>
-                  {store.agents[activeAgent].status === 'running' && (
-                    <motion.span
-                      className="ml-auto text-xs text-cyan-600"
-                      animate={{ opacity: [1, 0.4, 1] }}
-                      transition={{ repeat: Infinity, duration: 1 }}
-                    >
-                      thinking…
-                    </motion.span>
-                  )}
-                </div>
-                <div className="px-4 py-3 max-h-48 overflow-y-auto">
-                  <p className="text-gray-300 text-sm leading-relaxed">
-                    {store.agents[activeAgent].liveReasoning}
-                  </p>
-                  {store.agents[activeAgent].status === 'running' && (
-                    <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse" />
-                  )}
-                </div>
-              </div>
-            )}
-            <CommissionerPanel
-              text={store.evaluationText}
-              done={store.evaluationDone}
-              phase={phase}
-            />
-          </div>
+          {/* Commissioner Panel */}
+          <CommissionerPanel
+            text={store.evaluationText}
+            done={store.evaluationDone}
+            phase={phase}
+          />
         </div>
       )}
     </div>

@@ -44,7 +44,7 @@ export function CommissionerPanel({ text, done, phase }: Props) {
     if (!done) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [text, done]);
 
-  if (phase !== 'evaluating' && phase !== 'done') return null;
+  if (!text && phase !== 'evaluating' && phase !== 'done') return null;
 
   return (
     <motion.div
