@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { User } from '@supabase/supabase-js';
 
@@ -50,6 +51,14 @@ export function UserMenu({ user, credits, onSignOut, onBuyCredits }: Props) {
                   {credits === null ? '…' : credits} credit{credits !== 1 ? 's' : ''} remaining
                 </p>
               </div>
+
+              <Link
+                to="/account"
+                onClick={() => setOpen(false)}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800/40 transition-colors block no-underline"
+              >
+                👤 My Account
+              </Link>
 
               {outOfCredits && (
                 <button

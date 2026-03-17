@@ -11,7 +11,7 @@ from ..bracket.agents.gemini_bracket import GeminiBracketAgent
 from ..bracket.agents.montecarlo_bracket import MonteCarloAgent
 from ..bracket.agents.quantum_bracket import QuantumBracketAgent
 from ..bracket.agents.commissioner import CommissionerAgent
-from ..bracket.bracket_engine import get_round_matchups
+from ..bracket.bracket_engine import get_round_matchups, advance_winner, build_completed_bracket, fill_bracket_resumable
 from ..data.sports_data_client import get_bracket, load_fallback_bracket
 from ..data.team_research import enrich_bracket_with_news
 from ..models.bracket import BracketSession, AgentName, CompletedBracket, BracketPick
@@ -167,7 +167,7 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
     Credit rules:
     - Anonymous: allowed (uses fallback data already locked in at session creation)
     - Authenticated + already completed (cache replay): allowed, no credit deducted
-    - Authenticated + fresh run: deduct 1 credit; 402 if none left
+    - Authenticated + fresh run: deduct 450 credits; 402 if insufficient
     """
     session = get_session(session_id)
     if not session:
@@ -178,8 +178,8 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
     needs_credits = user is not None and len(fresh_agents) > 0
 
     if needs_credits:
-        # This raises 402 if credits = 0
-        remaining = await deduct_credit(user["sub"])
+        # This raises 402 if insufficient credits
+        remaining = await deduct_credit(user["sub"], amount=450)
     else:
         remaining = None
 
@@ -192,7 +192,12 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
 
         async def run_agent(agent_name: str, agent_cls):
             agent_instance = agent_cls()
-            async for event_json in agent_instance.fill_bracket(session_id, bracket):
+            existing = dict(session.partial_picks.get(agent_name, {}))
+            gen = (
+                fill_bracket_resumable(agent_name, agent_instance, session_id, bracket, existing)
+                if existing else agent_instance.fill_bracket(session_id, bracket)
+            )
+            async for event_json in gen:
                 await queue.put(event_json)
             await queue.put(json.dumps({"type": "agent_done", "agent": agent_name}))
 
@@ -217,8 +222,25 @@ async def stream_all_agents(session_id: str, user: dict | None = Depends(get_opt
                 # Track completions and persist picks
                 if event.get("type") == "agent_done":
                     completed_count += 1
+                elif event.get("type") == "pick" and not event.get("from_cache"):
+                    # Save partial pick for resume — allows resuming from checkpoint on timeout
+                    agent_n = event.get("agent")
+                    if agent_n and agent_n not in session.completed_brackets:
+                        session.partial_picks.setdefault(agent_n, {})[event["game_id"]] = BracketPick(
+                            session_id=session_id,
+                            agent=agent_n,
+                            game_id=event["game_id"],
+                            winner_team_id=event["winner_team_id"],
+                            winner_name=event["winner_name"],
+                            confidence=event.get("confidence", 0.7),
+                            reasoning=event.get("reasoning", ""),
+                            pick_metadata={"round": event.get("round", 0)},
+                        )
+                        await save_session_async(session)
                 elif event.get("type") == "agent_complete":
                     agent_name = event.get("agent")
+                    # Clear partial picks — agent is now fully complete
+                    session.partial_picks.pop(agent_name, None)
                     champion_data = event.get("champion")
                     picks_data = event.get("picks", {})
                     from ..models.bracket import TeamEntry

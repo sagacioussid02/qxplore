@@ -11,14 +11,14 @@ interface CreditStore {
 export const useCreditStore = create<CreditStore>()(
   persist(
     (set, get) => ({
-      credits: 510,
+      credits: 500,
       addCredits: (amount) => set((s) => ({ credits: s.credits + amount })),
       deductCredits: (amount) => {
         if (get().credits < amount) return false;
         set((s) => ({ credits: s.credits - amount }));
         return true;
       },
-      resetCredits: () => set({ credits: 510 }),
+      resetCredits: () => set({ credits: 500 }),
     }),
     { name: 'quantum-credits' }
   )

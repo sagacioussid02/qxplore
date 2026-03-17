@@ -5,6 +5,7 @@ import CoinGamePage from './pages/CoinGamePage';
 import RouletteGamePage from './pages/RouletteGamePage';
 import TicTacToePage from './pages/TicTacToePage';
 import NCAABracketPage from './pages/NCAABracketPage';
+import AccountPage from './pages/AccountPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/roulette" element={<RouletteGamePage />} />
           <Route path="/ttt" element={<TicTacToePage />} />
           <Route path="/ncaa" element={<NCAABracketPage />} />
+          <Route path="/account" element={<AccountPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

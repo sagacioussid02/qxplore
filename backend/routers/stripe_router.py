@@ -42,6 +42,33 @@ async def get_user_credits(user: dict = Depends(require_user)) -> dict:
     return {"user_id": user["sub"], "credits": credits}
 
 
+@router.get("/payments")
+async def get_payment_history(user: dict = Depends(require_user)) -> dict:
+    """Return the authenticated user's completed Stripe payments."""
+    settings = get_settings()
+    if not settings.stripe_secret_key:
+        return {"payments": []}
+
+    client = _stripe_client()
+    try:
+        response = client.checkout.sessions.list(params={"limit": 100, "status": "complete"})
+        payments = [
+            {
+                "id": s.id,
+                "amount": s.amount_total,       # in cents
+                "currency": s.currency,
+                "created": s.created,           # unix timestamp
+                "credits_added": settings.stripe_credits_per_pack,
+            }
+            for s in response.data
+            if (s.metadata or {}).get("user_id") == user["sub"]
+        ]
+        return {"payments": payments}
+    except Exception as exc:
+        log.error("Failed to fetch payment history for user %s: %s", user["sub"], exc)
+        return {"payments": []}
+
+
 @router.post("/webhook")
 async def stripe_webhook(request: Request) -> dict:
     """Handle Stripe webhook events (called by Stripe, not the frontend)."""

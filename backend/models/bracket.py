@@ -95,5 +95,6 @@ class BracketSession(BaseModel):
     bracket: BracketData
     status: Literal["pending", "picking", "evaluating", "complete"] = "pending"
     completed_brackets: dict[str, CompletedBracket] = {}
+    partial_picks: dict[str, dict[str, BracketPick]] = {}  # agent_name -> {game_id -> pick}
     evaluation: Optional[EvaluationResult] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

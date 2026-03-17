@@ -1,6 +1,9 @@
 """Shared bracket traversal utilities used by all agents."""
 from __future__ import annotations
 import copy
+import json
+import logging
+from typing import AsyncGenerator
 from ..models.bracket import BracketData, Matchup, TeamEntry, BracketPick, CompletedBracket, AgentName
 
 
@@ -75,3 +78,86 @@ def build_completed_bracket(
         completed_at=datetime.now(timezone.utc).isoformat(),
         agent_metadata=agent_metadata or {},
     )
+
+
+log = logging.getLogger(__name__)
+
+
+async def fill_bracket_resumable(
+    agent_name: str,
+    agent_instance,
+    session_id: str,
+    bracket: BracketData,
+    existing_picks: dict[str, BracketPick],
+) -> AsyncGenerator[str, None]:
+    """Fill a bracket replaying existing partial picks, then continuing with fresh LLM picks."""
+    working = copy.deepcopy(bracket)
+    picks: dict[str, BracketPick] = {}
+
+    for round_num in range(1, 7):
+        matchups = get_round_matchups(working, round_num)
+        eligible = [m for m in matchups if m.team_a and m.team_b]
+
+        for matchup in eligible:
+            if matchup.game_id in existing_picks:
+                # Replay cached pick (instant, no LLM call)
+                pick = existing_picks[matchup.game_id]
+                winner_team = (
+                    matchup.team_a if matchup.team_a and matchup.team_a.team_id == pick.winner_team_id
+                    else matchup.team_b
+                )
+                if not winner_team:
+                    continue
+                advance_winner(working, matchup.game_id, winner_team)
+                picks[matchup.game_id] = pick
+                yield json.dumps({
+                    "type": "pick",
+                    "agent": agent_name,
+                    "game_id": matchup.game_id,
+                    "winner_team_id": pick.winner_team_id,
+                    "winner_name": pick.winner_name,
+                    "confidence": pick.confidence,
+                    "reasoning": pick.reasoning,
+                    "round": round_num,
+                    "from_cache": True,
+                })
+            else:
+                # Fresh pick from the LLM agent
+                try:
+                    pick = await agent_instance.pick_matchup(session_id, matchup)
+                except Exception as exc:
+                    log.error("pick_matchup failed for %s game=%s: %s", agent_name, matchup.game_id, exc)
+                    winner_team = matchup.team_a if matchup.team_a.seed <= matchup.team_b.seed else matchup.team_b
+                    pick = BracketPick(
+                        session_id=session_id,
+                        agent=agent_name,
+                        game_id=matchup.game_id,
+                        winner_team_id=winner_team.team_id,
+                        winner_name=winner_team.name,
+                        confidence=0.5,
+                        reasoning="[error fallback]",
+                    )
+                    yield json.dumps({"type": "error", "agent": agent_name, "game_id": matchup.game_id, "message": str(exc)})
+                winner_team = (
+                    matchup.team_a if matchup.team_a.team_id == pick.winner_team_id else matchup.team_b
+                )
+                advance_winner(working, matchup.game_id, winner_team)
+                picks[matchup.game_id] = pick
+                yield json.dumps({
+                    "type": "pick",
+                    "agent": agent_name,
+                    "game_id": matchup.game_id,
+                    "winner_team_id": pick.winner_team_id,
+                    "winner_name": pick.winner_name,
+                    "confidence": pick.confidence,
+                    "reasoning": pick.reasoning,
+                    "round": round_num,
+                })
+
+    completed = build_completed_bracket(session_id, agent_name, picks, working)
+    yield json.dumps({
+        "type": "agent_complete",
+        "agent": agent_name,
+        "champion": completed.champion.model_dump() if completed.champion else None,
+        "picks": {gid: p.model_dump() for gid, p in picks.items()},
+    })

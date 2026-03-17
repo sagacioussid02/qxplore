@@ -92,23 +92,32 @@ async def get_credits(user_id: str) -> int:
             log.error("get_credits failed: %s %s", resp.status_code, resp.text)
             return 0
         rows = resp.json()
-        return rows[0]["credits"] if rows else 0
+        if rows:
+            return rows[0]["credits"]
+        # No row yet — new user. Insert with initial credits and return that value.
+        initial = get_settings().initial_credits
+        await client.post(
+            f"{settings.supabase_url}/rest/v1/credits",
+            headers={**_supabase_headers(), "Prefer": "resolution=ignore-duplicates,return=minimal"},
+            json={"user_id": user_id, "credits": initial},
+        )
+        return initial
 
 
-async def deduct_credit(user_id: str) -> int:
-    """Atomically deduct 1 credit. Returns remaining credits. Raises 402 if none left."""
+async def deduct_credit(user_id: str, amount: int = 1) -> int:
+    """Atomically deduct `amount` credits. Returns remaining credits. Raises 402 if insufficient."""
     settings = get_settings()
     if not settings.supabase_url:
         return 999
     current = await get_credits(user_id)
-    if current <= 0:
+    if current < amount:
         raise HTTPException(status_code=402, detail="No credits remaining")
     async with httpx.AsyncClient() as client:
         resp = await client.patch(
             f"{settings.supabase_url}/rest/v1/credits",
             headers=_supabase_headers(),
             params={"user_id": f"eq.{user_id}"},
-            json={"credits": current - 1},
+            json={"credits": current - amount},
         )
         if resp.status_code not in (200, 204):
             log.error("deduct_credit failed: %s %s", resp.status_code, resp.text)
