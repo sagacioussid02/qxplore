@@ -27,13 +27,20 @@ export default function NCAABracketPage() {
 
   useEffect(() => () => cleanup(), [cleanup]);
 
-  // Check URL params for Stripe redirect
+  // Poll credits after Stripe redirect — webhook may arrive after the redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success') {
-      refreshCredits();
-      window.history.replaceState({}, '', window.location.pathname);
+    if (params.get('payment') !== 'success') return;
+    window.history.replaceState({}, '', window.location.pathname);
+    // Retry up to 6 times (at 2s, 4s, 6s, 9s, 13s, 18s) to catch the webhook
+    const delays = [2000, 2000, 2000, 3000, 4000, 5000];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let elapsed = 0;
+    for (const d of delays) {
+      elapsed += d;
+      timers.push(setTimeout(refreshCredits, elapsed));
     }
+    return () => timers.forEach(clearTimeout);
   }, [refreshCredits]);
 
   const agentStatuses = Object.fromEntries(
