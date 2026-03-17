@@ -4,8 +4,12 @@ output "api_url" {
 }
 
 output "frontend_url" {
-  description = "CloudFront frontend URL"
-  value       = "https://${module.cdn.cloudfront_domain_name}"
+  description = "Frontend URL (custom domain if configured, else raw CloudFront domain)"
+  value = (
+    var.use_custom_domain && var.root_domain != ""
+      ? "https://${var.root_domain}"
+      : "https://${module.cdn.cloudfront_domain_name}"
+  )
 }
 
 output "cloudfront_domain" {

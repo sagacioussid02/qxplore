@@ -42,7 +42,13 @@ variable "use_custom_domain" {
 }
 
 variable "root_domain" {
-  description = "Root domain name (e.g. quantumanic.com). Required if use_custom_domain = true"
+  description = "FQDN for CloudFront alias + ACM cert (e.g. qxplore.binosusai.com)"
+  type        = string
+  default     = ""
+}
+
+variable "zone_domain" {
+  description = "Route53 hosted zone name. Defaults to root_domain. Set when root_domain is a subdomain (e.g. zone_domain=binosusai.com when root_domain=qxplore.binosusai.com)"
   type        = string
   default     = ""
 }

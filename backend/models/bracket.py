@@ -25,6 +25,7 @@ class TeamEntry(BaseModel):
     conference: str = ""
     kenpom_rank: Optional[int] = None
     strength_of_schedule: Optional[float] = None
+    luck: Optional[float] = None       # KenPom Luck: actual W% minus expected W%; negative = unlucky
     recent_news: str = ""
 
 

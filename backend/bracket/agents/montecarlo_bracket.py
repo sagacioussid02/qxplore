@@ -45,6 +45,13 @@ def _matchup_win_prob(team_a: TeamEntry, team_b: TeamEntry, round_num: int) -> f
         kp_delta = (team_b.kenpom_rank - team_a.kenpom_rank) * 0.001
         p = np.clip(p + kp_delta, 0.05, 0.95)
 
+    # Luck adjustment: encode regression-to-mean.
+    # If team_a is luckier than team_b, they are more likely to regress → reduce p.
+    # delta = (B.luck - A.luck) * 0.30 → max effect ~±3% per matchup.
+    if team_a.luck is not None and team_b.luck is not None:
+        luck_delta = (team_b.luck - team_a.luck) * 0.30
+        p = np.clip(p + luck_delta, 0.05, 0.95)
+
     # Round compression: push toward 0.5 in later rounds
     compression = ROUND_COMPRESSION.get(round_num, 0.0)
     p = 0.5 + (p - 0.5) * (1.0 - compression)

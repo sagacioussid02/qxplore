@@ -27,6 +27,9 @@ def _team_strength_angle(team: TeamEntry) -> float:
       KenPom top-50  → +0.15 rad
       SOS > 10       → +0.20 rad
       SOS > 7        → +0.10 rad
+      Luck           → subtract luck value (~±0.10 rad)
+                       Positive luck = overperforming = regression risk → lower angle
+                       Negative luck = underperforming = hidden value → higher angle
     """
     seed_norm = (17 - team.seed) / 16.0        # seed=1 → 1.0, seed=16 → 0.0625
     base = seed_norm * math.pi
@@ -44,6 +47,10 @@ def _team_strength_angle(team: TeamEntry) -> float:
             bonus += 0.20
         elif team.strength_of_schedule >= 7.0:
             bonus += 0.10
+    if team.luck is not None:
+        # Subtract luck: positive luck (overperforming) lowers the angle,
+        # negative luck (unlucky team) raises it — encoding regression to mean.
+        bonus -= team.luck
 
     return float(max(0.1, min(base + bonus, math.pi)))
 
@@ -124,10 +131,18 @@ class QuantumBracketAgent:
 
                 θ_a = circuit_info["theta_a"]
                 θ_b = circuit_info["theta_b"]
+                luck_a = matchup.team_a.luck
+                luck_b = matchup.team_b.luck
+                luck_note = ""
+                if luck_a is not None and luck_b is not None:
+                    luck_note = (
+                        f" [luck: {matchup.team_a.name} {luck_a:+.3f},"
+                        f" {matchup.team_b.name} {luck_b:+.3f}]"
+                    )
                 reasoning = (
-                    f"θ({matchup.team_a.name})={θ_a:.2f}rad vs θ({matchup.team_b.name})={θ_b:.2f}rad "
-                    f"— {circuit_info['a_wins']}/{SHOTS} shots favoured {winner.name} "
-                    f"(amplitude confidence {confidence:.1%})"
+                    f"θ({matchup.team_a.name})={θ_a:.2f}rad vs θ({matchup.team_b.name})={θ_b:.2f}rad"
+                    f" — {circuit_info['a_wins']}/{SHOTS} shots favoured {winner.name}"
+                    f" (amplitude confidence {confidence:.1%}){luck_note}"
                 )
 
                 pick = BracketPick(

@@ -10,9 +10,39 @@ import httpx
 log = logging.getLogger(__name__)
 from ..core.config import get_settings
 from ..models.bracket import BracketData, Region, Matchup, TeamEntry
+from .kenpom_2026 import lookup as kenpom_lookup
 
 SPORTSDATA_BASE = "https://api.sportsdata.io/v3/cbb/scores/json"
 FALLBACK_PATH = Path(__file__).parent / "bracket_2025_fallback.json"
+
+
+def _enrich_bracket_with_kenpom(bracket: BracketData) -> None:
+    """Overwrite kenpom_rank and strength_of_schedule on every TeamEntry
+    using the 2026 KenPom snapshot.  Runs in-place; logs hits and misses."""
+    hits = misses = 0
+    seen: set[str] = set()
+    all_teams = [
+        team
+        for matchup in (
+            [m for r in bracket.regions for m in r.matchups]
+            + bracket.final_four
+            + ([bracket.championship] if bracket.championship else [])
+        )
+        for team in [matchup.team_a, matchup.team_b]
+        if team
+    ]
+    for team in all_teams:
+        if team.team_id in seen:
+            continue
+        seen.add(team.team_id)
+        entry = kenpom_lookup(team.name)
+        if entry:
+            team.kenpom_rank, team.strength_of_schedule, team.luck = entry
+            hits += 1
+        else:
+            misses += 1
+            log.debug("kenpom_2026: no match for %r", team.name)
+    log.info("kenpom_2026 enrichment: %d hits, %d misses", hits, misses)
 
 
 def load_fallback_bracket() -> BracketData:
@@ -23,6 +53,7 @@ def load_fallback_bracket() -> BracketData:
 async def fetch_tournament_bracket(year: int) -> dict | None:
     settings = get_settings()
     if not settings.sporttsdataio_api_key:
+        log.warning("SPORTTSDATAIO_API_KEY not set — skipping live fetch")
         return None
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
@@ -99,7 +130,31 @@ async def get_bracket(year: int = 2025) -> BracketData:
     api_data = await fetch_tournament_bracket(year)
     if api_data:
         try:
-            return _build_bracket_from_api(api_data, year)
+            bracket = _build_bracket_from_api(api_data, year)
+            # Log a sample of what we got so we can verify data quality
+            all_teams = [
+                team
+                for region in bracket.regions
+                for matchup in region.matchups
+                for team in [matchup.team_a, matchup.team_b]
+                if team and matchup.round == 1
+            ]
+            log.info(
+                "SportsDataIO: fetched %d games, %d round-1 teams",
+                len(api_data), len(all_teams),
+            )
+            _enrich_bracket_with_kenpom(bracket)
+            for team in all_teams[:4]:  # log first 4 teams as a sanity check
+                log.info(
+                    "  team=%s seed=%d conf=%s record=%s kenpom=%s sos=%s",
+                    team.name, team.seed, team.conference or "?",
+                    team.record or "?", team.kenpom_rank, team.strength_of_schedule,
+                )
+            return bracket
         except Exception as e:
             log.error("Failed to parse SportsDataIO response: %s", e, exc_info=True)
-    return load_fallback_bracket()
+
+    log.warning("SportsDataIO unavailable — using static fallback bracket")
+    bracket = load_fallback_bracket()
+    _enrich_bracket_with_kenpom(bracket)
+    return bracket
