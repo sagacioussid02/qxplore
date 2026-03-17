@@ -54,7 +54,8 @@ export default function NCAABracketPage() {
 
   function handleStartAgents() {
     if (outOfCredits) return;
-    if (!deductCredits(BRACKET_COST)) return;
+    // Authenticated users: server manages credits, skip local gate
+    if (!isAuthenticated && !deductCredits(BRACKET_COST)) return;
     startAllAgents();
   }
 
@@ -135,8 +136,8 @@ export default function NCAABracketPage() {
           </div>
         </div>
 
-        {/* Anonymous demo banner */}
-        {store.bracket && store.isAnonymous && (
+        {/* Anonymous demo banner — only for non-authenticated users */}
+        {store.bracket && store.isAnonymous && !isAuthenticated && (
           <motion.div
             className="mt-3 flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-950/60 border border-indigo-700/40 rounded-lg"
             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
