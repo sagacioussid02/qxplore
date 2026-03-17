@@ -1,6 +1,5 @@
 """Stripe checkout and webhook endpoints."""
 from __future__ import annotations
-import json
 import logging
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -76,11 +75,12 @@ async def stripe_webhook(request: Request) -> dict:
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
+    log.info("Stripe webhook received: sig_header_present=%s webhook_secret_set=%s",
+             bool(sig_header), bool(settings.stripe_webhook_secret))
+
     try:
-        event = stripe.WebhookSignature.verify_header(
-            payload.decode("utf-8"),
-            sig_header,
-            settings.stripe_webhook_secret,
+        event_obj = stripe.Webhook.construct_event(
+            payload, sig_header, settings.stripe_webhook_secret
         )
     except stripe.SignatureVerificationError as exc:
         log.warning("Stripe webhook signature invalid: %s", exc)
@@ -89,17 +89,26 @@ async def stripe_webhook(request: Request) -> dict:
         log.error("Stripe webhook parsing error: %s", exc, exc_info=True)
         raise HTTPException(status_code=400, detail="Bad payload")
 
-    event_obj = json.loads(payload)
+    log.info("Stripe webhook event type: %s id: %s", event_obj["type"], event_obj.get("id"))
 
     if event_obj["type"] == "checkout.session.completed":
         session_data = event_obj["data"]["object"]
+        payment_intent_id = session_data.get("payment_intent", "unknown")
         user_id = session_data.get("metadata", {}).get("user_id")
+
+        log.info("checkout.session.completed: payment_intent=%s user_id=%s amount=%s",
+                 payment_intent_id, user_id, session_data.get("amount_total"))
+
         if not user_id:
-            log.warning("Stripe webhook: no user_id in metadata, skipping")
+            log.warning("Stripe webhook: no user_id in metadata — session_id=%s", session_data.get("id"))
             return {"status": "ignored"}
 
-        new_total = await add_credits(user_id, settings.stripe_credits_per_pack)
-        log.info("Stripe webhook: added %d credits to user %s → total %d",
-                 settings.stripe_credits_per_pack, user_id, new_total)
+        try:
+            new_total = await add_credits(user_id, settings.stripe_credits_per_pack)
+            log.info("Stripe webhook: added %d credits to user %s → total %d (payment_intent=%s)",
+                     settings.stripe_credits_per_pack, user_id, new_total, payment_intent_id)
+        except Exception as exc:
+            log.error("Stripe webhook: add_credits failed for user %s: %s", user_id, exc, exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to add credits")
 
     return {"status": "ok"}
