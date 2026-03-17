@@ -23,13 +23,12 @@ permissions:
 # correct environment (test vs prod). The secret NAMES are identical in both
 # environments; only the VALUES differ (e.g. USE_CUSTOM_DOMAIN=false in test).
 
-# ── Job 1: Plan for test environment ─────────────────────────────────────────
+# ── Job 1: Plan for test (informational — shows what will change) ─────────────
 jobs:
   plan-test:
     name: Plan → test
     runs-on: ubuntu-latest
     environment: test
-    # For workflow_dispatch targeting prod, skip test jobs
     if: github.event_name != 'workflow_dispatch' || inputs.environment == 'test'
 
     env:
@@ -92,39 +91,14 @@ jobs:
             -backend-config="dynamodb_table=terraform-state-lock" \
             -backend-config="encrypt=true"
 
-      - name: Import existing ECR repo into state (if needed)
-        working-directory: terraform
-        run: |
-          REPO="quantumanic-test-backend"
-          if aws ecr describe-repositories --repository-names "$REPO" \
-               --region "$AWS_REGION" 2>/dev/null; then
-            if ! terraform state show module.apprunner.aws_ecr_repository.backend 2>/dev/null; then
-              echo "Importing existing ECR repo $REPO into Terraform state..."
-              terraform import module.apprunner.aws_ecr_repository.backend "$REPO"
-            else
-              echo "ECR repo already in Terraform state — skipping import"
-            fi
-          else
-            echo "ECR repo does not exist yet — Terraform will create it"
-          fi
-
       - name: Terraform plan
         working-directory: terraform
         run: |
-          terraform plan -out=tfplan -no-color 2>&1 | tee plan-output.txt
+          terraform plan -no-color 2>&1 | tee plan-output.txt
           echo "## Terraform Plan — \`test\`" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           tail -60 plan-output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-test-${{ github.sha }}
-          path: |
-            terraform/tfplan
-            terraform/plan-output.txt
-          retention-days: 3
 
 # ── Job 2: Apply to test environment (auto — no required reviewers) ───────────
   apply-test:
@@ -180,7 +154,7 @@ jobs:
             -backend-config="dynamodb_table=terraform-state-lock" \
             -backend-config="encrypt=true"
 
-      # Create ECR repo first so we can push the image before App Runner is provisioned
+      # Create ECR repo before pushing — App Runner needs the image to exist at service creation
       - name: Ensure ECR repo exists
         working-directory: terraform
         run: |
@@ -205,15 +179,9 @@ jobs:
           docker push "$ECR_REGISTRY/$REPO:latest"
           docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
 
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan-test-${{ github.sha }}
-          path: terraform/
-
       - name: Terraform apply
         working-directory: terraform
-        run: terraform apply tfplan
+        run: terraform apply -auto-approve -no-color
 
       - name: Get deployment URLs
         id: tf-outputs
@@ -265,13 +233,12 @@ jobs:
           echo "| Frontend | https://${{ steps.tf-outputs.outputs.cf_domain }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Backend  | ${{ steps.tf-outputs.outputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
 
-# ── Job 3: Plan for prod (manual approval gate) ───────────────────────────────
+# ── Job 3: Deploy to prod (single approval click — environment: prod gate) ────
 # Runs only on pushes to main (or workflow_dispatch targeting prod).
-# The environment: prod protection rule BLOCKS here until an approver clicks
-# "Review deployments" in GitHub Actions — they will see the Terraform plan
-# in the job summary before deciding.
-  plan-prod:
-    name: Plan → prod
+# environment: prod blocks here until an approver clicks "Review deployments".
+# Check the plan-test job summary to understand infrastructure changes before approving.
+  deploy-prod:
+    name: Deploy → prod
     needs: apply-test
     runs-on: ubuntu-latest
     environment: prod
@@ -309,20 +276,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region:     ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build Docker image (verify only)
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG:     ${{ github.sha }}
-        run: |
-          REPO="quantumanic-prod-backend"
-          docker build \
-            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
-            -t "$ECR_REGISTRY/$REPO:latest" .
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -339,97 +292,16 @@ jobs:
             -backend-config="dynamodb_table=terraform-state-lock" \
             -backend-config="encrypt=true"
 
-      - name: Import existing ECR repo into state (if needed)
-        working-directory: terraform
-        run: |
-          REPO="quantumanic-prod-backend"
-          if aws ecr describe-repositories --repository-names "$REPO" \
-               --region "$AWS_REGION" 2>/dev/null; then
-            if ! terraform state show module.apprunner.aws_ecr_repository.backend 2>/dev/null; then
-              echo "Importing existing ECR repo $REPO into Terraform state..."
-              terraform import module.apprunner.aws_ecr_repository.backend "$REPO"
-            else
-              echo "ECR repo already in Terraform state — skipping import"
-            fi
-          else
-            echo "ECR repo does not exist yet — Terraform will create it"
-          fi
-
       - name: Terraform plan
         working-directory: terraform
         run: |
-          terraform plan -out=tfplan -no-color 2>&1 | tee plan-output.txt
+          terraform plan -no-color 2>&1 | tee plan-output.txt
           echo "## Terraform Plan — \`prod\`" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           tail -60 plan-output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-prod-${{ github.sha }}
-          path: |
-            terraform/tfplan
-            terraform/plan-output.txt
-          retention-days: 3
-
-# ── Job 4: Apply to prod ───────────────────────────────────────────────────────
-  apply-prod:
-    name: Apply → prod
-    needs: plan-prod
-    runs-on: ubuntu-latest
-    environment: prod
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'prod')
-
-    env:
-      DEPLOY_ENV:     prod
-      AWS_REGION:     ${{ secrets.AWS_REGION }}
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      TF_VAR_environment:               prod
-      TF_VAR_aws_account_id:            ${{ secrets.AWS_ACCOUNT_ID }}
-      TF_VAR_aws_region:                ${{ secrets.AWS_REGION }}
-      TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
-      TF_VAR_openai_api_key:            ${{ secrets.OPENAI_API_KEY }}
-      TF_VAR_google_api_key:            ${{ secrets.GOOGLE_API_KEY }}
-      TF_VAR_sporttsdataio_api_key:     ${{ secrets.SPORTTSDATAIO_API_KEY }}
-      TF_VAR_supabase_url:              ${{ secrets.SUPABASE_URL }}
-      TF_VAR_supabase_anon_key:         ${{ secrets.SUPABASE_ANON_KEY }}
-      TF_VAR_supabase_service_role_key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      TF_VAR_stripe_secret_key:         ${{ secrets.STRIPE_SECRET_KEY }}
-      TF_VAR_stripe_webhook_secret:     ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-      TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
-      TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
-      TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
-      TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region:     ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "~1.7"
-          terraform_wrapper: false
-
-      - name: Terraform init
-        working-directory: terraform
-        run: |
-          terraform init \
-            -backend-config="bucket=${AWS_ACCOUNT_ID}-terraform-state" \
-            -backend-config="key=quantumanic/prod/terraform.tfstate" \
-            -backend-config="region=us-east-1" \
-            -backend-config="dynamodb_table=terraform-state-lock" \
-            -backend-config="encrypt=true"
-
-      # Create ECR repo first so we can push the image before App Runner is provisioned
+      # Create ECR repo before pushing — App Runner needs the image to exist at service creation
       - name: Ensure ECR repo exists
         working-directory: terraform
         run: |
@@ -454,15 +326,9 @@ jobs:
           docker push "$ECR_REGISTRY/$REPO:latest"
           docker push "$ECR_REGISTRY/$REPO:$IMAGE_TAG"
 
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan-prod-${{ github.sha }}
-          path: terraform/
-
       - name: Terraform apply
         working-directory: terraform
-        run: terraform apply tfplan
+        run: terraform apply -auto-approve -no-color
 
       - name: Get deployment URLs
         id: tf-outputs
@@ -508,7 +374,7 @@ jobs:
 
       - name: Deployment summary
         run: |
-          echo "## Deployed to \`prod\`" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployed to \`prod\` ✓" >> $GITHUB_STEP_SUMMARY
           echo "| | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend | https://${{ steps.tf-outputs.outputs.cf_domain }} |" >> $GITHUB_STEP_SUMMARY
