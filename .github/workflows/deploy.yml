@@ -183,7 +183,19 @@ jobs:
 
       - name: Terraform apply
         working-directory: terraform
-        run: terraform apply -auto-approve -no-color
+        run: |
+          for attempt in 1 2 3; do
+            echo "Terraform apply attempt $attempt/3"
+            terraform apply -auto-approve -no-color && break
+            EXIT=$?
+            if [ $attempt -lt 3 ]; then
+              echo "Apply failed (exit $EXIT) — waiting 90s for App Runner operation to complete..."
+              sleep 90
+            else
+              echo "All 3 attempts failed."
+              exit $EXIT
+            fi
+          done
 
       - name: Get deployment URLs
         id: tf-outputs
@@ -331,7 +343,19 @@ jobs:
 
       - name: Terraform apply
         working-directory: terraform
-        run: terraform apply -auto-approve -no-color
+        run: |
+          for attempt in 1 2 3; do
+            echo "Terraform apply attempt $attempt/3"
+            terraform apply -auto-approve -no-color && break
+            EXIT=$?
+            if [ $attempt -lt 3 ]; then
+              echo "Apply failed (exit $EXIT) — waiting 90s for App Runner operation to complete..."
+              sleep 90
+            else
+              echo "All 3 attempts failed."
+              exit $EXIT
+            fi
+          done
 
       - name: Get deployment URLs
         id: tf-outputs
