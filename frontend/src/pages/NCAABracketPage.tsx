@@ -27,31 +27,40 @@ export default function NCAABracketPage() {
 
   useEffect(() => () => cleanup(), [cleanup]);
 
-  // Verify payment and add credits after Stripe redirect
+  // Fulfill payment after Stripe redirect — works with or without session_id in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const stripeSessionId = params.get('session_id');
-    if (params.get('payment') !== 'success' || !stripeSessionId || !accessToken) return;
+    if (params.get('payment') !== 'success' || !accessToken) return;
     window.history.replaceState({}, '', window.location.pathname);
 
-    // Call verify-payment to fulfill immediately (doesn't depend on webhook)
-    import('../api/client').then(({ apiClient }) => {
-      apiClient.post(
-        `/stripe/verify-payment?stripe_session_id=${encodeURIComponent(stripeSessionId)}`,
-        {},
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      ).then(r => {
-        if (r.data?.credits != null) {
-          // Update credits directly from the verify response
-          refreshCredits();
+    const stripeSessionId = params.get('session_id');
+
+    const fulfill = async () => {
+      const { apiClient } = await import('../api/client');
+      try {
+        if (stripeSessionId) {
+          // New flow: verify specific session
+          const r = await apiClient.post(
+            `/stripe/verify-payment?stripe_session_id=${encodeURIComponent(stripeSessionId)}`,
+            {},
+            { headers: { Authorization: `Bearer ${accessToken}` } },
+          );
+          if (r.data?.credits != null) refreshCredits();
+        } else {
+          // Old/fallback flow: scan for any unprocessed payment
+          const r = await apiClient.post(
+            '/stripe/fulfill-pending',
+            {},
+            { headers: { Authorization: `Bearer ${accessToken}` } },
+          );
+          if (r.data?.credits != null) refreshCredits();
         }
-      }).catch(() => {
-        // Fallback: poll in case webhook fires soon
+      } catch {
         refreshCredits();
-        const t = setTimeout(refreshCredits, 3000);
-        return () => clearTimeout(t);
-      });
-    });
+      }
+    };
+
+    fulfill();
   }, [accessToken, refreshCredits]);
 
   const agentStatuses = Object.fromEntries(

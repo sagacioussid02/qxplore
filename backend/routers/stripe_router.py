@@ -120,6 +120,44 @@ async def stripe_webhook(request: Request) -> dict:
     return {"status": "ok"}
 
 
+@router.post("/fulfill-pending")
+async def fulfill_pending_payments(user: dict = Depends(require_user)) -> dict:
+    """Scan recent Stripe sessions for this user and fulfill any unprocessed completed payments.
+    Called after a successful Stripe redirect — works even without a session_id in the URL.
+    """
+    settings = get_settings()
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    log.info("fulfill_pending: checking recent sessions for user=%s", user["sub"])
+    client = _stripe_client()
+
+    try:
+        response = client.checkout.sessions.list(params={"limit": 20, "status": "complete"})
+    except Exception as exc:
+        log.error("fulfill_pending: failed to list sessions: %s", exc)
+        raise HTTPException(status_code=502, detail="Could not reach Stripe")
+
+    fulfilled_session = None
+    for session in response.data:
+        if (session.metadata or {}).get("user_id") != user["sub"]:
+            continue
+        if session.payment_status != "paid":
+            continue
+        if await is_payment_processed(session.id):
+            log.info("fulfill_pending: session %s already processed, skipping", session.id)
+            continue
+        # Found an unprocessed paid session — fulfill it
+        new_total = await add_credits(user["sub"], settings.stripe_credits_per_pack)
+        await record_payment(user["sub"], session.id, settings.stripe_credits_per_pack)
+        log.info("fulfill_pending: fulfilled session %s for user %s → total %d", session.id, user["sub"], new_total)
+        fulfilled_session = session.id
+        break  # one at a time
+
+    credits = await get_credits(user["sub"])
+    return {"credits": credits, "fulfilled": fulfilled_session is not None, "session_id": fulfilled_session}
+
+
 @router.post("/verify-payment")
 async def verify_payment(stripe_session_id: str, user: dict = Depends(require_user)) -> dict:
     """Verify a completed Stripe checkout session and add credits if not already fulfilled.

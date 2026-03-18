@@ -209,13 +209,14 @@ async def add_credits(user_id: str, amount: int) -> int:
     new_total = current + amount
     log.info("add_credits: user=%s current=%d amount=%d new_total=%d", user_id, current, amount, new_total)
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
+        resp = await client.patch(
             f"{settings.supabase_url}/rest/v1/credits",
-            headers={**_supabase_headers(), "Prefer": "resolution=merge-duplicates,return=representation"},
-            json={"user_id": user_id, "credits": new_total},
+            headers=_supabase_headers(),
+            params={"user_id": f"eq.{user_id}"},
+            json={"credits": new_total},
         )
-        log.info("add_credits upsert: status=%s body=%s", resp.status_code, resp.text[:200])
-        if resp.status_code not in (200, 201, 204):
+        log.info("add_credits patch: status=%s body=%s", resp.status_code, resp.text[:200])
+        if resp.status_code not in (200, 204):
             log.error("add_credits failed: %s %s", resp.status_code, resp.text)
             raise HTTPException(status_code=500, detail="Credit update failed")
     return new_total

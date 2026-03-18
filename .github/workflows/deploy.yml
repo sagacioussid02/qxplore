@@ -48,6 +48,7 @@ jobs:
       TF_VAR_stripe_secret_key:         ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_stripe_webhook_secret:     ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
+      TF_VAR_stripe_credits_per_pack:   "5000"
       TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
       TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
       TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
@@ -125,6 +126,7 @@ jobs:
       TF_VAR_stripe_secret_key:         ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_stripe_webhook_secret:     ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
+      TF_VAR_stripe_credits_per_pack:   "5000"
       TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
       TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
       TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
@@ -263,6 +265,7 @@ jobs:
       TF_VAR_stripe_secret_key:         ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_stripe_webhook_secret:     ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       TF_VAR_stripe_price_id:           ${{ secrets.STRIPE_PRICE_ID }}
+      TF_VAR_stripe_credits_per_pack:   "5000"
       TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
       TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
       TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
