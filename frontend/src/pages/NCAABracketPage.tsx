@@ -27,21 +27,32 @@ export default function NCAABracketPage() {
 
   useEffect(() => () => cleanup(), [cleanup]);
 
-  // Poll credits after Stripe redirect — webhook may arrive after the redirect
+  // Verify payment and add credits after Stripe redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') !== 'success') return;
+    const stripeSessionId = params.get('session_id');
+    if (params.get('payment') !== 'success' || !stripeSessionId || !accessToken) return;
     window.history.replaceState({}, '', window.location.pathname);
-    // Retry up to 6 times (at 2s, 4s, 6s, 9s, 13s, 18s) to catch the webhook
-    const delays = [2000, 2000, 2000, 3000, 4000, 5000];
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let elapsed = 0;
-    for (const d of delays) {
-      elapsed += d;
-      timers.push(setTimeout(refreshCredits, elapsed));
-    }
-    return () => timers.forEach(clearTimeout);
-  }, [refreshCredits]);
+
+    // Call verify-payment to fulfill immediately (doesn't depend on webhook)
+    import('../api/client').then(({ apiClient }) => {
+      apiClient.post(
+        `/stripe/verify-payment?stripe_session_id=${encodeURIComponent(stripeSessionId)}`,
+        {},
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      ).then(r => {
+        if (r.data?.credits != null) {
+          // Update credits directly from the verify response
+          refreshCredits();
+        }
+      }).catch(() => {
+        // Fallback: poll in case webhook fires soon
+        refreshCredits();
+        const t = setTimeout(refreshCredits, 3000);
+        return () => clearTimeout(t);
+      });
+    });
+  }, [accessToken, refreshCredits]);
 
   const agentStatuses = Object.fromEntries(
     AGENTS.map(a => [a, store.agents[a].status])

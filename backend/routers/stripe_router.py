@@ -4,7 +4,7 @@ import logging
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.config import get_settings
-from ..core.supabase_auth import require_user, get_credits, add_credits
+from ..core.supabase_auth import require_user, get_credits, add_credits, is_payment_processed, record_payment
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/stripe", tags=["stripe"])
@@ -26,7 +26,7 @@ async def create_checkout_session(user: dict = Depends(require_user)) -> dict:
     session = client.checkout.sessions.create(params={
         "mode": "payment",
         "line_items": [{"price": settings.stripe_price_id, "quantity": 1}],
-        "success_url": f"{settings.cors_origins[0]}/ncaa?payment=success",
+        "success_url": f"{settings.cors_origins[0]}/ncaa?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{settings.cors_origins[0]}/ncaa?payment=cancelled",
         "metadata": {"user_id": user["sub"]},
         "customer_email": user.get("email"),
@@ -93,22 +93,71 @@ async def stripe_webhook(request: Request) -> dict:
 
     if event_obj["type"] == "checkout.session.completed":
         session_data = event_obj["data"]["object"]
+        stripe_session_id = session_data.get("id", "unknown")
         payment_intent_id = session_data.get("payment_intent", "unknown")
         user_id = session_data.get("metadata", {}).get("user_id")
 
-        log.info("checkout.session.completed: payment_intent=%s user_id=%s amount=%s",
-                 payment_intent_id, user_id, session_data.get("amount_total"))
+        log.info("checkout.session.completed: session=%s payment_intent=%s user_id=%s amount=%s",
+                 stripe_session_id, payment_intent_id, user_id, session_data.get("amount_total"))
 
         if not user_id:
-            log.warning("Stripe webhook: no user_id in metadata — session_id=%s", session_data.get("id"))
+            log.warning("Stripe webhook: no user_id in metadata — session_id=%s", stripe_session_id)
             return {"status": "ignored"}
+
+        if await is_payment_processed(stripe_session_id):
+            log.info("Stripe webhook: session %s already processed, skipping", stripe_session_id)
+            return {"status": "already_processed"}
 
         try:
             new_total = await add_credits(user_id, settings.stripe_credits_per_pack)
-            log.info("Stripe webhook: added %d credits to user %s → total %d (payment_intent=%s)",
-                     settings.stripe_credits_per_pack, user_id, new_total, payment_intent_id)
+            await record_payment(user_id, stripe_session_id, settings.stripe_credits_per_pack)
+            log.info("Stripe webhook: added %d credits to user %s → total %d (session=%s)",
+                     settings.stripe_credits_per_pack, user_id, new_total, stripe_session_id)
         except Exception as exc:
             log.error("Stripe webhook: add_credits failed for user %s: %s", user_id, exc, exc_info=True)
             raise HTTPException(status_code=500, detail="Failed to add credits")
 
     return {"status": "ok"}
+
+
+@router.post("/verify-payment")
+async def verify_payment(stripe_session_id: str, user: dict = Depends(require_user)) -> dict:
+    """Verify a completed Stripe checkout session and add credits if not already fulfilled.
+    Called by the frontend after Stripe redirects back — works even if the webhook hasn't fired yet.
+    """
+    settings = get_settings()
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    log.info("verify_payment called: session=%s user=%s", stripe_session_id, user["sub"])
+
+    # Idempotency: skip if already processed
+    if await is_payment_processed(stripe_session_id):
+        log.info("verify_payment: session %s already processed", stripe_session_id)
+        credits = await get_credits(user["sub"])
+        return {"credits": credits, "fulfilled": False, "reason": "already_processed"}
+
+    client = _stripe_client()
+    try:
+        session = client.checkout.sessions.retrieve(stripe_session_id)
+    except Exception as exc:
+        log.error("verify_payment: failed to retrieve session %s: %s", stripe_session_id, exc)
+        raise HTTPException(status_code=400, detail="Could not retrieve payment session")
+
+    session_user_id = (session.metadata or {}).get("user_id")
+    log.info("verify_payment: session status=%s payment_status=%s session_user=%s",
+             session.status, session.payment_status, session_user_id)
+
+    if session_user_id != user["sub"]:
+        log.warning("verify_payment: user mismatch session_user=%s caller=%s", session_user_id, user["sub"])
+        raise HTTPException(status_code=403, detail="Payment session does not belong to this user")
+
+    if session.payment_status != "paid" or session.status != "complete":
+        credits = await get_credits(user["sub"])
+        return {"credits": credits, "fulfilled": False, "reason": session.payment_status}
+
+    new_total = await add_credits(user["sub"], settings.stripe_credits_per_pack)
+    await record_payment(user["sub"], stripe_session_id, settings.stripe_credits_per_pack)
+    log.info("verify_payment: fulfilled session %s for user %s → total %d",
+             stripe_session_id, user["sub"], new_total)
+    return {"credits": new_total, "fulfilled": True}

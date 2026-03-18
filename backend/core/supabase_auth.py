@@ -168,6 +168,37 @@ async def load_bracket_session(user_id: str) -> dict | None:
         return rows[0]["session_data"] if rows else None
 
 
+async def is_payment_processed(stripe_session_id: str) -> bool:
+    """Check if a Stripe checkout session has already been fulfilled."""
+    settings = get_settings()
+    if not settings.supabase_url:
+        return False
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{settings.supabase_url}/rest/v1/payments",
+            headers=_supabase_headers(),
+            params={"stripe_session_id": f"eq.{stripe_session_id}", "select": "id"},
+        )
+        if resp.status_code != 200:
+            return False
+        return len(resp.json()) > 0
+
+
+async def record_payment(user_id: str, stripe_session_id: str, credits_added: int) -> None:
+    """Record a fulfilled payment for idempotency tracking."""
+    settings = get_settings()
+    if not settings.supabase_url:
+        return
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{settings.supabase_url}/rest/v1/payments",
+            headers={**_supabase_headers(), "Prefer": "resolution=ignore-duplicates,return=minimal"},
+            json={"user_id": user_id, "stripe_session_id": stripe_session_id, "credits_added": credits_added},
+        )
+        if resp.status_code not in (200, 201, 204):
+            log.warning("record_payment failed (non-fatal): %s %s", resp.status_code, resp.text)
+
+
 async def add_credits(user_id: str, amount: int) -> int:
     """Add credits to a user (called from Stripe webhook). Uses upsert so it works even if no row exists."""
     settings = get_settings()
