@@ -68,8 +68,8 @@ resource "aws_apprunner_service" "backend" {
       }
     }
 
-    # Automatically redeploy when a new image is pushed to ECR
-    auto_deployments_enabled = true
+    # Disabled: Terraform controls deploys via image_identifier update
+    auto_deployments_enabled = false
   }
 
   instance_configuration {
