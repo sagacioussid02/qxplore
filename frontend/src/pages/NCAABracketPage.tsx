@@ -101,7 +101,7 @@ export default function NCAABracketPage() {
               🏀 NCAA Bracket Challenge
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              5 AI agents compete to fill the 2025 NCAA Tournament bracket
+              5 AI agents compete to fill the 2026 NCAA Tournament bracket
             </p>
             {store.bracket && (
               <span className={`text-xs mt-1 inline-block px-2 py-0.5 rounded-full ${
