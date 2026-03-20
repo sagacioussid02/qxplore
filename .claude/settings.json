@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/protect-env.sh",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/protect-env.sh",
             "timeout": 5
           }
         ]
@@ -16,8 +16,82 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/protect-git-push.sh",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/protect-git-push.sh",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/protect-destructive.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/protect-prod.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/audit-log.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/auto-draft-pr.sh",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/security-scan.sh",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/cost-tracker.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/siddharthshankar/workspace/AI/CLAUDE/quantumanic/.claude/hooks/notify-email.sh",
+            "timeout": 15
           }
         ]
       }

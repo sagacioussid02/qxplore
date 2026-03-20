@@ -21,6 +21,10 @@ PROTECTED_PATTERNS=(
   ".netrc"
   "id_rsa"
   "id_ed25519"
+  ".bash_profile"
+  ".bashrc"
+  ".zshrc"
+  ".zprofile"
 )
 
 check_path() {
