@@ -1,0 +1,17 @@
+# Gitleaks configuration
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+
+title = "Quantumanic Gitleaks Config"
+
+[allowlist]
+  description = "Allowlisted files and patterns"
+  paths = [
+    # Bracket fallback data — contains no real secrets
+    "backend/data/bracket_2025_fallback.json",
+    # Lock files — never contain secrets
+    "frontend/package-lock.json",
+  ]
+  regexes = [
+    # Supabase anon key in frontend env examples (public key, safe to expose)
+    "VITE_SUPABASE_ANON_KEY",
+  ]
