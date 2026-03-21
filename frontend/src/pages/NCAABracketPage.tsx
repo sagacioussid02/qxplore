@@ -207,8 +207,8 @@ export default function NCAABracketPage() {
                 initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
               >
                 <p className="text-sm text-indigo-300">
-                  <span className="font-semibold">Free demo</span> — precomputed picks, no backend calls.
-                  Sign up to unlock live agents on real 2026 data.
+                  <span className="font-semibold">Free demo</span> — precomputed picks, no live agent calls.
+                  Sign up to unlock live agents generating fresh picks on real 2026 data.
                 </p>
                 <button
                   onClick={() => setAuthOpen(true)}
