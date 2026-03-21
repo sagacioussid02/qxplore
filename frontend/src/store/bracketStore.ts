@@ -242,7 +242,7 @@ export const useBracketStore = create<BracketStore>((set) => ({
       ])
     ) as Record<AgentName, AgentState>;
     saveCache({ ...state, ...next, agents: clearedAgents });
-    return next;
+    return { ...next, agents: clearedAgents };
   }),
   reset: () => {
     localStorage.removeItem(CACHE_KEY);
