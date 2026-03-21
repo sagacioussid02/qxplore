@@ -27,6 +27,18 @@ export default function NCAABracketPage() {
 
   useEffect(() => () => cleanup(), [cleanup]);
 
+  // When the user signs in while an anonymous session is active, discard the
+  // anonymous session and start a fresh authenticated one so live agents run
+  // against the correct account.
+  useEffect(() => {
+    if (accessToken && store.isAnonymous && store.sessionId) {
+      cleanup();
+      store.reset();
+      startSession();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
   // Fulfill payment after Stripe redirect — works with or without session_id in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
