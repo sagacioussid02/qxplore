@@ -3,6 +3,18 @@ import { bracketApi } from '../api/bracketApi';
 import { useBracketStore } from '../store/bracketStore';
 import type { AgentName, BracketSSEEvent, BracketPick, TeamEntry } from '../types/bracket';
 import { API_BASE } from '../api/client';
+import { generateAllDemoPicks, DEMO_EVALUATION_TEXT } from '../data/demoBracketPicks';
+
+const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+// Per-agent pick delay (ms) — stagger so agents complete at different times
+const AGENT_PICK_DELAY: Record<AgentName, number> = {
+  montecarlo: 60,
+  openai:     75,
+  gemini:     88,
+  claude:     95,
+  quantum:    110,
+};
 
 const AGENTS: AgentName[] = ['claude', 'openai', 'gemini', 'montecarlo', 'quantum'];
 
@@ -17,6 +29,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
   const [canResume, setCanResume] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'picking' | 'evaluating' | 'done'>('idle');
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   const evalEsRef = useRef<EventSource | null>(null);
   const anyCompleteRef = useRef(false);
@@ -300,14 +313,69 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     startEvaluation(sessionId);
   }, [startEvaluation]);
 
+  const startDemoAgents = useCallback(async () => {
+    const { sessionId, bracket } = useBracketStore.getState();
+    if (!sessionId || !bracket) return;
+
+    setIsDemoMode(true);
+    setPhase('picking');
+    setError(null);
+
+    AGENTS.forEach(a => {
+      store.resetAgentPicks(a);
+      store.setAgentStatus(a, 'running');
+    });
+
+    const { picks: demoPicks, champions: demoChampions } = generateAllDemoPicks(bracket);
+
+    // Stream picks for all agents concurrently, each at its own pace
+    await Promise.all(
+      AGENTS.map(async (agent) => {
+        const pickDelay = AGENT_PICK_DELAY[agent];
+        const agentPicks = demoPicks[agent];
+
+        for (const [gameId, pick] of Object.entries(agentPicks)) {
+          await delay(pickDelay);
+          store.applyPick(agent, gameId, {
+            session_id: sessionId,
+            ...pick,
+          });
+        }
+
+        // Build full BracketPick record for setAgentComplete
+        const fullPicks = Object.fromEntries(
+          Object.entries(agentPicks).map(([id, p]) => [
+            id,
+            { ...p, session_id: sessionId, agent } as BracketPick,
+          ]),
+        ) as Record<string, BracketPick>;
+
+        store.setAgentComplete(agent, demoChampions[agent], fullPicks);
+        store.setAgentStatus(agent, 'complete');
+      }),
+    );
+
+    store.setAllComplete();
+    setPhase('evaluating');
+
+    // Stream demo evaluation text in small chunks to mimic LLM output
+    const CHUNK = 10;
+    for (let i = 0; i < DEMO_EVALUATION_TEXT.length; i += CHUNK) {
+      await delay(18);
+      store.appendEvaluationChunk(DEMO_EVALUATION_TEXT.slice(i, i + CHUNK));
+    }
+    store.setEvaluationDone();
+    setPhase('done');
+  }, [store]);
+
   const cleanup = useCallback(() => {
     esRef.current?.close();
     evalEsRef.current?.close();
   }, []);
 
   return {
-    loading, error, evaluationError, canResume, phase,
-    restoreSession, startSession, startAllAgents, resumeAgents,
+    loading, error, evaluationError, canResume, phase, isDemoMode,
+    restoreSession, startSession, startAllAgents, startDemoAgents, resumeAgents,
     startSingleAgent, completeAgentRandomly, runCommissioner, cleanup,
   };
 }

@@ -19,7 +19,7 @@ export default function NCAABracketPage() {
   const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const { loading, error, evaluationError, canResume, phase, startSession, startAllAgents, resumeAgents, startSingleAgent, completeAgentRandomly, runCommissioner, cleanup } = useBracketSession({
+  const { loading, error, evaluationError, canResume, phase, isDemoMode, startSession, startAllAgents, startDemoAgents, resumeAgents, startSingleAgent, completeAgentRandomly, runCommissioner, cleanup } = useBracketSession({
     accessToken,
     onCreditsUpdate: refreshCredits,
   });
@@ -125,8 +125,16 @@ export default function NCAABracketPage() {
                 {loading ? 'Loading bracket…' : '📋 Load Bracket'}
               </button>
             ) : phase === 'idle' ? (
-              outOfCredits ? (
-                // Out of credits — show buy button
+              !isAuthenticated ? (
+                // Anonymous — offer free demo
+                <button
+                  onClick={startDemoAgents}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  ▶ Try Free Demo
+                </button>
+              ) : outOfCredits ? (
+                // Authenticated but out of credits
                 <button
                   onClick={() => setAuthOpen(true)}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-semibold transition-colors"
@@ -134,11 +142,12 @@ export default function NCAABracketPage() {
                   ✦ Buy credits to run agents
                 </button>
               ) : (
+                // Authenticated + credits — live run
                 <button
                   onClick={handleStartAgents}
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-semibold transition-colors"
                 >
-                  ▶ Start All Agents
+                  ▶ Start All Agents ({BRACKET_COST} credits)
                 </button>
               )
             ) : (
@@ -165,23 +174,51 @@ export default function NCAABracketPage() {
           </div>
         </div>
 
-        {/* Anonymous demo banner — only for non-authenticated users */}
-        {store.bracket && store.isAnonymous && !isAuthenticated && (
-          <motion.div
-            className="mt-3 flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-950/60 border border-indigo-700/40 rounded-lg"
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          >
-            <p className="text-sm text-indigo-300">
-              <span className="font-semibold">Demo mode</span> — running on static bracket data.
-              Sign up to unlock live data + 1 free simulation.
-            </p>
-            <button
-              onClick={() => setAuthOpen(true)}
-              className="shrink-0 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-md text-xs font-semibold text-white transition-colors"
-            >
-              Sign up free
-            </button>
-          </motion.div>
+        {/* Banner for anonymous users */}
+        {store.bracket && !isAuthenticated && (
+          <AnimatePresence mode="wait">
+            {isDemoMode && phase === 'done' ? (
+              // Post-demo CTA — prominent sign-up prompt
+              <motion.div
+                key="post-demo-cta"
+                className="mt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border border-indigo-500/50 rounded-lg"
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+              >
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    Liked the demo? Run it for real. 🏀
+                  </p>
+                  <p className="text-xs text-indigo-300 mt-0.5">
+                    Sign up for credits to run all 5 agents on live 2026 tournament data — real stats, real news, real picks.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAuthOpen(true)}
+                  className="shrink-0 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-semibold text-white transition-colors whitespace-nowrap"
+                >
+                  Sign up free →
+                </button>
+              </motion.div>
+            ) : (
+              // Pre-demo hint banner
+              <motion.div
+                key="pre-demo-hint"
+                className="mt-3 flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-950/60 border border-indigo-700/40 rounded-lg"
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+              >
+                <p className="text-sm text-indigo-300">
+                  <span className="font-semibold">Free demo</span> — precomputed picks, no backend calls.
+                  Sign up to unlock live agents on real 2026 data.
+                </p>
+                <button
+                  onClick={() => setAuthOpen(true)}
+                  className="shrink-0 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-md text-xs font-semibold text-white transition-colors"
+                >
+                  Sign up free
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
 
         {error && (
