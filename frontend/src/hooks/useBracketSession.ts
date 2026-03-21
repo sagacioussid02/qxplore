@@ -33,6 +33,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
   const esRef = useRef<EventSource | null>(null);
   const evalEsRef = useRef<EventSource | null>(null);
   const anyCompleteRef = useRef(false);
+  const demoAbortRef = useRef(false);
 
   const store = useBracketStore();
 
@@ -317,6 +318,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     const { sessionId, bracket } = useBracketStore.getState();
     if (!sessionId || !bracket) return;
 
+    demoAbortRef.current = false;
     setIsDemoMode(true);
     setPhase('picking');
     setError(null);
@@ -338,12 +340,16 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
         const agentPicks = demoPicks[agent];
 
         for (const [gameId, pick] of Object.entries(agentPicks)) {
+          if (demoAbortRef.current) return;
           await delay(pickDelay);
+          if (demoAbortRef.current) return;
           store.applyPick(agent, gameId, {
             session_id: sessionId,
             ...pick,
           });
         }
+
+        if (demoAbortRef.current) return;
 
         // Build full BracketPick record for setAgentComplete
         const fullPicks = Object.fromEntries(
@@ -358,13 +364,17 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       }),
     );
 
+    if (demoAbortRef.current) return;
+
     store.setAllComplete();
     setPhase('evaluating');
 
     // Stream demo evaluation text in small chunks to mimic LLM output
     const CHUNK = 10;
     for (let i = 0; i < DEMO_EVALUATION_TEXT.length; i += CHUNK) {
+      if (demoAbortRef.current) return;
       await delay(18);
+      if (demoAbortRef.current) return;
       store.appendEvaluationChunk(DEMO_EVALUATION_TEXT.slice(i, i + CHUNK));
     }
     store.setEvaluationDone();
@@ -372,6 +382,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
   }, [store]);
 
   const cleanup = useCallback(() => {
+    demoAbortRef.current = true;
     esRef.current?.close();
     evalEsRef.current?.close();
   }, []);
