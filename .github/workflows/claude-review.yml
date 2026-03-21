@@ -34,14 +34,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Guard against fork PRs
+        id: pr-guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event_name == 'issue_comment' && github.event.issue.number || github.event.pull_request.number }}
+          HEAD_REPO=$(gh pr view "$PR_NUMBER" --json headRepositoryOwner,headRepository \
+            --jq '"\(.headRepositoryOwner.login)/\(.headRepository.name)"')
+          if [[ "$HEAD_REPO" != "${{ github.repository }}" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "PR is from fork '$HEAD_REPO' — skipping to avoid running secrets against untrusted code."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.pr-guard.outputs.skip != 'true'
         with:
           ref: ${{ github.event_name == 'pull_request_review' && github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.issue.number) }}
-          repository: ${{ github.event_name == 'pull_request_review' && github.event.pull_request.head.repo.full_name || github.repository }}
+          repository: ${{ github.repository }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: anthropics/claude-code-action@beta
+        if: steps.pr-guard.outputs.skip != 'true'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
