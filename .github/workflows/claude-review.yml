@@ -36,7 +36,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.event.issue.pull_request.url }}
+          ref: ${{ github.event_name == 'pull_request_review' && github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.issue.number) }}
+          repository: ${{ github.event_name == 'pull_request_review' && github.event.pull_request.head.repo.full_name || github.repository }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
