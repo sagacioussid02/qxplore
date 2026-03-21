@@ -56,21 +56,14 @@ jobs:
           COMMIT_MSG=$(git log -1 --format="%s")
           COMMIT_SHA=$(git log -1 --format="%h")
 
+          printf "## Summary\nAuto-generated draft PR from branch \`%s\`.\n\n**Commit:** \`%s\` — %s\n\nPassed secret scan (Gitleaks) before creation.\n" \
+            "$BRANCH" "$COMMIT_SHA" "$COMMIT_MSG" > /tmp/pr-body.md
+
           gh pr create \
             --draft \
             --base "$BASE" \
             --head "$BRANCH" \
             --title "$COMMIT_MSG" \
-            --body "$(cat <<EOF
-## Summary
-Auto-generated draft PR from branch \`$BRANCH\`.
-
-**Commit:** \`$COMMIT_SHA\` — $COMMIT_MSG
-
----
-> ⚠️ This is a **draft PR** — review changes before marking ready to merge.
-> ✅ Passed secret scan (Gitleaks) before creation.
-EOF
-          )"
+            --body-file /tmp/pr-body.md
 
           echo "Draft PR created for branch '$BRANCH'."
