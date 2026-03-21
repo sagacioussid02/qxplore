@@ -75,6 +75,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
         store.setCredits(result.credits);
       }
       setPhase('idle');
+      setIsDemoMode(false);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to create session');
     } finally {
@@ -138,6 +139,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     setPhase('picking');
     setError(null);
     setCanResume(false);
+    setIsDemoMode(false);
 
     const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
     const url = `${API_BASE}/bracket/session/${sessionId}/all-agents/stream${tokenParam}`;
