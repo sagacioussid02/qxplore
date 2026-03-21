@@ -50,8 +50,14 @@ jobs:
             exit 0
           fi
 
+          # Ensure base branch is available locally for comparison
+          git fetch origin "$BASE":"refs/remotes/origin/$BASE" || {
+            echo "Failed to fetch base branch '$BASE' — cannot determine ahead/behind status."
+            exit 1
+          }
+
           # Check branch has commits ahead of base
-          AHEAD=$(git rev-list --count origin/$BASE..HEAD 2>/dev/null || echo "0")
+          AHEAD=$(git rev-list --count "origin/$BASE..HEAD")
           if [[ "$AHEAD" == "0" ]]; then
             echo "Branch '$BRANCH' has no commits ahead of '$BASE' — skipping PR creation."
             exit 0
