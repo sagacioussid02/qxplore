@@ -320,6 +320,9 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     setIsDemoMode(true);
     setPhase('picking');
     setError(null);
+    setEvaluationError(null);
+    setCanResume(false);
+    store.resetEvaluation();
 
     AGENTS.forEach(a => {
       store.resetAgentPicks(a);

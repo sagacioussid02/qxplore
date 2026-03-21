@@ -86,6 +86,7 @@ interface BracketStore {
   setActiveTab: (agent: AgentName) => void;
   setAllComplete: () => void;
   setShowScoreboard: (show: boolean) => void;
+  resetEvaluation: () => void;
   reset: () => void;
 }
 
@@ -232,6 +233,11 @@ export const useBracketStore = create<BracketStore>((set) => ({
 
   setShowScoreboard: (show) => set({ showScoreboard: show }),
 
+  resetEvaluation: () => set(state => {
+    const next = { evaluationText: '', evaluationDone: false, evaluation: null, allComplete: false, showScoreboard: false };
+    saveCache({ ...state, ...next });
+    return next;
+  }),
   reset: () => {
     localStorage.removeItem(CACHE_KEY);
     set({
