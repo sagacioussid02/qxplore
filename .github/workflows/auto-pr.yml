@@ -1,0 +1,76 @@
+name: Auto Draft PR
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  secret-scan:
+    name: Scan for secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-pr:
+    name: Create draft PR
+    needs: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create draft PR if not exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          BASE="main"
+
+          # Check if PR already exists for this branch
+          EXISTING=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
+          if [[ -n "$EXISTING" ]]; then
+            echo "PR #$EXISTING already exists for branch '$BRANCH' — skipping."
+            exit 0
+          fi
+
+          # Check branch has commits ahead of base
+          AHEAD=$(git rev-list --count origin/$BASE..HEAD 2>/dev/null || echo "0")
+          if [[ "$AHEAD" == "0" ]]; then
+            echo "Branch '$BRANCH' has no commits ahead of '$BASE' — skipping PR creation."
+            exit 0
+          fi
+
+          COMMIT_MSG=$(git log -1 --format="%s")
+          COMMIT_SHA=$(git log -1 --format="%h")
+
+          gh pr create \
+            --draft \
+            --base "$BASE" \
+            --head "$BRANCH" \
+            --title "$COMMIT_MSG" \
+            --body "$(cat <<EOF
+## Summary
+Auto-generated draft PR from branch \`$BRANCH\`.
+
+**Commit:** \`$COMMIT_SHA\` — $COMMIT_MSG
+
+---
+> ⚠️ This is a **draft PR** — review changes before marking ready to merge.
+> ✅ Passed secret scan (Gitleaks) before creation.
+EOF
+          )"
+
+          echo "Draft PR created for branch '$BRANCH'."

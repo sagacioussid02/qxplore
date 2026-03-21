@@ -1,0 +1,48 @@
+name: Claude PR Review Resolver
+
+on:
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  claude-resolve:
+    name: Resolve review comments
+    # Only run on actual PRs, and only when review requests changes or a comment
+    # contains @claude
+    if: |
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.event.issue.pull_request.url }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Prompt Claude to read review comments and resolve them
+          direct_prompt: |
+            You are resolving GitHub PR review comments on this pull request.
+
+            Steps:
+            1. Read all unresolved review comments on this PR using the GitHub API
+            2. For each comment, assess whether the requested change is valid and applicable
+            3. If applicable, make the code change directly in the relevant file(s)
+            4. After all changes, post a single PR comment summarising:
+               - Which comments were resolved and what was changed
+               - Which comments were skipped and why (e.g. already addressed, not applicable, needs human judgement)
+
+            Be conservative — skip comments that are subjective, architectural, or require product decisions.
+            Only make changes you are confident about.
