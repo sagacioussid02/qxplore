@@ -235,7 +235,13 @@ export const useBracketStore = create<BracketStore>((set) => ({
 
   resetEvaluation: () => set(state => {
     const next = { evaluationText: '', evaluationDone: false, evaluation: null, allComplete: false, showScoreboard: false };
-    saveCache({ ...state, ...next });
+    // Clear agent picks in cache too so a reload mid-demo doesn't restore stale results
+    const clearedAgents = Object.fromEntries(
+      (Object.entries(state.agents) as [AgentName, AgentState][]).map(([name, a]) => [
+        name, { ...a, picks: {}, pickCount: 0, champion: null },
+      ])
+    ) as Record<AgentName, AgentState>;
+    saveCache({ ...state, ...next, agents: clearedAgents });
     return next;
   }),
   reset: () => {
