@@ -363,7 +363,6 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
           ) as Record<string, BracketPick>;
 
           store.setAgentComplete(agent, demoChampions[agent], fullPicks);
-          store.setAgentStatus(agent, 'complete');
         }),
       );
 
