@@ -331,54 +331,65 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       store.setAgentStatus(a, 'running');
     });
 
-    const { picks: demoPicks, champions: demoChampions } = generateAllDemoPicks(bracket);
+    try {
+      const { picks: demoPicks, champions: demoChampions } = generateAllDemoPicks(bracket);
 
-    // Stream picks for all agents concurrently, each at its own pace
-    await Promise.all(
-      AGENTS.map(async (agent) => {
-        const pickDelay = AGENT_PICK_DELAY[agent];
-        const agentPicks = demoPicks[agent];
+      // Stream picks for all agents concurrently, each at its own pace
+      await Promise.all(
+        AGENTS.map(async (agent) => {
+          const pickDelay = AGENT_PICK_DELAY[agent];
+          const agentPicks = demoPicks[agent];
 
-        for (const [gameId, pick] of Object.entries(agentPicks)) {
+          for (const [gameId, pick] of Object.entries(agentPicks)) {
+            if (demoAbortRef.current) return;
+            await delay(pickDelay);
+            if (demoAbortRef.current) return;
+            store.applyPick(agent, gameId, {
+              session_id: sessionId,
+              ...pick,
+            });
+          }
+
           if (demoAbortRef.current) return;
-          await delay(pickDelay);
-          if (demoAbortRef.current) return;
-          store.applyPick(agent, gameId, {
-            session_id: sessionId,
-            ...pick,
-          });
-        }
 
+          // Build full BracketPick record for setAgentComplete
+          const fullPicks = Object.fromEntries(
+            Object.entries(agentPicks).map(([id, p]) => [
+              id,
+              { ...p, session_id: sessionId, agent } as BracketPick,
+            ]),
+          ) as Record<string, BracketPick>;
+
+          store.setAgentComplete(agent, demoChampions[agent], fullPicks);
+          store.setAgentStatus(agent, 'complete');
+        }),
+      );
+
+      if (demoAbortRef.current) return;
+
+      store.setAllComplete();
+      setPhase('evaluating');
+
+      // Stream demo evaluation text in small chunks to mimic LLM output
+      const CHUNK = 10;
+      for (let i = 0; i < DEMO_EVALUATION_TEXT.length; i += CHUNK) {
         if (demoAbortRef.current) return;
-
-        // Build full BracketPick record for setAgentComplete
-        const fullPicks = Object.fromEntries(
-          Object.entries(agentPicks).map(([id, p]) => [
-            id,
-            { ...p, session_id: sessionId, agent } as BracketPick,
-          ]),
-        ) as Record<string, BracketPick>;
-
-        store.setAgentComplete(agent, demoChampions[agent], fullPicks);
-        store.setAgentStatus(agent, 'complete');
-      }),
-    );
-
-    if (demoAbortRef.current) return;
-
-    store.setAllComplete();
-    setPhase('evaluating');
-
-    // Stream demo evaluation text in small chunks to mimic LLM output
-    const CHUNK = 10;
-    for (let i = 0; i < DEMO_EVALUATION_TEXT.length; i += CHUNK) {
+        await delay(18);
+        if (demoAbortRef.current) return;
+        store.appendEvaluationChunk(DEMO_EVALUATION_TEXT.slice(i, i + CHUNK));
+      }
+      store.setEvaluationDone();
+      setPhase('done');
+    } catch (e: unknown) {
       if (demoAbortRef.current) return;
-      await delay(18);
-      if (demoAbortRef.current) return;
-      store.appendEvaluationChunk(DEMO_EVALUATION_TEXT.slice(i, i + CHUNK));
+      AGENTS.forEach(a => {
+        if (useBracketStore.getState().agents[a].status === 'running') {
+          store.setAgentStatus(a, 'error');
+        }
+      });
+      setError(e instanceof Error ? e.message : 'Demo failed. Please try again.');
+      setPhase('idle');
     }
-    store.setEvaluationDone();
-    setPhase('done');
   }, [store]);
 
   const cleanup = useCallback(() => {
