@@ -238,7 +238,7 @@ export const useBracketStore = create<BracketStore>((set) => ({
     // Clear agent picks in cache too so a reload mid-demo doesn't restore stale results
     const clearedAgents = Object.fromEntries(
       (Object.entries(state.agents) as [AgentName, AgentState][]).map(([name, a]) => [
-        name, { ...a, picks: {}, pickCount: 0, champion: null },
+        name, { ...a, picks: {}, pickCount: 0, champion: null, status: 'idle' as AgentStatus, liveReasoning: '' },
       ])
     ) as Record<AgentName, AgentState>;
     saveCache({ ...state, ...next, agents: clearedAgents });
