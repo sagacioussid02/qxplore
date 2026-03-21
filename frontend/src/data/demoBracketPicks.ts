@@ -140,7 +140,7 @@ export function generateAllDemoPicks(bracket: BracketData): {
       };
     }
 
-    champions[agent] = winners['CHAMP'] ?? null;
+    champions[agent] = (bracket.championship ? winners[bracket.championship.game_id] : null) ?? null;
   }
 
   return { picks, champions };
