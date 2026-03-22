@@ -326,7 +326,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     setError(null);
     setEvaluationError(null);
     setCanResume(false);
-    store.resetEvaluation();
+    store.resetRun();
 
     AGENTS.forEach(a => {
       store.resetAgentPicks(a);

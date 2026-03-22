@@ -86,7 +86,7 @@ interface BracketStore {
   setActiveTab: (agent: AgentName) => void;
   setAllComplete: () => void;
   setShowScoreboard: (show: boolean) => void;
-  resetEvaluation: () => void;
+  resetRun: () => void;
   clearCache: () => void;
   reset: () => void;
 }
@@ -234,7 +234,7 @@ export const useBracketStore = create<BracketStore>((set) => ({
 
   setShowScoreboard: (show) => set({ showScoreboard: show }),
 
-  resetEvaluation: () => set(state => {
+  resetRun: () => set(state => {
     const next = { evaluationText: '', evaluationDone: false, evaluation: null, allComplete: false, showScoreboard: false };
     // Clear agent picks in cache too so a reload mid-demo doesn't restore stale results
     const clearedAgents = Object.fromEntries(
