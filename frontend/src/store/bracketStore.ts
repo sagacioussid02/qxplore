@@ -251,10 +251,10 @@ export const useBracketStore = create<BracketStore>((set) => ({
   }),
   clearCache: () => {
     skipCache = false; // re-enable cache writes for subsequent real runs
-    localStorage.removeItem(CACHE_KEY);
+    try { localStorage.removeItem(CACHE_KEY); } catch { /* storage unavailable */ }
   },
   reset: () => {
-    localStorage.removeItem(CACHE_KEY);
+    try { localStorage.removeItem(CACHE_KEY); } catch { /* storage unavailable */ }
     set({
       sessionId: null,
       bracket: null,
