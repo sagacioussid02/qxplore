@@ -37,6 +37,9 @@ jobs:
         )
       )
     runs-on: ubuntu-latest
+    concurrency:
+      group: claude-resolve-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+      cancel-in-progress: true
 
     steps:
       - name: Guard against fork PRs
