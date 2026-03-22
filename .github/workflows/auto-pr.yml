@@ -1,46 +1,35 @@
 name: Auto Draft PR
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Secret Scan"]
+    types: [completed]
     branches-ignore:
       - main
       - master
       - develop
-    tags-ignore:
-      - '**'
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
-  secret-scan:
-    name: Scan for secrets
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   create-pr:
     name: Create draft PR
-    needs: secret-scan
+    # Only run if the secret scan passed
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Create draft PR if not exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
           BASE="main"
 
           # Check if PR already exists for this branch
