@@ -326,14 +326,13 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
     setError(null);
     setEvaluationError(null);
     setCanResume(false);
-    store.resetRun();
-
-    AGENTS.forEach(a => {
-      store.resetAgentPicks(a);
-      store.setAgentStatus(a, 'running');
-    });
-
     try {
+      store.resetRun();
+
+      AGENTS.forEach(a => {
+        store.resetAgentPicks(a);
+        store.setAgentStatus(a, 'running');
+      });
       const { picks: demoPicks, champions: demoChampions } = generateAllDemoPicks(bracket);
 
       // Stream picks for all agents concurrently, each at its own pace
