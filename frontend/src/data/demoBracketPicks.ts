@@ -62,7 +62,6 @@ function pickWinner(
 
   if (agent === 'claude') {
     // Upset picks: 12/5, 11/6, 10/7, 9/8 in round 1; avoid #1 seeds in round 4+
-    const lower = a.seed <= b.seed ? a : b;
     const higher = a.seed <= b.seed ? b : a;
     const gap = Math.abs(a.seed - b.seed);
     const upsetRound1 = round === 1 && (gap === 7 || gap === 5 || gap === 3 || gap === 1);
