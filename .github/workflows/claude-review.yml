@@ -54,13 +54,15 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "PR is from fork '$HEAD_REPO' — skipping to avoid running secrets against untrusted code."
           else
+            HEAD_REF=$(gh pr view "$PR_NUMBER" --json headRef --jq '.headRef')
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v4
         if: steps.pr-guard.outputs.skip != 'true'
         with:
-          ref: ${{ github.event_name == 'pull_request_review' && github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.issue.number) }}
+          ref: ${{ steps.pr-guard.outputs.head_ref }}
           repository: ${{ github.repository }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
