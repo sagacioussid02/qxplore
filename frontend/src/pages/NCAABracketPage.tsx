@@ -15,7 +15,7 @@ const AGENTS: AgentName[] = ['claude', 'openai', 'gemini', 'montecarlo', 'quantu
 const BRACKET_COST = 450;
 
 export default function NCAABracketPage() {
-  const { isAuthenticated, accessToken, credits, refreshCredits } = useAuth();
+  const { isAuthenticated, accessToken, credits, refreshCredits, startStripeCheckout } = useAuth();
   const { deductCredits } = useCreditStore();
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -148,7 +148,7 @@ export default function NCAABracketPage() {
               ) : outOfCredits ? (
                 // Authenticated but out of credits
                 <button
-                  onClick={() => setAuthOpen(true)}
+                  onClick={startStripeCheckout}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-semibold transition-colors"
                 >
                   ✦ Buy credits to run agents
