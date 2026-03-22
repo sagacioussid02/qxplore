@@ -381,6 +381,7 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       }
       store.setEvaluationDone();
       setPhase('done');
+      store.clearCache(); // demo results shouldn't survive a reload
     } catch (e: unknown) {
       if (demoAbortRef.current) return;
       AGENTS.forEach(a => {

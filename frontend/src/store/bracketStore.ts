@@ -87,6 +87,7 @@ interface BracketStore {
   setAllComplete: () => void;
   setShowScoreboard: (show: boolean) => void;
   resetEvaluation: () => void;
+  clearCache: () => void;
   reset: () => void;
 }
 
@@ -244,6 +245,7 @@ export const useBracketStore = create<BracketStore>((set) => ({
     saveCache({ ...state, ...next, agents: clearedAgents });
     return { ...next, agents: clearedAgents };
   }),
+  clearCache: () => { localStorage.removeItem(CACHE_KEY); },
   reset: () => {
     localStorage.removeItem(CACHE_KEY);
     set({
