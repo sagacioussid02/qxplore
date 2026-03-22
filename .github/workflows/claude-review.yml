@@ -1,0 +1,88 @@
+name: Claude PR Review Resolver
+
+on:
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  claude-resolve:
+    name: Resolve review comments
+    # Only run on actual PRs, and only when review requests changes or a comment
+    # contains @claude
+    if: |
+      (
+        github.event_name == 'pull_request_review' &&
+        github.event.review.state == 'changes_requested' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        (
+          github.event.review.author_association == 'MEMBER' ||
+          github.event.review.author_association == 'OWNER' ||
+          github.event.review.author_association == 'COLLABORATOR'
+        )
+      ) || (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request != null &&
+        contains(github.event.comment.body, '@claude') &&
+        (
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'COLLABORATOR'
+        )
+      )
+    runs-on: ubuntu-latest
+    concurrency:
+      group: claude-resolve-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Guard against fork PRs
+        id: pr-guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event_name == 'issue_comment' && github.event.issue.number || github.event.pull_request.number }}
+          HEAD_REPO=$(gh pr view "$PR_NUMBER" --json headRepositoryOwner,headRepository \
+            --jq '"\(.headRepositoryOwner.login)/\(.headRepository.name)"')
+          if [[ "$HEAD_REPO" != "${{ github.repository }}" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "PR is from fork '$HEAD_REPO' — skipping to avoid running secrets against untrusted code."
+          else
+            HEAD_REF=$(gh pr view "$PR_NUMBER" --json headRef --jq '.headRef')
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.pr-guard.outputs.skip != 'true'
+        with:
+          ref: ${{ steps.pr-guard.outputs.head_ref }}
+          repository: ${{ github.repository }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: anthropics/claude-code-action@28f83620103c48a57093dcc2837eec89e036bb9f # beta
+        if: steps.pr-guard.outputs.skip != 'true'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Prompt Claude to read review comments and resolve them
+          direct_prompt: |
+            You are resolving GitHub PR review comments on this pull request.
+
+            Steps:
+            1. Read all unresolved review comments on this PR using the GitHub API
+            2. For each comment, assess whether the requested change is valid and applicable
+            3. If applicable, make the code change directly in the relevant file(s)
+            4. After all changes, post a single PR comment summarising:
+               - Which comments were resolved and what was changed
+               - Which comments were skipped and why (e.g. already addressed, not applicable, needs human judgement)
+
+            Be conservative — skip comments that are subjective, architectural, or require product decisions.
+            Only make changes you are confident about.

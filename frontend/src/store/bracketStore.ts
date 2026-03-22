@@ -31,7 +31,11 @@ function loadCache(): CacheEntry | null {
   }
 }
 
+// Set to true during demo runs so no picks/evaluation are persisted to cache
+let skipCache = false;
+
 function saveCache(state: Pick<BracketStore, 'agents' | 'evaluationText' | 'evaluationDone' | 'allComplete'>) {
+  if (skipCache) return;
   try {
     const entry: CacheEntry = {
       timestamp: Date.now(),
@@ -86,6 +90,8 @@ interface BracketStore {
   setActiveTab: (agent: AgentName) => void;
   setAllComplete: () => void;
   setShowScoreboard: (show: boolean) => void;
+  resetRun: () => void;
+  clearCache: () => void;
   reset: () => void;
 }
 
@@ -232,8 +238,23 @@ export const useBracketStore = create<BracketStore>((set) => ({
 
   setShowScoreboard: (show) => set({ showScoreboard: show }),
 
-  reset: () => {
+  resetRun: () => set(state => {
+    skipCache = true; // disable cache writes for the duration of the demo run
     localStorage.removeItem(CACHE_KEY);
+    const next = { evaluationText: '', evaluationDone: false, evaluation: null, allComplete: false, showScoreboard: false };
+    const clearedAgents = Object.fromEntries(
+      (Object.entries(state.agents) as [AgentName, AgentState][]).map(([name, a]) => [
+        name, { ...a, picks: {}, pickCount: 0, champion: null, status: 'idle' as AgentStatus, liveReasoning: '' },
+      ])
+    ) as Record<AgentName, AgentState>;
+    return { ...next, agents: clearedAgents };
+  }),
+  clearCache: () => {
+    skipCache = false; // re-enable cache writes for subsequent real runs
+    try { localStorage.removeItem(CACHE_KEY); } catch { /* storage unavailable */ }
+  },
+  reset: () => {
+    try { localStorage.removeItem(CACHE_KEY); } catch { /* storage unavailable */ }
     set({
       sessionId: null,
       bracket: null,

@@ -1,0 +1,68 @@
+name: Auto Draft PR
+
+on:
+  workflow_run:
+    workflows: ["Secret Scan"]
+    types: [completed]
+    branches-ignore:
+      - main
+      - master
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr:
+    name: Create draft PR
+    # Only run if the secret scan passed and the run originated from this repo (not a fork)
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Create draft PR if not exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          BASE="main"
+
+          # Check if PR already exists for this branch
+          EXISTING=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
+          if [[ -n "$EXISTING" ]]; then
+            echo "PR #$EXISTING already exists for branch '$BRANCH' — skipping."
+            exit 0
+          fi
+
+          # Ensure base branch is available locally for comparison
+          git fetch origin "$BASE":"refs/remotes/origin/$BASE" || {
+            echo "Failed to fetch base branch '$BASE' — cannot determine ahead/behind status."
+            exit 1
+          }
+
+          # Check branch has commits ahead of base
+          AHEAD=$(git rev-list --count "origin/$BASE..HEAD")
+          if [[ "$AHEAD" == "0" ]]; then
+            echo "Branch '$BRANCH' has no commits ahead of '$BASE' — skipping PR creation."
+            exit 0
+          fi
+
+          COMMIT_MSG=$(git log -1 --format="%s")
+          COMMIT_SHA=$(git log -1 --format="%h")
+
+          printf "## Summary\nAuto-generated draft PR from branch \`%s\`.\n\n**Commit:** \`%s\` — %s\n\nPassed secret scan (Gitleaks) before creation.\n" \
+            "$BRANCH" "$COMMIT_SHA" "$COMMIT_MSG" > /tmp/pr-body.md
+
+          gh pr create \
+            --draft \
+            --base "$BASE" \
+            --head "$BRANCH" \
+            --title "$COMMIT_MSG" \
+            --body-file /tmp/pr-body.md
+
+          echo "Draft PR created for branch '$BRANCH'."
