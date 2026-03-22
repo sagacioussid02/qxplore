@@ -381,7 +381,6 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       }
       store.setEvaluationDone();
       setPhase('done');
-      store.clearCache(); // demo results shouldn't survive a reload
     } catch (e: unknown) {
       if (demoAbortRef.current) return;
       AGENTS.forEach(a => {
@@ -391,6 +390,10 @@ export function useBracketSession({ accessToken, onCreditsUpdate }: UseBracketSe
       });
       setError(e instanceof Error ? e.message : 'Demo failed. Please try again.');
       setPhase('idle');
+    } finally {
+      // Always clear cache on exit — success, error, or abort — so partial
+      // demo picks never bleed into a later real session on reload.
+      store.clearCache();
     }
   }, [store]);
 
