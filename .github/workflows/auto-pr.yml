@@ -16,8 +16,8 @@ permissions:
 jobs:
   create-pr:
     name: Create draft PR
-    # Only run if the secret scan passed
-    if: github.event.workflow_run.conclusion == 'success'
+    # Only run if the secret scan passed and the run originated from this repo (not a fork)
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
