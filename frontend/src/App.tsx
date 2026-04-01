@@ -6,6 +6,7 @@ import RouletteGamePage from './pages/RouletteGamePage';
 import TicTacToePage from './pages/TicTacToePage';
 import NCAABracketPage from './pages/NCAABracketPage';
 import AccountPage from './pages/AccountPage';
+import CircuitComposerPage from './pages/CircuitComposerPage';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/ttt" element={<TicTacToePage />} />
           <Route path="/ncaa" element={<NCAABracketPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/circuit" element={<CircuitComposerPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>
