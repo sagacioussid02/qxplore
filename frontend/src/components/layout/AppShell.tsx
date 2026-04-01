@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { to: '/coin', label: 'Quantum Coin', icon: '🪙', inDev: false },
   { to: '/roulette', label: 'Roulette', icon: '🎡', inDev: true },
   { to: '/ttt', label: 'Quantum TTT', icon: '⊗', inDev: false },
+  { to: '/circuit', label: 'Circuit Lab', icon: '⊕', inDev: false },
   { to: '/ncaa', label: 'March Madness', icon: '🏀', inDev: false },
 ];
 
