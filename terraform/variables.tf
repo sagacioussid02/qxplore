@@ -1,3 +1,9 @@
+variable "image_tag" {
+  description = "Docker image tag to deploy (git SHA from CI). Changing this triggers App Runner redeployment."
+  type        = string
+  default     = "latest"
+}
+
 variable "project_name" {
   description = "Project name used as a prefix for all AWS resources"
   type        = string

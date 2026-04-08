@@ -52,6 +52,7 @@ jobs:
       TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
       TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
       TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
+      TF_VAR_image_tag:                 ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -130,6 +131,7 @@ jobs:
       TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
       TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
       TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
+      TF_VAR_image_tag:                 ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -281,6 +283,7 @@ jobs:
       TF_VAR_use_custom_domain:         ${{ secrets.USE_CUSTOM_DOMAIN }}
       TF_VAR_root_domain:               ${{ secrets.ROOT_DOMAIN }}
       TF_VAR_zone_domain:               ${{ secrets.ZONE_DOMAIN }}
+      TF_VAR_image_tag:                 ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
