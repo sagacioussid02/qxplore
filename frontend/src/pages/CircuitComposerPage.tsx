@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import { apiClient } from '../api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -146,7 +146,7 @@ export default function CircuitComposerPage() {
         num_qubits: numQubits,
         gates: gates.map(({ type, qubit, step, target }) => ({ type, qubit, step, target })),
       };
-      const res = await axios.post('http://localhost:8000/quantum/circuit', payload);
+      const res = await apiClient.post('/quantum/circuit', payload);
       setResult(res.data);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Circuit run failed';
