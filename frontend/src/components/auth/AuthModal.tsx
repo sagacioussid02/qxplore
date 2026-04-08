@@ -75,7 +75,7 @@ export function AuthModal({ open, onClose, prompt }: Props) {
             )}
             {!prompt && mode === 'signup' && (
               <p className="text-sm text-gray-400 mt-1">
-                Get 1 free simulation with live bracket data.
+                Start with free credits to explore quantum games.
               </p>
             )}
           </div>

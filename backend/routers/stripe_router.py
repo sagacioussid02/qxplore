@@ -26,8 +26,8 @@ async def create_checkout_session(user: dict = Depends(require_user)) -> dict:
     session = client.checkout.sessions.create(params={
         "mode": "payment",
         "line_items": [{"price": settings.stripe_price_id, "quantity": 1}],
-        "success_url": f"{settings.cors_origins[0]}/ncaa?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
-        "cancel_url": f"{settings.cors_origins[0]}/ncaa?payment=cancelled",
+        "success_url": f"{settings.cors_origins[0]}/account?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{settings.cors_origins[0]}/account?payment=cancelled",
         "metadata": {"user_id": user["sub"]},
         "customer_email": user.get("email"),
     })

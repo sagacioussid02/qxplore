@@ -12,7 +12,7 @@ const NAV_LINKS = [
   { to: '/roulette', label: 'Roulette', icon: '🎡', inDev: true },
   { to: '/ttt', label: 'Quantum TTT', icon: '⊗', inDev: false },
   { to: '/circuit', label: 'Circuit Lab', icon: '⊕', inDev: false },
-  { to: '/ncaa', label: 'March Madness', icon: '🏀', inDev: false },
+  { to: '/rsa', label: 'RSA vs Shor', icon: '🔐', inDev: false },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

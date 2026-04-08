@@ -4,7 +4,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
-from .routers import quantum, games, agents, bracket, stripe_router, rsa
+from .routers import quantum, games, agents, stripe_router, rsa
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,7 +45,6 @@ async def log_requests(request: Request, call_next):
 app.include_router(quantum.router)
 app.include_router(games.router)
 app.include_router(agents.router)
-app.include_router(bracket.router)
 app.include_router(stripe_router.router)
 app.include_router(rsa.router)
 

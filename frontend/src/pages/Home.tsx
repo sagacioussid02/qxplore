@@ -79,36 +79,6 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* March Madness banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Link
-          to="/ncaa"
-          className="no-underline block card-quantum p-5 border-l-4 group transition-all duration-300 hover:scale-[1.01]"
-          style={{ borderLeftColor: '#f97316', background: 'rgba(249,115,22,0.06)', borderColor: 'rgba(249,115,22,0.3)' }}
-        >
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">🏀</span>
-                <span className="font-mono font-bold text-orange-400 text-lg">March Madness 2026</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-mono border border-orange-500/30">
-                  Featured
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm">
-                5 AI agents — Claude, GPT-4o, Gemini, Monte Carlo & Quantum — battle it out to predict the bracket.
-              </p>
-            </div>
-            <span className="text-orange-400 font-mono text-sm group-hover:translate-x-1 transition-transform">
-              Fill bracket →
-            </span>
-          </div>
-        </Link>
-      </motion.div>
 
       {/* Games */}
       <section>
