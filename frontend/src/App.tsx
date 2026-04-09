@@ -7,6 +7,7 @@ import TicTacToePage from './pages/TicTacToePage';
 import AccountPage from './pages/AccountPage';
 import CircuitComposerPage from './pages/CircuitComposerPage';
 import RSAPage from './pages/RSAPage';
+import CircuitTTTPage from './pages/CircuitTTTPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/circuit" element={<CircuitComposerPage />} />
           <Route path="/rsa" element={<RSAPage />} />
+          <Route path="/circuit-ttt" element={<CircuitTTTPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

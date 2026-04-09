@@ -185,6 +185,15 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
         for ci in c:
             for marker in board_map[ci].markers:
                 marker.collapsed = True
+        # Remove moves whose both cells are now classically owned so the same
+        # cycle cannot be re-detected on subsequent turns (stale-cycle bug).
+        state.moves = [
+            m for m in state.moves
+            if not (
+                board_map[m.cells[0]].classical_owner is not None
+                and board_map[m.cells[1]].classical_owner is not None
+            )
+        ]
         winner = _check_classical_win(list(board_map.values()))
         if winner:
             state.winner = winner
