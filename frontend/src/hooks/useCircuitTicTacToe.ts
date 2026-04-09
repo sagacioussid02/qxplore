@@ -31,9 +31,15 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
     setSelectedCells([]);
     setLastCollapse(null);
     setSelectedGate('X');
-    const state = await circuitTttApi.newGame(vsAI);
-    setGame(state);
-    setIsLoading(false);
+    try {
+      const state = await circuitTttApi.newGame(vsAI);
+      setGame(state);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      setError(err?.response?.data?.detail ?? 'Failed to start a new game');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const selectGate = useCallback((g: GateType) => {
