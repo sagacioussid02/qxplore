@@ -132,7 +132,7 @@ export default function RSAPage() {
   const [keygenLoading, setKeygenLoading] = useState(false);
 
   // Scene 2: Encrypt/Decrypt
-  const [msgChar, setMsgChar] = useState('A');
+  const [msgInt, setMsgInt] = useState(7);
   const [encrypt, setEncrypt] = useState<EncryptResponse | null>(null);
   const [decrypt, setDecrypt] = useState<DecryptResponse | null>(null);
   const [encLoading, setEncLoading] = useState(false);
@@ -159,6 +159,7 @@ export default function RSAPage() {
     setShor(null);
     setMsgSent(false);
     setEveAnimStep(0);
+    setMsgInt(7);
     try {
       const res = await rsaApi.keygen(p, q);
       setKeygen(res);
@@ -170,8 +171,8 @@ export default function RSAPage() {
   // ── Scene 2 handlers ────────────────────────────────────────────────────────
   async function handleEncryptDecrypt() {
     if (!keygen) return;
-    const mi = msgChar.charCodeAt(0);
-    if (mi >= keygen.n) { alert(`Character code ${mi} must be < n=${keygen.n}. Pick a different character.`); return; }
+    const mi = msgInt;
+    if (mi < 1 || mi >= keygen.n) { alert(`Message must be between 1 and ${keygen.n - 1}.`); return; }
     setEncLoading(true);
     setEncrypt(null);
     setDecrypt(null);
@@ -303,18 +304,22 @@ export default function RSAPage() {
 
               <div className="flex items-center gap-4 mb-4">
                 <Actor name="Alice" color="border-quantum-cyan/50 text-quantum-cyan" emoji="👩" />
-                <div className="flex-1 flex items-center gap-2">
-                  <label className="text-sm text-gray-400 font-mono">Character:</label>
+                <div className="flex-1 flex items-center gap-2 flex-wrap">
+                  <label className="text-sm text-gray-400 font-mono">Message (integer):</label>
                   <input
-                    type="text"
-                    maxLength={1}
-                    value={msgChar}
-                    onChange={e => setMsgChar(e.target.value || 'A')}
-                    className="w-12 text-center bg-quantum-dark border border-quantum-border rounded px-2 py-1 font-mono text-white text-lg"
+                    type="number"
+                    min={1}
+                    max={keygen.n - 1}
+                    value={msgInt}
+                    onChange={e => setMsgInt(Math.max(1, Math.min(keygen.n - 1, parseInt(e.target.value) || 1)))}
+                    className="w-20 text-center bg-quantum-dark border border-quantum-border rounded px-2 py-1 font-mono text-white text-lg"
                   />
-                  <span className="text-xs text-gray-500 font-mono">ASCII = {msgChar.charCodeAt(0)}</span>
-                  {msgChar.charCodeAt(0) >= keygen.n && (
-                    <span className="text-xs text-red-400">⚠ must be &lt; n={keygen.n}</span>
+                  <span className="text-xs text-gray-500 font-mono">
+                    valid range: 1–{keygen.n - 1}
+                    {msgInt >= 32 && msgInt <= 126 ? ` · ASCII "${String.fromCharCode(msgInt)}"` : ''}
+                  </span>
+                  {(msgInt < 1 || msgInt >= keygen.n) && (
+                    <span className="text-xs text-red-400">⚠ must be between 1 and {keygen.n - 1}</span>
                   )}
                 </div>
                 <Actor name="Bob" color="border-green-500/50 text-green-400" emoji="👨" />
@@ -322,7 +327,7 @@ export default function RSAPage() {
 
               <button
                 onClick={handleEncryptDecrypt}
-                disabled={encLoading || msgChar.charCodeAt(0) >= keygen.n}
+                disabled={encLoading || msgInt < 1 || msgInt >= keygen.n}
                 className="btn-cyan mb-5"
               >
                 {encLoading ? 'Sending…' : '🚀 Encrypt & Send'}
