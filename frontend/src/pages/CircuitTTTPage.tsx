@@ -44,14 +44,13 @@ function GateButton({
 }
 
 function CellTile({
-  cell, isSelected, isTouched, isMeasured, onClick, touched,
+  cell, isSelected, isTouched, isMeasured, onClick,
 }: {
   cell: CircuitCell;
   isSelected: boolean;
   isTouched: boolean;
   isMeasured: boolean;
   onClick: () => void;
-  touched: Set<number>;
 }) {
   const info = cell.gate ? GATE_INFO[cell.gate] : null;
   const isEntangled = cell.entangled_with !== null;
