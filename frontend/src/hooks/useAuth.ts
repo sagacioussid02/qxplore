@@ -32,6 +32,24 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
+    // Handle PKCE OAuth callback: exchange ?code= for a session, then clean up the URL.
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code) {
+      supabase.auth
+        .exchangeCodeForSession(window.location.href)
+        .then(({ data, error }) => {
+          if (!error && data.session) {
+            setState(s => ({ ...s, session: data.session, user: data.session.user, loading: false }));
+            fetchCredits(data.session);
+          } else {
+            setState(s => ({ ...s, loading: false }));
+          }
+          // Remove ?code= from the URL so refresh/back-button don't re-use the one-time code.
+          window.history.replaceState({}, '', window.location.pathname);
+        });
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setState(s => ({ ...s, session, user: session?.user ?? null, loading: false }));
       if (session) fetchCredits(session);
