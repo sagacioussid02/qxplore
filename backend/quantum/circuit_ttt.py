@@ -14,7 +14,6 @@ Mechanics:
     → classical TTT win check on resulting board
 """
 
-import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit.qasm2 import dumps as qasm2_dumps
 from .simulator import get_simulator
