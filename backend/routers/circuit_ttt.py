@@ -6,7 +6,7 @@ from ..models.circuit_ttt_models import (
     CircuitTTTGameState, CircuitCell, CircuitMove,
     CircuitMoveRequest, CircuitMoveResponse, CircuitCollapseResponse,
 )
-from ..quantum.circuit_ttt import build_and_measure, is_board_full
+from ..quantum.circuit_ttt import build_and_measure
 
 router = APIRouter(prefix="/circuit-ttt", tags=["circuit-ttt"])
 log = logging.getLogger(__name__)
