@@ -177,7 +177,7 @@ async def measure_game(game_id: str):
     winner = _check_win(state.board)
     if winner:
         state.winner = winner
-        state.phase = "game_over"
+    state.phase = "game_over"
 
     _games[game_id] = state
     return CircuitCollapseResponse(
