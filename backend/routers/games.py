@@ -58,6 +58,19 @@ def _detect_cycle(moves: list[EntangledMove]) -> list[int] | None:
     return None
 
 
+def _has_valid_move(board_map: dict[int, TTTCell], moves: list[EntangledMove], player: str) -> bool:
+    """Return True if `player` can still make at least one legal 2-cell move."""
+    free = [i for i in range(9) if board_map[i].classical_owner is None]
+    if len(free) < 2:
+        return False
+    existing_pairs = {frozenset(m.cells) for m in moves if m.player == player}
+    for i, a in enumerate(free):
+        for b in free[i + 1:]:
+            if frozenset({a, b}) not in existing_pairs:
+                return True
+    return False
+
+
 def _check_classical_win(board: list[TTTCell]) -> str | None:
     """Check tic-tac-toe win on classically-owned cells."""
     wins = [
@@ -209,10 +222,14 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
         # Always clear cycle indicator and advance turn after collapse
         state.detected_cycle = None
         if not won:
-            state.phase = "placing"
             next_player: Literal["X", "O"] = "O" if req.player == "X" else "X"
-            state.current_player = next_player
-            state.turn_number += 1
+            if not _has_valid_move(board_map, state.moves, next_player):
+                state.winner = "draw"
+                state.phase = "game_over"
+            else:
+                state.phase = "placing"
+                state.current_player = next_player
+                state.turn_number += 1
     else:
         # Normal move: switch player and increment turn
         next_player = "O" if req.player == "X" else "X"
@@ -275,12 +292,20 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
                     won = _apply_collapse(ai_cycle)
                     state.detected_cycle = None
                     if not won:
-                        state.phase = "placing"
+                        if not _has_valid_move(board_map, state.moves, "X"):
+                            state.winner = "draw"
+                            state.phase = "game_over"
+                        else:
+                            state.phase = "placing"
+                            state.current_player = "X"
+                            state.turn_number += 1
+                else:
+                    if not _has_valid_move(board_map, state.moves, "X"):
+                        state.winner = "draw"
+                        state.phase = "game_over"
+                    else:
                         state.current_player = "X"
                         state.turn_number += 1
-                else:
-                    state.current_player = "X"
-                    state.turn_number += 1
             else:
                 # AI returned invalid cells (out-of-range, duplicate pair, etc.)
                 # — hand turn back to X so the game is never stuck on O forever
