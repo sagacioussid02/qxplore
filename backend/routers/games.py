@@ -174,6 +174,30 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
     collapse_triggered = False
     ai_move = None
 
+    def _deadlock_resolve(next_p: Literal["X", "O"]) -> None:
+        """Force-collapse ALL remaining quantum moves, then continue or end as draw."""
+        nonlocal collapse_triggered
+        all_cells = list({c for m in state.moves for c in m.cells})
+        if all_cells:
+            collapse_triggered = True
+            won = _apply_collapse(all_cells)
+            if won:
+                return
+        # After collapse, check which player (if any) can still move
+        other_p: Literal["X", "O"] = "X" if next_p == "O" else "O"
+        if _has_valid_move(board_map, state.moves, next_p):
+            state.phase = "placing"
+            state.current_player = next_p
+            state.turn_number += 1
+        elif _has_valid_move(board_map, state.moves, other_p):
+            state.phase = "placing"
+            state.current_player = other_p
+            state.turn_number += 1
+        else:
+            # No valid moves for either player — all cells explored
+            state.winner = "draw"
+            state.phase = "game_over"
+
     def _apply_collapse(c: list[int]) -> bool:
         """Run Qiskit collapse for a cycle. Returns True if win found."""
         result = collapse_cycle(c, state.moves)
@@ -224,8 +248,7 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
         if not won:
             next_player: Literal["X", "O"] = "O" if req.player == "X" else "X"
             if not _has_valid_move(board_map, state.moves, next_player):
-                state.winner = "draw"
-                state.phase = "game_over"
+                _deadlock_resolve(next_player)
             else:
                 state.phase = "placing"
                 state.current_player = next_player
@@ -293,16 +316,14 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
                     state.detected_cycle = None
                     if not won:
                         if not _has_valid_move(board_map, state.moves, "X"):
-                            state.winner = "draw"
-                            state.phase = "game_over"
+                            _deadlock_resolve("X")
                         else:
                             state.phase = "placing"
                             state.current_player = "X"
                             state.turn_number += 1
                 else:
                     if not _has_valid_move(board_map, state.moves, "X"):
-                        state.winner = "draw"
-                        state.phase = "game_over"
+                        _deadlock_resolve("X")
                     else:
                         state.current_player = "X"
                         state.turn_number += 1
