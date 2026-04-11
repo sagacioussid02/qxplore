@@ -20,7 +20,15 @@ WIN_LINES = [
 ]
 
 
-def _check_win(board: list[CircuitCell]) -> str | None:
+def _check_win(board: list[CircuitCell], terminal: bool = False) -> str | None:
+    """Return the winning player string, 'draw', or None.
+
+    Args:
+        board: The current board state with classical owners after measurement.
+        terminal: When True (e.g. after measurement), treat any non-win result
+            as a draw because measurement always ends the game.  When False
+            (mid-game checks), returns None to signal the game is still open.
+    """
     owners = {cell.index: cell.classical_owner for cell in board}
     for line in WIN_LINES:
         vals = [owners.get(i) for i in line]
@@ -28,7 +36,7 @@ def _check_win(board: list[CircuitCell]) -> str | None:
             return vals[0]
     if all(owners.get(i) for i in range(9)):
         return "draw"
-    return None
+    return "draw" if terminal else None
 
 
 def _cells_touched(moves: list[CircuitMove]) -> set[int]:
@@ -174,8 +182,7 @@ async def measure_game(game_id: str):
     state.measured = True
     state.circuit_diagram = diagram
 
-    winner = _check_win(state.board)
-    state.winner = winner if winner is not None else "draw"
+    state.winner = _check_win(state.board, terminal=True)
     state.phase = "game_over"
 
     _games[game_id] = state
