@@ -72,7 +72,7 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
     setError(null);
     try {
       const response = await circuitTttApi.makeMove(
-        game.game_id, 'X', selectedGate, selectedCells,
+        game.game_id, game.current_player, selectedGate, selectedCells,
       );
       setGame(response.game_state);
       setSelectedCells([]);
