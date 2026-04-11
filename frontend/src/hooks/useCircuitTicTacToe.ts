@@ -58,7 +58,7 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
     setSelectedCells(prev => {
       const needed = selectedGate === 'CNOT' ? 2 : 1;
       if (prev.includes(idx)) return prev.filter(c => c !== idx);
-      if (prev.length >= needed) return needed === 1 ? [idx] : [prev[1], idx];
+      if (prev.length >= needed) return needed === 1 ? [idx] : [prev[0], idx];
       return [...prev, idx];
     });
   }, [game, selectedGate]);
