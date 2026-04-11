@@ -9,6 +9,7 @@ type CircuitTTTHook = {
   isLoading: boolean;
   error: string | null;
   lastCollapse: CircuitCollapseResponse | null;
+  isHumanTurn: boolean;
   initGame: (vsAI?: boolean) => Promise<void>;
   selectGate: (g: GateType) => void;
   toggleCell: (idx: number) => void;
@@ -42,6 +43,10 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
     }
   }, []);
 
+  const isHumanTurn = game
+    ? (game.is_vs_ai ? game.current_player !== game.ai_player : true)
+    : false;
+
   const selectGate = useCallback((g: GateType) => {
     setSelectedGate(g);
     setSelectedCells([]);
@@ -49,7 +54,7 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
 
   const toggleCell = useCallback((idx: number) => {
     if (!game || game.phase === 'game_over' || game.measured) return;
-    if (game.current_player !== 'X') return;
+    if (!isHumanTurn) return;
 
     // Prevent selecting already-touched cells
     const touched = new Set(game.moves.flatMap(m => m.cells));
@@ -61,7 +66,7 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
       if (prev.length >= needed) return needed === 1 ? [idx] : [prev[0], idx];
       return [...prev, idx];
     });
-  }, [game, selectedGate]);
+  }, [game, selectedGate, isHumanTurn]);
 
   const submitMove = useCallback(async () => {
     if (!game) return;
@@ -114,6 +119,7 @@ export function useCircuitTicTacToe(): CircuitTTTHook {
     isLoading,
     error,
     lastCollapse,
+    isHumanTurn,
     initGame,
     selectGate,
     toggleCell,
