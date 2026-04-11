@@ -256,8 +256,11 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
     else:
         # Normal move: switch player and increment turn
         next_player = "O" if req.player == "X" else "X"
-        state.current_player = next_player
-        state.turn_number += 1
+        if not _has_valid_move(board_map, state.moves, next_player):
+            _deadlock_resolve(next_player)
+        else:
+            state.current_player = next_player
+            state.turn_number += 1
 
     # AI move if it's now AI's turn and game is still going
     if (
