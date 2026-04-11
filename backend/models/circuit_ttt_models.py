@@ -9,7 +9,7 @@ class CircuitCell(BaseModel):
     index: int
     owner: Optional[Literal["X", "O"]] = None       # who played on this cell
     gate: Optional[GateType] = None                  # gate applied to this qubit
-    entangled_with: Optional[int] = None             # CNOT target → index of control cell
+    entangled_with: Optional[int] = None             # paired cell index for CNOT moves
     classical_value: Optional[int] = None            # 0 or 1, set after measurement
     classical_owner: Optional[Literal["X", "O"]] = None  # set after measurement
 
