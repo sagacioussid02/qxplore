@@ -150,7 +150,7 @@ function WinLine({ winner }: { winner: string }) {
 
 export default function CircuitTTTPage() {
   const {
-    game, selectedCells, selectedGate, isLoading, error, lastCollapse,
+    game, selectedCells, selectedGate, isLoading, error, lastCollapse, isHumanTurn,
     initGame, selectGate, toggleCell, submitMove, triggerMeasure, resetGame,
   } = useCircuitTicTacToe();
 
@@ -225,7 +225,9 @@ export default function CircuitTTTPage() {
                       background: game.current_player === 'X' ? 'rgba(0,255,255,0.08)' : 'rgba(139,92,246,0.08)',
                     }}
                   >
-                    {game.current_player === 'X' ? 'Your turn' : "AI's turn"}
+                    {('is_vs_ai' in game && game.is_vs_ai)
+                      ? (('ai_player' in game && game.current_player === game.ai_player) ? "AI's turn" : 'Your turn')
+                      : `Player ${game.current_player}'s turn`}
                   </span>
                 </>
               )}
@@ -242,7 +244,7 @@ export default function CircuitTTTPage() {
           {game.winner && <WinLine winner={game.winner} />}
 
           {/* Gate selector */}
-          {!game.measured && game.phase !== 'game_over' && game.current_player === 'X' && (
+          {!game.measured && game.phase !== 'game_over' && isHumanTurn && (
             <div className="space-y-2">
               <p className="text-xs font-mono text-gray-500 uppercase tracking-wider">Choose gate</p>
               <div className="flex gap-2">
@@ -276,7 +278,7 @@ export default function CircuitTTTPage() {
 
           {/* Submit / Measure row */}
           <div className="flex gap-3 flex-wrap">
-            {!game.measured && game.phase !== 'game_over' && game.current_player === 'X' && (
+            {!game.measured && game.phase !== 'game_over' && isHumanTurn && (
               <button
                 onClick={submitMove}
                 disabled={!readyToSubmit || isLoading}

@@ -183,7 +183,7 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
             won = _apply_collapse(all_cells)
             if won:
                 return
-        # After collapse, check which player can still move
+        # After collapse, check which player (if any) can still move
         other_p: Literal["X", "O"] = "X" if next_p == "O" else "O"
         if _has_valid_move(board_map, state.moves, next_p):
             state.phase = "placing"
@@ -194,6 +194,7 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
             state.current_player = other_p
             state.turn_number += 1
         else:
+            # No valid moves for either player — all cells explored
             state.winner = "draw"
             state.phase = "game_over"
 
@@ -255,8 +256,11 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
     else:
         # Normal move: switch player and increment turn
         next_player = "O" if req.player == "X" else "X"
-        state.current_player = next_player
-        state.turn_number += 1
+        if not _has_valid_move(board_map, state.moves, next_player):
+            _deadlock_resolve(next_player)
+        else:
+            state.current_player = next_player
+            state.turn_number += 1
 
     # AI move if it's now AI's turn and game is still going
     if (
