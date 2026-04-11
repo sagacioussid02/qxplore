@@ -267,7 +267,6 @@ export default function CircuitTTTPage() {
                 isTouched={touched.has(cell.index)}
                 isMeasured={game.measured}
                 onClick={() => toggleCell(cell.index)}
-                touched={touched}
               />
             ))}
           </div>
