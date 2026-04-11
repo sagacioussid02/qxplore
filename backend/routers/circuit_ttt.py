@@ -39,7 +39,7 @@ def _cells_touched(moves: list[CircuitMove]) -> set[int]:
 
 
 def _ai_pick(state: CircuitTTTGameState) -> CircuitMoveRequest | None:
-    """Simple AI: prefers X-gate on untouched cells, falls back to H."""
+    """Simple AI: prefers CNOT on two untouched cells, falls back to X."""
     touched = _cells_touched(state.moves)
     free = [i for i in range(9) if i not in touched]
     if not free:
