@@ -74,9 +74,9 @@ function CellTile({
   return (
     <motion.button
       onClick={onClick}
-      disabled={isTouched && !isSelected}
-      whileHover={!isTouched ? { scale: 1.04 } : {}}
-      whileTap={!isTouched ? { scale: 0.97 } : {}}
+      disabled={isMeasured || (isTouched && !isSelected)}
+      whileHover={!isMeasured && !isTouched ? { scale: 1.04 } : {}}
+      whileTap={!isMeasured && !isTouched ? { scale: 0.97 } : {}}
       className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 border transition-all duration-200 relative overflow-hidden"
       style={{ background: bg, borderColor: border }}
     >
