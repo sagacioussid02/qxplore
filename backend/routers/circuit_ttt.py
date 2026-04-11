@@ -175,8 +175,7 @@ async def measure_game(game_id: str):
     state.circuit_diagram = diagram
 
     winner = _check_win(state.board)
-    if winner:
-        state.winner = winner
+    state.winner = winner if winner is not None else "draw"
     state.phase = "game_over"
 
     _games[game_id] = state
