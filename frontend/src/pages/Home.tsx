@@ -43,6 +43,19 @@ const GAMES = [
     cost: 45,
     inDev: false,
   },
+  {
+    to: '/circuit-ttt',
+    icon: '🔬',
+    title: 'Circuit TTT',
+    subtitle: 'Gates + Measurement',
+    description: 'Apply X, H, and CNOT gates to cells. Measure all qubits at once to collapse the board — then see who wins.',
+    color: '#f59e0b',
+    bg: 'rgba(245,158,11,0.05)',
+    border: 'rgba(245,158,11,0.2)',
+    concept: 'X | H | CNOT → Measure → Win',
+    cost: 0,
+    inDev: false,
+  },
 ];
 
 const CONCEPTS = [
