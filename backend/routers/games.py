@@ -58,6 +58,19 @@ def _detect_cycle(moves: list[EntangledMove]) -> list[int] | None:
     return None
 
 
+def _has_valid_move(board_map: dict[int, TTTCell], moves: list[EntangledMove], player: str) -> bool:
+    """Return True if `player` can still make at least one legal 2-cell move."""
+    free = [i for i in range(9) if board_map[i].classical_owner is None]
+    if len(free) < 2:
+        return False
+    existing_pairs = {frozenset(m.cells) for m in moves if m.player == player}
+    for i, a in enumerate(free):
+        for b in free[i + 1:]:
+            if frozenset({a, b}) not in existing_pairs:
+                return True
+    return False
+
+
 def _check_classical_win(board: list[TTTCell]) -> str | None:
     """Check tic-tac-toe win on classically-owned cells."""
     wins = [
@@ -161,6 +174,29 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
     collapse_triggered = False
     ai_move = None
 
+    def _deadlock_resolve(next_p: Literal["X", "O"]) -> None:
+        """Force-collapse ALL remaining quantum moves, then continue or end as draw."""
+        nonlocal collapse_triggered
+        all_cells = list({c for m in state.moves for c in m.cells})
+        if all_cells:
+            collapse_triggered = True
+            won = _apply_collapse(all_cells)
+            if won:
+                return
+        # After collapse, check which player can still move
+        other_p: Literal["X", "O"] = "X" if next_p == "O" else "O"
+        if _has_valid_move(board_map, state.moves, next_p):
+            state.phase = "placing"
+            state.current_player = next_p
+            state.turn_number += 1
+        elif _has_valid_move(board_map, state.moves, other_p):
+            state.phase = "placing"
+            state.current_player = other_p
+            state.turn_number += 1
+        else:
+            state.winner = "draw"
+            state.phase = "game_over"
+
     def _apply_collapse(c: list[int]) -> bool:
         """Run Qiskit collapse for a cycle. Returns True if win found."""
         result = collapse_cycle(c, state.moves)
@@ -209,10 +245,13 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
         # Always clear cycle indicator and advance turn after collapse
         state.detected_cycle = None
         if not won:
-            state.phase = "placing"
             next_player: Literal["X", "O"] = "O" if req.player == "X" else "X"
-            state.current_player = next_player
-            state.turn_number += 1
+            if not _has_valid_move(board_map, state.moves, next_player):
+                _deadlock_resolve(next_player)
+            else:
+                state.phase = "placing"
+                state.current_player = next_player
+                state.turn_number += 1
     else:
         # Normal move: switch player and increment turn
         next_player = "O" if req.player == "X" else "X"
@@ -275,19 +314,32 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
                     won = _apply_collapse(ai_cycle)
                     state.detected_cycle = None
                     if not won:
-                        state.phase = "placing"
+                        if not _has_valid_move(board_map, state.moves, "X"):
+                            _deadlock_resolve("X")
+                        else:
+                            state.phase = "placing"
+                            state.current_player = "X"
+                            state.turn_number += 1
+                else:
+                    if not _has_valid_move(board_map, state.moves, "X"):
+                        _deadlock_resolve("X")
+                    else:
                         state.current_player = "X"
                         state.turn_number += 1
-                else:
-                    state.current_player = "X"
-                    state.turn_number += 1
             else:
                 # AI returned invalid cells (out-of-range, duplicate pair, etc.)
-                # — hand turn back to X so the game is never stuck on O forever
-                state.current_player = "X"
+                # — before handing turn back to X, resolve deadlock if X has no move
+                if not _has_valid_move(board_map, state.moves, "X"):
+                    _deadlock_resolve("X")
+                else:
+                    state.current_player = "X"
         except Exception:
-            # AI failed (API error, parse error, etc.) — hand turn back to human
-            state.current_player = "X"
+            # AI failed (API error, parse error, etc.) — before handing turn back
+            # to the human, resolve deadlock if X has no move
+            if not _has_valid_move(board_map, state.moves, "X"):
+                _deadlock_resolve("X")
+            else:
+                state.current_player = "X"
 
     state.board = list(board_map.values())
     _games[game_id] = state
