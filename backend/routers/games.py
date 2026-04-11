@@ -182,6 +182,7 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
             collapse_triggered = True
             won = _apply_collapse(all_cells)
             if won:
+                state.turn_number += 1
                 return
         # After collapse, check which player (if any) can still move
         other_p: Literal["X", "O"] = "X" if next_p == "O" else "O"
