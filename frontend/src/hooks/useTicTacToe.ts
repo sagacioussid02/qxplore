@@ -83,12 +83,6 @@ export function useTicTacToe(): TicTacToeHook {
     const cell = game.board[idx];
     if (cell.classical_owner) return; // classically taken
 
-    // Block cells that already have an uncollapsed marker from this player
-    const hasPlayerMarker = cell.markers.some(
-      (m) => m.player === 'X' && !m.collapsed
-    );
-    if (hasPlayerMarker) return;
-
     setSelectedCells((prev) => {
       if (prev.includes(idx)) return prev.filter((c) => c !== idx);
       if (prev.length >= 2) return [prev[1], idx];
