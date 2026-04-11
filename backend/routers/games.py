@@ -328,11 +328,18 @@ async def make_ttt_move(game_id: str, req: MoveRequest):
                         state.turn_number += 1
             else:
                 # AI returned invalid cells (out-of-range, duplicate pair, etc.)
-                # — hand turn back to X so the game is never stuck on O forever
-                state.current_player = "X"
+                # — before handing turn back to X, resolve deadlock if X has no move
+                if not _has_valid_move(board_map, state.moves, "X"):
+                    _deadlock_resolve("X")
+                else:
+                    state.current_player = "X"
         except Exception:
-            # AI failed (API error, parse error, etc.) — hand turn back to human
-            state.current_player = "X"
+            # AI failed (API error, parse error, etc.) — before handing turn back
+            # to the human, resolve deadlock if X has no move
+            if not _has_valid_move(board_map, state.moves, "X"):
+                _deadlock_resolve("X")
+            else:
+                state.current_player = "X"
 
     state.board = list(board_map.values())
     _games[game_id] = state
