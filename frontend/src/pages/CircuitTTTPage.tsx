@@ -199,10 +199,13 @@ export default function CircuitTTTPage() {
               vs AI
             </button>
             <button
-              onClick={() => initGame(false)}
-              className="px-6 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-mono text-sm text-white transition-colors"
+              type="button"
+              disabled
+              aria-disabled="true"
+              title="Local 2-player mode is not available yet"
+              className="px-6 py-2.5 bg-gray-800 rounded-lg font-mono text-sm text-gray-500 cursor-not-allowed opacity-70"
             >
-              2 Players
+              2 Players (Coming Soon)
             </button>
           </div>
         </div>
