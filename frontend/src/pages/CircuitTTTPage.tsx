@@ -225,7 +225,9 @@ export default function CircuitTTTPage() {
                       background: game.current_player === 'X' ? 'rgba(0,255,255,0.08)' : 'rgba(139,92,246,0.08)',
                     }}
                   >
-                    {game.current_player === 'X' ? 'Your turn' : "AI's turn"}
+                    {('is_vs_ai' in game && game.is_vs_ai)
+                      ? (('ai_player' in game && game.current_player === game.ai_player) ? "AI's turn" : 'Your turn')
+                      : `Player ${game.current_player}'s turn`}
                   </span>
                 </>
               )}
