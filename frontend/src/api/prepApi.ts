@@ -43,8 +43,10 @@ export async function submitChallenge(
   return data;
 }
 
-export async function fetchLeaderboard(slug: string): Promise<LeaderboardEntry[]> {
-  const { data } = await apiClient.get(`/prep/leaderboard/${slug}`);
+export async function fetchLeaderboard(slug: string, token: string): Promise<LeaderboardEntry[]> {
+  const { data } = await apiClient.get(`/prep/leaderboard/${slug}`, {
+    headers: authHeaders(token),
+  });
   return data;
 }
 

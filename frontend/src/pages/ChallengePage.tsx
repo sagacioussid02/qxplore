@@ -74,9 +74,11 @@ export default function ChallengePage() {
 
   const {
     challenge, leaderboard, loading, error,
-    elapsedSeconds, timerRunning, startTimer,
+    canViewLeaderboard,
+    elapsedSeconds, timerRunning, startTimer, resetTimer,
     result, submitting, submitError, submit, resetResult,
   } = useChallenge(slug ?? '', accessToken);
+  const MAX_BACKEND_QUBITS = 4;
 
   // ── Composer state ────────────────────────────────────────────────────────
   const [numQubits, setNumQubits] = useState(2);
@@ -129,6 +131,7 @@ export default function ChallengePage() {
   const clearComposer = () => {
     setGates([]);
     setCnotPending(null);
+    resetTimer();
     resetResult();
   };
 
@@ -223,10 +226,17 @@ export default function ChallengePage() {
           )}
 
           {/* Leaderboard */}
-          <div className="card-quantum p-4">
-            <p className="text-xs font-mono text-gray-400 mb-3">Top Scores</p>
-            <LeaderboardTable entries={leaderboard} currentUserId={user?.id} />
-          </div>
+          {canViewLeaderboard ? (
+            <div className="card-quantum p-4">
+              <p className="text-xs font-mono text-gray-400 mb-3">Top Scores</p>
+              <LeaderboardTable entries={leaderboard} currentUserId={user?.id} />
+            </div>
+          ) : (
+            <div className="card-quantum p-4">
+              <p className="text-xs font-mono text-gray-400 mb-2">Top Scores</p>
+              <p className="text-xs font-mono text-gray-500">Leaderboard is available for Prep subscribers.</p>
+            </div>
+          )}
         </div>
 
         {/* ── Right panel: composer + submit ── */}
@@ -268,7 +278,7 @@ export default function ChallengePage() {
           {/* Qubit count */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500 font-mono">Qubits:</span>
-            {Array.from({ length: challenge.constraints.max_qubits }, (_, i) => i + 1).map(n => (
+            {Array.from({ length: Math.min(challenge.constraints.max_qubits, MAX_BACKEND_QUBITS) }, (_, i) => i + 1).map(n => (
               <button key={n}
                 onClick={() => { setNumQubits(n); setGates([]); setCnotPending(null); }}
                 className={`w-8 h-8 rounded-lg font-mono text-sm font-bold transition-all ${
@@ -348,7 +358,9 @@ export default function ChallengePage() {
                       const occupied = !!(gateHere || cnotTarget);
 
                       return (
-                        <div key={`${q}-${s}`}
+                        <button key={`${q}-${s}`}
+                          type="button"
+                          aria-label={`Qubit ${q}, step ${s + 1}`}
                           className="absolute flex items-center justify-center cursor-pointer group"
                           style={{ left: s * CELL, top: q * CELL, width: CELL, height: CELL }}
                           onClick={() => handleCellClick(q, s)}>
@@ -360,7 +372,7 @@ export default function ChallengePage() {
                           )}
                           {gateHere && <GateSymbol gate={gateHere} />}
                           {cnotTarget && <CnotTarget />}
-                        </div>
+                        </button>
                       );
                     })
                   )}

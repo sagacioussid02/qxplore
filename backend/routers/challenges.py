@@ -140,7 +140,7 @@ async def _upsert_leaderboard(user_id: str, challenge_id: str, score: int, gate_
 
 
 async def _get_challenge_id(slug: str, settings) -> str | None:
-    """Look up challenges table uuid by slug."""
+    """Look up challenges table uuid by slug, inserting from JSON if missing."""
     if not settings.supabase_url:
         return slug  # local dev fallback
     async with httpx.AsyncClient() as client:
@@ -149,8 +149,40 @@ async def _get_challenge_id(slug: str, settings) -> str | None:
             headers=_supabase_headers(),
             params={"slug": f"eq.{slug}", "select": "id"},
         )
-    rows = resp.json() if resp.status_code == 200 else []
-    return rows[0]["id"] if rows else None
+        rows = resp.json() if resp.status_code == 200 else []
+        if rows:
+            return rows[0]["id"]
+
+        challenge = _get_challenge(slug)
+        insert_payload = {
+            "slug": challenge["slug"],
+            "title": challenge["title"],
+            "category": challenge["category"],
+            "difficulty": challenge["difficulty"],
+            "description": challenge["description"],
+            "hints": challenge.get("hints", []),
+            "constraints": challenge["constraints"],
+            "expected_sv": challenge.get("expected_sv"),
+            "optimal_gates": challenge.get("optimal_gates"),
+            "is_active": True,
+        }
+        insert_resp = await client.post(
+            f"{settings.supabase_url}/rest/v1/challenges",
+            headers={**_supabase_headers(), "Prefer": "resolution=ignore-duplicates,return=representation"},
+            json=insert_payload,
+        )
+        if insert_resp.status_code in (200, 201):
+            inserted = insert_resp.json()
+            if inserted:
+                return inserted[0]["id"]
+
+        retry = await client.get(
+            f"{settings.supabase_url}/rest/v1/challenges",
+            headers=_supabase_headers(),
+            params={"slug": f"eq.{slug}", "select": "id"},
+        )
+    retry_rows = retry.json() if retry.status_code == 200 else []
+    return retry_rows[0]["id"] if retry_rows else None
 
 
 # ── endpoints ────────────────────────────────────────────────────────────────
@@ -219,12 +251,44 @@ async def submit_challenge(
                 detail="Free tier limit: 3 submissions/month. Upgrade to Prep for unlimited.",
             )
 
+    constraints = challenge.get("constraints", {})
+    max_qubits = int(constraints.get("max_qubits", 4))
+    max_gates = int(constraints.get("max_gates", 64))
+    time_limit_s = int(constraints.get("time_limit_seconds", 300))
+
+    if body.time_taken_s < 0:
+        raise HTTPException(status_code=400, detail="time_taken_s must be non-negative")
+    if body.time_taken_s > time_limit_s:
+        raise HTTPException(status_code=400, detail=f"Time limit exceeded ({time_limit_s}s)")
+
     gates_dicts = [g.model_dump() for g in body.gates]
+    if len(gates_dicts) > max_gates:
+        raise HTTPException(status_code=400, detail=f"Max gates exceeded ({max_gates})")
+
+    for g in gates_dicts:
+        qubit = int(g.get("qubit", 0))
+        if qubit < 0 or qubit >= max_qubits:
+            raise HTTPException(status_code=400, detail=f"Invalid qubit index {qubit}; max is {max_qubits - 1}")
+        if str(g.get("type", "")).upper() == "CNOT":
+            target = g.get("target")
+            if target is None:
+                raise HTTPException(status_code=400, detail="CNOT requires target qubit")
+            target_q = int(target)
+            if target_q < 0 or target_q >= max_qubits:
+                raise HTTPException(status_code=400, detail=f"Invalid CNOT target {target_q}; max is {max_qubits - 1}")
+            if target_q == qubit:
+                raise HTTPException(status_code=400, detail="CNOT target must differ from control qubit")
+
+    expected_sv = challenge.get("expected_sv")
+    if expected_sv is None and challenge.get("category") != "optimization":
+        raise HTTPException(status_code=500, detail="Challenge is missing expected statevector")
+
     result = run_and_score(
         gates=gates_dicts,
-        expected_sv=challenge["expected_sv"],
+        expected_sv=expected_sv,
         optimal_gates=challenge.get("optimal_gates", len(gates_dicts)),
         time_taken_s=body.time_taken_s,
+        max_qubits=max_qubits,
     )
     result["time_taken_s"] = body.time_taken_s
 
@@ -242,8 +306,11 @@ async def submit_challenge(
 
 
 @router.get("/leaderboard/{slug}", response_model=list[LeaderboardEntry])
-async def get_challenge_leaderboard(slug: str):
+async def get_challenge_leaderboard(slug: str, user: dict = Depends(require_user)):
     settings = get_settings()
+    tier = await _get_user_tier(user["sub"], settings)
+    if tier == "free":
+        raise HTTPException(status_code=403, detail="Leaderboard is available for Prep subscribers")
     challenge_id = await _get_challenge_id(slug, settings)
     if not challenge_id or not settings.supabase_url:
         return []

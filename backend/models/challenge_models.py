@@ -23,7 +23,7 @@ class Challenge(BaseModel):
     description: str
     hints: list[str] = []
     constraints: ChallengeConstraints
-    expected_sv: list[list[float]] | None  # [[re, im], ...]; None for optimization
+    expected_sv: list[list[float]] | None = None  # [[re, im], ...]; None for optimization
     optimal_gates: int | None = None
     is_active: bool = True
 

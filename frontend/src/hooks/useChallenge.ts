@@ -10,6 +10,7 @@ export function useChallengeList(category?: string, difficulty?: string) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setError(null);
     setLoading(true);
     fetchChallenges(category, difficulty)
       .then(setChallenges)
@@ -36,23 +37,44 @@ export function useChallenge(slug: string, token?: string | null) {
   const [result, setResult] = useState<ScoringResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [canViewLeaderboard, setCanViewLeaderboard] = useState(false);
 
   useEffect(() => {
+    setError(null);
+    setResult(null);
     if (!slug) {
       setChallenge(null);
       setLeaderboard([]);
+      setCanViewLeaderboard(false);
       setError('Missing challenge identifier');
       setLoading(false);
       return;
     }
-    setError(null);
     setLoading(true);
-    Promise.all([
-      fetchChallenge(slug, token ?? undefined),
-      fetchLeaderboard(slug),
-    ])
-      .then(([ch, lb]) => { setChallenge(ch); setLeaderboard(lb); })
-      .catch(e => setError(e.message))
+
+    fetchChallenge(slug, token ?? undefined)
+      .then(async ch => {
+        setChallenge(ch);
+        if (!token) {
+          setLeaderboard([]);
+          setCanViewLeaderboard(false);
+          return;
+        }
+        try {
+          const lb = await fetchLeaderboard(slug, token);
+          setLeaderboard(lb);
+          setCanViewLeaderboard(true);
+        } catch {
+          setLeaderboard([]);
+          setCanViewLeaderboard(false);
+        }
+      })
+      .catch(e => {
+        setChallenge(null);
+        setLeaderboard([]);
+        setCanViewLeaderboard(false);
+        setError(e.message);
+      })
       .finally(() => setLoading(false));
   }, [slug, token]);
 
@@ -71,6 +93,12 @@ export function useChallenge(slug: string, token?: string | null) {
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
+  const resetTimer = useCallback(() => {
+    stopTimer();
+    startTimeRef.current = null;
+    setElapsedSeconds(0);
+  }, [stopTimer]);
+
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
   const submit = useCallback(async (gates: GateInstruction[]) => {
@@ -83,7 +111,7 @@ export function useChallenge(slug: string, token?: string | null) {
       setResult(res);
       // refresh leaderboard after pass
       if (res.passed) {
-        fetchLeaderboard(slug).then(setLeaderboard).catch(() => null);
+        fetchLeaderboard(slug, token).then(setLeaderboard).catch(() => null);
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Submission failed';
@@ -97,7 +125,8 @@ export function useChallenge(slug: string, token?: string | null) {
 
   return {
     challenge, leaderboard, loading, error,
-    elapsedSeconds, timerRunning, startTimer, stopTimer,
+    canViewLeaderboard,
+    elapsedSeconds, timerRunning, startTimer, stopTimer, resetTimer,
     result, submitting, submitError, submit, resetResult,
   };
 }

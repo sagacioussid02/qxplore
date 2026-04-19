@@ -8,7 +8,7 @@ from .simulator import get_simulator
 
 def run_and_score(
     gates: list[dict],
-    expected_sv: list[list[float]],
+    expected_sv: list[list[float]] | None,
     optimal_gates: int,
     time_taken_s: int,
     max_qubits: int = 4,
@@ -17,7 +17,7 @@ def run_and_score(
     Build and run a circuit from gate instructions, then score it.
 
     Returns a dict matching ScoringResult fields.
-    expected_sv: list of [re, im] pairs (length = 2^n_qubits).
+    expected_sv: list of [re, im] pairs (length = 2^n_qubits), or None for optimization challenges.
     """
     sim = get_simulator()
 
@@ -33,15 +33,18 @@ def run_and_score(
     data = sim.run(tqc, shots=1).result().data(0)
     sv = np.array(data["sv"])
 
-    exp = np.array([complex(pair[0], pair[1]) for pair in expected_sv])
-    exp = exp / np.linalg.norm(exp)  # normalise just in case
-
-    fidelity = float(abs(np.dot(sv.conj(), exp)) ** 2)
-    correctness = 100 if fidelity >= 0.99 else int(fidelity * 100)
+    if expected_sv:
+        exp = np.array([complex(pair[0], pair[1]) for pair in expected_sv])
+        exp = exp / np.linalg.norm(exp)  # normalise just in case
+        fidelity = float(abs(np.dot(sv.conj(), exp)) ** 2)
+        correctness = 100 if fidelity >= 0.99 else int(fidelity * 100)
+    else:
+        fidelity = 1.0
+        correctness = 100
     efficiency = max(0, 100 - (len(sorted_gates) - (optimal_gates or len(sorted_gates))) * 5)
     speed = max(0, 100 - time_taken_s)
     score = int(0.6 * correctness + 0.3 * efficiency + 0.1 * speed)
-    passed = fidelity >= 0.99
+    passed = fidelity >= 0.99 if expected_sv else True
 
     try:
         circuit_qasm = qasm2_dumps(qc)
@@ -60,9 +63,9 @@ def run_and_score(
     }
 
 
-def _infer_qubits(gates: list[dict], max_qubits: int, expected_sv: list) -> int:
+def _infer_qubits(gates: list[dict], max_qubits: int, expected_sv: list | None) -> int:
     """Derive qubit count from statevector length; cross-check with gate indices."""
-    sv_len = len(expected_sv)
+    sv_len = len(expected_sv) if expected_sv else 0
     n = max(1, int(np.log2(sv_len))) if sv_len >= 1 else 1
     max_gate_qubit = max(
         (max(int(g.get("qubit", 0)), int(g.get("target", 0) or 0)) for g in gates),
