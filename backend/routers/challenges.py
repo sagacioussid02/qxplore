@@ -128,7 +128,7 @@ async def _upsert_leaderboard(user_id: str, challenge_id: str, score: int, gate_
         if existing.status_code == 200 and existing.json():
             if existing.json()[0]["best_score"] >= score:
                 return
-        display_name = email.split("@")[0] if email else None
+        display_name = None
         await client.post(
             f"{settings.supabase_url}/rest/v1/leaderboard",
             headers={**_supabase_headers(), "Prefer": "resolution=merge-duplicates"},
