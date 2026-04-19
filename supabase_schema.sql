@@ -126,9 +126,17 @@ create table if not exists public.leaderboard (
 );
 
 alter table public.leaderboard enable row level security;
-create policy "Anyone can read leaderboard"
+create policy "Subscribers can read leaderboard"
   on public.leaderboard for select
-  using (true);
+  using (
+    auth.uid() is not null
+    and exists (
+      select 1
+      from public.credits c
+      where c.user_id = auth.uid()
+        and c.credits > 1
+    )
+  );
 
 drop trigger if exists set_leaderboard_updated_at on public.leaderboard;
 create trigger set_leaderboard_updated_at
