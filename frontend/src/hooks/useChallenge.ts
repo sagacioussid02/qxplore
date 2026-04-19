@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import axios from 'axios';
 import { fetchChallenges, fetchChallenge, submitChallenge, fetchLeaderboard } from '../api/prepApi';
 import type {
   ChallengeListItem, ChallengeDetail, GateInstruction, ScoringResult, LeaderboardEntry,
@@ -9,14 +10,24 @@ export function useChallengeList(category?: string, difficulty?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getErrorMessage = useCallback((e: unknown, fallback: string) => {
+    if (axios.isAxiosError(e)) {
+      const detail = e.response?.data?.detail;
+      if (typeof detail === 'string' && detail.trim()) return detail;
+      return e.message || fallback;
+    }
+    if (e instanceof Error && e.message) return e.message;
+    return fallback;
+  }, []);
+
   useEffect(() => {
     setError(null);
     setLoading(true);
     fetchChallenges(category, difficulty)
       .then(setChallenges)
-      .catch(e => setError(e.message))
+      .catch(e => setError(getErrorMessage(e, 'Failed to load challenges')))
       .finally(() => setLoading(false));
-  }, [category, difficulty]);
+  }, [category, difficulty, getErrorMessage]);
 
   return { challenges, loading, error };
 }
@@ -38,10 +49,24 @@ export function useChallenge(slug: string, token?: string | null) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [canViewLeaderboard, setCanViewLeaderboard] = useState(false);
+  const getErrorMessage = useCallback((e: unknown, fallback: string) => {
+    if (axios.isAxiosError(e)) {
+      const detail = e.response?.data?.detail;
+      if (typeof detail === 'string' && detail.trim()) return detail;
+      return e.message || fallback;
+    }
+    if (e instanceof Error && e.message) return e.message;
+    return fallback;
+  }, []);
 
   useEffect(() => {
     setError(null);
     setResult(null);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setTimerRunning(false);
+    startTimeRef.current = null;
+    setElapsedSeconds(0);
     if (!slug) {
       setChallenge(null);
       setLeaderboard([]);
@@ -73,10 +98,10 @@ export function useChallenge(slug: string, token?: string | null) {
         setChallenge(null);
         setLeaderboard([]);
         setCanViewLeaderboard(false);
-        setError(e.message);
+        setError(getErrorMessage(e, 'Failed to load challenge'));
       })
       .finally(() => setLoading(false));
-  }, [slug, token]);
+  }, [slug, token, getErrorMessage]);
 
   const startTimer = useCallback(() => {
     setElapsedSeconds(0);
@@ -114,12 +139,12 @@ export function useChallenge(slug: string, token?: string | null) {
         fetchLeaderboard(slug, token).then(setLeaderboard).catch(() => null);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Submission failed';
+      const msg = getErrorMessage(e, 'Submission failed');
       setSubmitError(msg);
     } finally {
       setSubmitting(false);
     }
-  }, [slug, token, elapsedSeconds, stopTimer]);
+  }, [slug, token, elapsedSeconds, stopTimer, getErrorMessage]);
 
   const resetResult = useCallback(() => setResult(null), []);
 

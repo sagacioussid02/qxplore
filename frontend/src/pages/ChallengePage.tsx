@@ -85,6 +85,7 @@ export default function ChallengePage() {
   const [selectedGate, setSelectedGate] = useState<GateType | null>('H');
   const [gates, setGates] = useState<PlacedGate[]>([]);
   const [cnotPending, setCnotPending] = useState<{ qubit: number; step: number } | null>(null);
+  const maxGates = challenge?.constraints.max_gates ?? 64;
 
   // Reset composer when challenge loads
   useEffect(() => {
@@ -113,6 +114,10 @@ export default function ChallengePage() {
       return;
     }
 
+    if (gates.length >= maxGates) {
+      return;
+    }
+
     if (selectedGate === 'CNOT') {
       if (!cnotPending) {
         setCnotPending({ qubit, step });
@@ -126,7 +131,7 @@ export default function ChallengePage() {
     }
 
     setGates(prev => [...prev, { id: uid(), type: selectedGate, qubit, step }]);
-  }, [selectedGate, gates, cnotPending, timerStarted, result, startTimer]);
+  }, [selectedGate, gates, cnotPending, timerStarted, result, startTimer, maxGates]);
 
   const clearComposer = () => {
     setGates([]);
@@ -150,7 +155,6 @@ export default function ChallengePage() {
   const gridH = numQubits * CELL;
   const cnotGates = gates.filter(g => g.type === 'CNOT');
 
-  const maxGates = challenge?.constraints.max_gates ?? 64;
   const timeLimit = challenge?.constraints.time_limit_seconds;
 
   // ── Render ────────────────────────────────────────────────────────────────

@@ -133,7 +133,7 @@ create policy "Subscribers can read leaderboard"
       select 1
       from public.credits c
       where c.user_id = auth.uid()
-        and c.credits > 1
+        and c.tier <> 'free'
     )
   );
 

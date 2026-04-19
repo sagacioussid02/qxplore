@@ -6,6 +6,7 @@ interface Props {
 }
 
 function Bar({ label, value, color }: { label: string; value: number; color: string }) {
+  const clamped = Math.max(0, Math.min(100, value));
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-mono">
@@ -17,7 +18,7 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
           className="h-full rounded-full"
           style={{ background: color }}
           initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
+          animate={{ width: `${clamped}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
         />
       </div>
