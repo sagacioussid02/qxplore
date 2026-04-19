@@ -50,23 +50,45 @@ def _get_challenge(slug: str) -> dict:
 async def _get_monthly_submission_count(user_id: str, settings) -> int:
     if not settings.supabase_url:
         return 0
-    async with httpx.AsyncClient() as client:
-        resp = await client.head(
-            f"{settings.supabase_url}/rest/v1/submissions",
-            headers={**_supabase_headers(), "Prefer": "count=exact"},
-            params={
-                "user_id": f"eq.{user_id}",
-                "submitted_at": f"gte.{_start_of_month()}",
-                "select": "id",
-            },
-        )
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.head(
+                f"{settings.supabase_url}/rest/v1/submissions",
+                headers={**_supabase_headers(), "Prefer": "count=exact"},
+                params={
+                    "user_id": f"eq.{user_id}",
+                    "submitted_at": f"gte.{_start_of_month()}",
+                    "select": "id",
+                },
+            )
+    except httpx.HTTPError as e:
+        log.warning("Failed to fetch monthly submission count for user %s: %s", user_id, e)
+        raise HTTPException(status_code=503, detail="Unable to verify monthly submission limit")
     if resp.status_code not in (200, 206):
-        return 0
+        log.warning(
+            "Unexpected response while fetching monthly submission count for user %s: status=%s body=%s",
+            user_id,
+            resp.status_code,
+            resp.text,
+        )
+        raise HTTPException(status_code=503, detail="Unable to verify monthly submission limit")
     content_range = resp.headers.get("content-range", "")
     if "/" not in content_range:
-        return 0
+        log.warning(
+            "Missing or malformed content-range while fetching monthly submission count for user %s: %r",
+            user_id,
+            content_range,
+        )
+        raise HTTPException(status_code=503, detail="Unable to verify monthly submission limit")
     total = content_range.rsplit("/", 1)[-1]
-    return int(total) if total.isdigit() else 0
+    if not total.isdigit():
+        log.warning(
+            "Non-numeric monthly submission count for user %s from content-range %r",
+            user_id,
+            content_range,
+        )
+        raise HTTPException(status_code=503, detail="Unable to verify monthly submission limit")
+    return int(total)
 
 
 async def _get_user_tier(user_id: str, settings) -> str:
