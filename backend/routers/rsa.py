@@ -1,7 +1,8 @@
 """RSA + Shor's algorithm endpoints."""
 import math
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from ..core.supabase_auth import get_optional_user, deduct_credit
 from ..models.rsa_models import (
     KeygenRequest, KeygenResponse,
     EncryptRequest, EncryptResponse,
@@ -23,20 +24,35 @@ router = APIRouter(prefix="/rsa", tags=["rsa"])
 
 _MAX_N = 10 ** 9   # keeps all values in safe JS number range
 
+# Tier thresholds (n = p*q)
+_TIER_LOGIN = 77    # n > this requires login
+_TIER_PAID  = 221   # n > this requires login + credits
+_SHOR_COST  = 100   # credits charged for paid tier
+
 
 @router.post("/keygen", response_model=KeygenResponse)
-async def keygen(req: KeygenRequest):
+async def keygen(req: KeygenRequest, user: dict | None = Depends(get_optional_user)):
     if not _is_prime(req.p):
         raise HTTPException(400, f"{req.p} is not prime")
     if not _is_prime(req.q):
         raise HTTPException(400, f"{req.q} is not prime")
     if req.p == req.q:
         raise HTTPException(400, "p and q must be distinct primes")
-    if req.p * req.q > _MAX_N:
+    n = req.p * req.q
+    if n > _MAX_N:
         raise HTTPException(400, f"n = p×q must be ≤ {_MAX_N:,} for this demo")
     phi_n = (req.p - 1) * (req.q - 1)
     if phi_n < 3:
         raise HTTPException(400, "Primes are too small — choose p,q ≥ 5")
+
+    if n > _TIER_PAID:
+        if not user:
+            raise HTTPException(401, "Login required to use large RSA keys")
+        await deduct_credit(user["sub"], amount=_SHOR_COST)
+    elif n > _TIER_LOGIN:
+        if not user:
+            raise HTTPException(401, "Login required to use this preset")
+
     return run_keygen(req.p, req.q)
 
 

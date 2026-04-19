@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { rsaApi } from '../api/rsaApi';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 import type {
   KeygenResponse, EncryptResponse, DecryptResponse,
   ClassicalFactorResponse, ShorResponse, ShorMeasurement,
 } from '../api/rsaApi';
 
-// ── Preset prime pairs ────────────────────────────────────────────────────────
+// ── Preset prime pairs ─────────────────────────────────────────────────────────
+// tier: 'free' | 'login' | 'paid'
 const PRIME_PRESETS = [
-  { label: 'Tiny  (n=15)', p: 3, q: 5, desc: 'Eve cracks this in 2 tries' },
-  { label: 'Small (n=77)', p: 7, q: 11, desc: 'Still easy for Eve — 8 tries' },
-  { label: 'Medium (n=221)', p: 13, q: 17, desc: 'Getting harder — 13 tries' },
+  { label: 'Tiny  (n=15)',  p: 3,  q: 5,  desc: 'Eve cracks this in 2 tries',         tier: 'free'  as const },
+  { label: 'Small (n=77)',  p: 7,  q: 11, desc: 'Still easy for Eve — 8 tries',        tier: 'free'  as const },
+  { label: 'Medium (n=221)',p: 13, q: 17, desc: 'Getting harder — 13 tries',           tier: 'login' as const },
+  { label: 'Large (n=3599)',p: 59, q: 61, desc: 'RSA-scale demo — 100 ⚛ credits',     tier: 'paid'  as const },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -124,8 +128,85 @@ function ScaleComparison({ n }: { n: number }) {
   );
 }
 
+// ── Tier gate inline card ──────────────────────────────────────────────────────
+function TierGate({
+  tier, isAuthenticated, credits, onSignIn, onBuyCredits,
+}: {
+  tier: 'login' | 'paid';
+  isAuthenticated: boolean;
+  credits: number | null;
+  onSignIn: () => void;
+  onBuyCredits: () => void;
+}) {
+  if (tier === 'login' && !isAuthenticated) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+        className="rounded-lg border border-yellow-500/40 bg-yellow-950/15 p-4 flex items-start gap-3"
+      >
+        <span className="text-xl mt-0.5">🔒</span>
+        <div className="flex-1">
+          <p className="font-mono font-bold text-yellow-400 text-sm">Login required</p>
+          <p className="text-gray-400 text-xs mt-0.5">Sign in to unlock this preset — it's free.</p>
+          <button
+            onClick={onSignIn}
+            className="mt-2 px-4 py-1.5 rounded border border-yellow-500/50 text-yellow-400 text-xs font-mono hover:bg-yellow-950/40 transition-colors"
+          >
+            Sign in with Google
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+  if (tier === 'paid') {
+    if (!isAuthenticated) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-quantum-purple/40 bg-purple-950/15 p-4 flex items-start gap-3"
+        >
+          <span className="text-xl mt-0.5">🔐</span>
+          <div className="flex-1">
+            <p className="font-mono font-bold text-quantum-purple text-sm">Login + 100 ⚛ credits required</p>
+            <p className="text-gray-400 text-xs mt-0.5">Sign in first, then purchase credits to run this preset.</p>
+            <button
+              onClick={onSignIn}
+              className="mt-2 px-4 py-1.5 rounded border border-quantum-purple/50 text-quantum-purple text-xs font-mono hover:bg-purple-950/40 transition-colors"
+            >
+              Sign in with Google
+            </button>
+          </div>
+        </motion.div>
+      );
+    }
+    if ((credits ?? 0) < 100) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-quantum-purple/40 bg-purple-950/15 p-4 flex items-start gap-3"
+        >
+          <span className="text-xl mt-0.5">⚛</span>
+          <div className="flex-1">
+            <p className="font-mono font-bold text-quantum-purple text-sm">100 credits required</p>
+            <p className="text-gray-400 text-xs mt-0.5">You have {credits ?? 0} credits. Top up to run the large preset.</p>
+            <button
+              onClick={onBuyCredits}
+              className="mt-2 px-4 py-1.5 rounded border border-quantum-purple/50 text-quantum-purple text-xs font-mono hover:bg-purple-950/40 transition-colors"
+            >
+              Buy credits
+            </button>
+          </div>
+        </motion.div>
+      );
+    }
+  }
+  return null;
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RSAPage() {
+  const { isAuthenticated, credits, accessToken, startStripeCheckout } = useAuth();
+
   // Scene 1: Keygen
   const [preset, setPreset] = useState(0);
   const [keygen, setKeygen] = useState<KeygenResponse | null>(null);
@@ -148,9 +229,21 @@ export default function RSAPage() {
   const [shor, setShor] = useState<ShorResponse | null>(null);
   const [shorLoading, setShorLoading] = useState(false);
 
+  const selectedPreset = PRIME_PRESETS[preset];
+  const presetLocked =
+    (selectedPreset.tier === 'login' && !isAuthenticated) ||
+    (selectedPreset.tier === 'paid' && (!isAuthenticated || (credits ?? 0) < 100));
+
+  function handleSignIn() {
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+  }
+
   // ── Scene 1 handlers ────────────────────────────────────────────────────────
   async function handleKeygen() {
-    const { p, q } = PRIME_PRESETS[preset];
+    const { p, q } = selectedPreset;
     setKeygenLoading(true);
     setKeygen(null);
     setEncrypt(null);
@@ -161,7 +254,7 @@ export default function RSAPage() {
     setEveAnimStep(0);
     setMsgInt(7);
     try {
-      const res = await rsaApi.keygen(p, q);
+      const res = await rsaApi.keygen(p, q, accessToken);
       setKeygen(res);
     } finally {
       setKeygenLoading(false);
@@ -223,8 +316,6 @@ export default function RSAPage() {
     }
   }
 
-  const selectedPreset = PRIME_PRESETS[preset];
-
   return (
     <div className="space-y-8 max-w-3xl">
       {/* ── Page header ──────────────────────────────────────────────────── */}
@@ -242,21 +333,46 @@ export default function RSAPage() {
         <SectionHeader icon="🔑" title="Scene 1 — Alice Generates Keys" subtitle="RSA security comes from choosing two large prime numbers" />
 
         <div className="flex flex-wrap gap-3 mb-4">
-          {PRIME_PRESETS.map((p, i) => (
-            <button
-              key={i}
-              onClick={() => setPreset(i)}
-              className={`px-4 py-2 rounded-lg border text-sm font-mono transition-all ${
-                preset === i
-                  ? 'border-quantum-cyan text-quantum-cyan bg-quantum-cyan/10'
-                  : 'border-quantum-border text-gray-400 hover:border-gray-500'
-              }`}
-            >
-              <div className="font-bold">{p.label}</div>
-              <div className="text-xs opacity-70">{p.desc}</div>
-            </button>
-          ))}
+          {PRIME_PRESETS.map((p, i) => {
+            const isLocked =
+              (p.tier === 'login' && !isAuthenticated) ||
+              (p.tier === 'paid' && (!isAuthenticated || (credits ?? 0) < 100));
+            return (
+              <button
+                key={i}
+                onClick={() => setPreset(i)}
+                className={`px-4 py-2 rounded-lg border text-sm font-mono transition-all relative ${
+                  preset === i
+                    ? 'border-quantum-cyan text-quantum-cyan bg-quantum-cyan/10'
+                    : 'border-quantum-border text-gray-400 hover:border-gray-500'
+                }`}
+              >
+                {isLocked && (
+                  <span className="absolute -top-1.5 -right-1.5 text-[10px] bg-yellow-500 text-black rounded-full px-1 font-bold">
+                    {p.tier === 'paid' ? '💳' : '🔒'}
+                  </span>
+                )}
+                <div className="font-bold">{p.label}</div>
+                <div className="text-xs opacity-70">{p.desc}</div>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Tier gate — shown when the selected preset requires login or credits */}
+        <AnimatePresence>
+          {presetLocked && (
+            <div className="mb-4">
+              <TierGate
+                tier={selectedPreset.tier as 'login' | 'paid'}
+                isAuthenticated={isAuthenticated}
+                credits={credits}
+                onSignIn={handleSignIn}
+                onBuyCredits={startStripeCheckout}
+              />
+            </div>
+          )}
+        </AnimatePresence>
 
         <div className="flex items-center gap-3 mb-4 text-sm font-mono text-gray-300">
           <span>p = <span className="text-quantum-cyan">{selectedPreset.p}</span></span>
@@ -268,8 +384,8 @@ export default function RSAPage() {
 
         <button
           onClick={handleKeygen}
-          disabled={keygenLoading}
-          className="btn-cyan mb-4"
+          disabled={keygenLoading || presetLocked}
+          className="btn-cyan mb-4 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {keygenLoading ? 'Generating…' : '⚙️ Generate RSA Keys'}
         </button>
