@@ -44,7 +44,11 @@ def run_and_score(
     efficiency = max(0, 100 - (len(sorted_gates) - (optimal_gates or len(sorted_gates))) * 5)
     speed = max(0, 100 - time_taken_s)
     score = int(0.6 * correctness + 0.3 * efficiency + 0.1 * speed)
-    passed = fidelity >= 0.99 if expected_sv else True
+    if expected_sv:
+        passed = fidelity >= 0.99
+    else:
+        target_gate_count = optimal_gates if optimal_gates and optimal_gates > 0 else len(sorted_gates)
+        passed = len(sorted_gates) <= target_gate_count
 
     try:
         circuit_qasm = qasm2_dumps(qc)
@@ -65,8 +69,10 @@ def run_and_score(
 
 def _infer_qubits(gates: list[dict], max_qubits: int, expected_sv: list | None) -> int:
     """Derive qubit count from statevector length; cross-check with gate indices."""
-    sv_len = len(expected_sv) if expected_sv else 0
-    n = max(1, int(np.log2(sv_len))) if sv_len >= 1 else 1
+    if expected_sv:
+        n = max(1, int(np.log2(len(expected_sv))))
+    else:
+        n = 1
     max_gate_qubit = max(
         (max(int(g.get("qubit", 0)), int(g.get("target", 0) or 0)) for g in gates),
         default=0,

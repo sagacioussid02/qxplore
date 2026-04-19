@@ -7,6 +7,7 @@ import { ScoreBreakdown } from '../components/prep/ScoreBreakdown';
 import { TimerBadge } from '../components/prep/TimerBadge';
 import { HintPanel } from '../components/prep/HintPanel';
 import { LeaderboardTable } from '../components/prep/LeaderboardTable';
+import { PREP_MAX_QUBITS } from '../config';
 import type { GateInstruction } from '../types/challenge';
 
 // ── Embedded composer types & constants ─────────────────────────────────────
@@ -78,7 +79,6 @@ export default function ChallengePage() {
     elapsedSeconds, timerRunning, startTimer, resetTimer,
     result, submitting, submitError, submit, resetResult,
   } = useChallenge(slug ?? '', accessToken);
-  const MAX_BACKEND_QUBITS = 4;
 
   // ── Composer state ────────────────────────────────────────────────────────
   const [numQubits, setNumQubits] = useState(2);
@@ -89,7 +89,7 @@ export default function ChallengePage() {
   // Reset composer when challenge loads
   useEffect(() => {
     if (challenge) {
-      setNumQubits(Math.min(challenge.constraints.max_qubits, 4));
+      setNumQubits(Math.min(challenge.constraints.max_qubits, PREP_MAX_QUBITS));
       setGates([]);
       setCnotPending(null);
     }
@@ -278,7 +278,7 @@ export default function ChallengePage() {
           {/* Qubit count */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500 font-mono">Qubits:</span>
-            {Array.from({ length: Math.min(challenge.constraints.max_qubits, MAX_BACKEND_QUBITS) }, (_, i) => i + 1).map(n => (
+            {Array.from({ length: Math.min(challenge.constraints.max_qubits, PREP_MAX_QUBITS) }, (_, i) => i + 1).map(n => (
               <button key={n}
                 onClick={() => { setNumQubits(n); setGates([]); setCnotPending(null); }}
                 className={`w-8 h-8 rounded-lg font-mono text-sm font-bold transition-all ${

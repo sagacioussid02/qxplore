@@ -18,6 +18,9 @@ router = APIRouter(prefix="/prep", tags=["prep"])
 
 _CHALLENGES_DIR = Path(__file__).parent.parent / "data" / "challenges"
 _FREE_MONTHLY_SUBMISSIONS = 3
+_DEFAULT_MAX_QUBITS = 4
+_DEFAULT_MAX_GATES = 64
+_DEFAULT_TIME_LIMIT_SECONDS = 300
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────
@@ -143,15 +146,20 @@ async def _get_challenge_id(slug: str, settings) -> str | None:
     """Look up challenges table uuid by slug, inserting from JSON if missing."""
     if not settings.supabase_url:
         return slug  # local dev fallback
-    async with httpx.AsyncClient() as client:
+
+    async def _fetch_id(client: httpx.AsyncClient) -> str | None:
         resp = await client.get(
             f"{settings.supabase_url}/rest/v1/challenges",
             headers=_supabase_headers(),
             params={"slug": f"eq.{slug}", "select": "id"},
         )
         rows = resp.json() if resp.status_code == 200 else []
-        if rows:
-            return rows[0]["id"]
+        return rows[0]["id"] if rows else None
+
+    async with httpx.AsyncClient() as client:
+        existing_id = await _fetch_id(client)
+        if existing_id:
+            return existing_id
 
         challenge = _get_challenge(slug)
         insert_payload = {
@@ -175,14 +183,10 @@ async def _get_challenge_id(slug: str, settings) -> str | None:
             inserted = insert_resp.json()
             if inserted:
                 return inserted[0]["id"]
-
-        retry = await client.get(
-            f"{settings.supabase_url}/rest/v1/challenges",
-            headers=_supabase_headers(),
-            params={"slug": f"eq.{slug}", "select": "id"},
-        )
-    retry_rows = retry.json() if retry.status_code == 200 else []
-    return retry_rows[0]["id"] if retry_rows else None
+        seeded_id = await _fetch_id(client)
+        if seeded_id:
+            return seeded_id
+        raise HTTPException(status_code=500, detail=f"Failed to seed challenge row for '{slug}'")
 
 
 # ── endpoints ────────────────────────────────────────────────────────────────
@@ -252,9 +256,9 @@ async def submit_challenge(
             )
 
     constraints = challenge.get("constraints", {})
-    max_qubits = int(constraints.get("max_qubits", 4))
-    max_gates = int(constraints.get("max_gates", 64))
-    time_limit_s = int(constraints.get("time_limit_seconds", 300))
+    max_qubits = int(constraints.get("max_qubits", _DEFAULT_MAX_QUBITS))
+    max_gates = int(constraints.get("max_gates", _DEFAULT_MAX_GATES))
+    time_limit_s = int(constraints.get("time_limit_seconds", _DEFAULT_TIME_LIMIT_SECONDS))
 
     if body.time_taken_s < 0:
         raise HTTPException(status_code=400, detail="time_taken_s must be non-negative")
@@ -281,7 +285,7 @@ async def submit_challenge(
 
     expected_sv = challenge.get("expected_sv")
     if expected_sv is None and challenge.get("category") != "optimization":
-        raise HTTPException(status_code=500, detail="Challenge is missing expected statevector")
+        raise HTTPException(status_code=422, detail="Challenge is missing expected statevector")
 
     result = run_and_score(
         gates=gates_dicts,
