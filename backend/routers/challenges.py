@@ -187,7 +187,6 @@ async def get_challenge(slug: str, user: dict | None = Depends(get_optional_user
         description=data["description"],
         hints=hints,
         constraints=ChallengeConstraints(**data["constraints"]),
-        expected_sv=data.get("expected_sv"),
         optimal_gates=data.get("optimal_gates"),
     )
 
