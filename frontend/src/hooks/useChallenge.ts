@@ -38,7 +38,14 @@ export function useChallenge(slug: string, token?: string | null) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      setChallenge(null);
+      setLeaderboard([]);
+      setError('Missing challenge identifier');
+      setLoading(false);
+      return;
+    }
+    setError(null);
     setLoading(true);
     Promise.all([
       fetchChallenge(slug, token ?? undefined),
