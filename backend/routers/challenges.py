@@ -36,7 +36,7 @@ def _get_challenge(slug: str) -> dict:
     for f in _CHALLENGES_DIR.glob("*.json"):
         try:
             data = json.loads(f.read_text())
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
             log.warning("Failed to load challenge %s: %s", f.name, e)
             continue
         if data.get("slug") == slug:
