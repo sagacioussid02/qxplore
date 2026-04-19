@@ -26,8 +26,8 @@ def run_and_score(
 
     sorted_gates = sorted(gates, key=lambda g: (g.get("step", 0), g.get("qubit", 0)))
 
-    qc.save_statevector(label="sv")
     _apply_gates(qc, sorted_gates, n_qubits)
+    qc.save_statevector(label="sv")
 
     tqc = transpile(qc, sim, optimization_level=0)
     data = sim.run(tqc, shots=1).result().data(0)
