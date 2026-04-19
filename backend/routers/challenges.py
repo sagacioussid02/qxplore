@@ -70,9 +70,9 @@ async def _get_user_tier(user_id: str, settings) -> str:
 
 
 def _start_of_month() -> str:
-    from datetime import date
-    d = date.today()
-    return f"{d.year}-{d.month:02d}-01T00:00:00Z"
+    from datetime import datetime, timezone
+    dt = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 async def _save_submission(user_id: str, challenge_id: str, gates: list, result: dict, settings) -> str | None:
