@@ -210,10 +210,17 @@ export default function ChallengePage() {
           </div>
 
           {/* Hints */}
-          <HintPanel
-            hints={challenge.hints}
-            locked={!isAuthenticated || challenge.hints.length === 0}
-          />
+          {challenge.hints.length > 0 ? (
+            <HintPanel
+              hints={challenge.hints}
+              locked={!isAuthenticated}
+            />
+          ) : (
+            <div className="card-quantum p-4">
+              <p className="text-xs font-mono text-gray-400 mb-2">Hints</p>
+              <p className="text-xs font-mono text-gray-500">No hints available for this challenge.</p>
+            </div>
+          )}
 
           {/* Leaderboard */}
           <div className="card-quantum p-4">
