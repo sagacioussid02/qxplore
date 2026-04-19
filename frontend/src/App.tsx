@@ -8,6 +8,8 @@ import AccountPage from './pages/AccountPage';
 import CircuitComposerPage from './pages/CircuitComposerPage';
 import RSAPage from './pages/RSAPage';
 import CircuitTTTPage from './pages/CircuitTTTPage';
+import PrepPage from './pages/PrepPage';
+import ChallengePage from './pages/ChallengePage';
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
           <Route path="/circuit" element={<CircuitComposerPage />} />
           <Route path="/rsa" element={<RSAPage />} />
           <Route path="/circuit-ttt" element={<CircuitTTTPage />} />
+          <Route path="/prep" element={<PrepPage />} />
+          <Route path="/prep/:slug" element={<ChallengePage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

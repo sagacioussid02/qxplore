@@ -1,0 +1,19 @@
+{
+  "slug": "bit-flip",
+  "title": "Bit Flip",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## Bit Flip\n\nApply an **X gate** (Pauli-X / quantum NOT) to qubit 0 so that the qubit starts in |0⟩ and ends in |1⟩.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|1⟩  →  [0, 1]\n```\n\n### Background\nThe X gate is the quantum equivalent of a classical NOT gate. It flips |0⟩ → |1⟩ and |1⟩ → |0⟩.\n\n| Input | Output |\n|-------|--------|\n| \\|0⟩   | \\|1⟩   |\n| \\|1⟩   | \\|0⟩   |\n\n### Constraints\n- Use exactly **1 qubit**\n- No measurement gates in your solution circuit\n\n### Classical Equivalent\nA NOT gate: `bit = 1 - bit`",
+  "hints": [
+    "You only need a single gate on qubit 0.",
+    "The X gate (also called the Pauli-X gate) flips the qubit state.",
+    "In the Circuit Composer, drag the X gate onto qubit 0 at step 0."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 4,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [[0.0, 0.0], [1.0, 0.0]],
+  "optimal_gates": 1
+}

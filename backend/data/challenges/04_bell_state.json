@@ -1,0 +1,24 @@
+{
+  "slug": "bell-state",
+  "title": "Build a Bell State",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## Build a Bell State\n\nCreate a **Bell state** (maximally entangled 2-qubit state) using an H gate and a CNOT gate.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|Φ+⟩  =  (|00⟩ + |11⟩) / √2\n       →  [1/√2, 0, 0, 1/√2]\n       ≈  [0.707, 0, 0, 0.707]\n```\n\n### Background\nA Bell state is the simplest example of **quantum entanglement**: two qubits whose states cannot be described independently.\n\nThe circuit:\n1. Apply H to qubit 0 → creates superposition on control qubit\n2. Apply CNOT with qubit 0 as control and qubit 1 as target → entangles them\n\nResult: if you measure qubit 0 and get |0⟩, qubit 1 is **always** |0⟩. If you get |1⟩, qubit 1 is **always** |1⟩. The correlation is perfect — and provably cannot be explained by hidden classical variables (Bell's theorem).\n\n### Statevector indexing\nFor 2 qubits, the statevector is [α₀₀, α₀₁, α₁₀, α₁₁] where indices are |q1 q0⟩.\n\n### Constraints\n- Use exactly **2 qubits**\n- Optimal solution: **2 gates**",
+  "hints": [
+    "Apply H to qubit 0 first to put it in superposition.",
+    "Then apply CNOT with qubit 0 as control (top) and qubit 1 as target (bottom).",
+    "The resulting state has no classical analogue — measurement outcomes are correlated regardless of distance."
+  ],
+  "constraints": {
+    "max_qubits": 2,
+    "max_gates": 8,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [0.7071067811865476, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.7071067811865476, 0.0]
+  ],
+  "optimal_gates": 2
+}

@@ -58,6 +58,18 @@ const GAMES = [
   },
 ];
 
+const PLATFORM = [
+  {
+    to: '/prep',
+    icon: '🎓',
+    title: 'Interview Prep',
+    tagline: 'Practice quantum challenges — the skills IBM, Google, IonQ teams test',
+    color: '#00ffff',
+    bg: 'rgba(0,255,255,0.05)',
+    border: 'rgba(0,255,255,0.2)',
+  },
+];
+
 const CONCEPTS = [
   { icon: '🌊', name: 'Superposition', desc: 'A qubit can be |0⟩ and |1⟩ simultaneously until measured' },
   { icon: '🔗', name: 'Entanglement', desc: 'Two particles whose quantum states are correlated regardless of distance' },
@@ -140,6 +152,38 @@ export default function Home() {
                   </div>
                 </Link>
               )}
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Platform */}
+      <section>
+        <h2 className="text-sm font-mono text-gray-500 uppercase tracking-wider mb-4">Professional Tools</h2>
+        <div className="grid grid-cols-1 gap-4">
+          {PLATFORM.map((item, i) => (
+            <motion.div
+              key={item.to}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 + 0.5 }}
+            >
+              <Link
+                to={item.to}
+                className="block card-quantum p-5 no-underline group transition-all duration-300 hover:scale-[1.01]"
+                style={{ background: item.bg, borderColor: item.border }}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">{item.icon}</span>
+                  <div className="flex-1">
+                    <h3 className="font-mono font-bold text-lg" style={{ color: item.color }}>{item.title}</h3>
+                    <p className="text-gray-400 text-sm">{item.tagline}</p>
+                  </div>
+                  <span className="font-mono text-sm opacity-60 group-hover:translate-x-1 transition-transform" style={{ color: item.color }}>
+                    →
+                  </span>
+                </div>
+              </Link>
             </motion.div>
           ))}
         </div>

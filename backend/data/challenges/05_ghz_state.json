@@ -1,0 +1,28 @@
+{
+  "slug": "ghz-state",
+  "title": "GHZ State",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## GHZ State (Greenberger–Horne–Zeilinger)\n\nCreate a **3-qubit GHZ state** — the maximal multipartite entanglement of 3 qubits.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|GHZ⟩  =  (|000⟩ + |111⟩) / √2\n        →  [1/√2, 0, 0, 0, 0, 0, 0, 1/√2]\n        ≈  [0.707, 0, 0, 0, 0, 0, 0, 0.707]\n```\n\n### Background\nThe GHZ state extends entanglement to three parties:\n1. Apply H to qubit 0 → creates superposition on control\n2. Apply CNOT (q0 → q1) → entangles qubit 1\n3. Apply CNOT (q0 → q2) OR (q1 → q2) → entangles qubit 2\n\nThe GHZ state demonstrates **three-party non-locality**: measuring any one qubit instantly determines the other two. It's used in quantum secret sharing, quantum error correction codes, and tests of quantum mechanics vs. local hidden variable theories.\n\n### Statevector indexing\nFor 3 qubits, the 8-element statevector is indexed as |q2 q1 q0⟩ in big-endian order.\n\n### Constraints\n- Use exactly **3 qubits**\n- Optimal solution: **3 gates**",
+  "hints": [
+    "Start with H on qubit 0, same as the Bell state.",
+    "Then chain two CNOT gates: q0→q1, then q0→q2 (or q1→q2).",
+    "The pattern generalizes: for n-qubit GHZ, use H on q0 then n-1 CNOTs."
+  ],
+  "constraints": {
+    "max_qubits": 3,
+    "max_gates": 10,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [0.7071067811865476, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.7071067811865476, 0.0]
+  ],
+  "optimal_gates": 3
+}
