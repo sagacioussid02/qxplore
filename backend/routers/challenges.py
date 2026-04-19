@@ -34,7 +34,11 @@ def _load_all_challenges() -> list[dict]:
 
 def _get_challenge(slug: str) -> dict:
     for f in _CHALLENGES_DIR.glob("*.json"):
-        data = json.loads(f.read_text())
+        try:
+            data = json.loads(f.read_text())
+        except Exception as e:
+            log.warning("Failed to load challenge %s: %s", f.name, e)
+            continue
         if data.get("slug") == slug:
             return data
     raise HTTPException(status_code=404, detail=f"Challenge '{slug}' not found")
