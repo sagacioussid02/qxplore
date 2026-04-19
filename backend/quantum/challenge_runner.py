@@ -41,9 +41,9 @@ def run_and_score(
     else:
         fidelity = 1.0
         correctness = 100
-    efficiency = max(0, 100 - (len(sorted_gates) - (optimal_gates or len(sorted_gates))) * 5)
+    efficiency = min(100, max(0, 100 - (len(sorted_gates) - (optimal_gates or len(sorted_gates))) * 5))
     speed = max(0, 100 - time_taken_s)
-    score = int(0.6 * correctness + 0.3 * efficiency + 0.1 * speed)
+    score = min(100, max(0, int(0.6 * correctness + 0.3 * efficiency + 0.1 * speed)))
     if expected_sv:
         passed = fidelity >= 0.99
     else:
