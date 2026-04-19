@@ -44,16 +44,22 @@ async def _get_monthly_submission_count(user_id: str, settings) -> int:
     if not settings.supabase_url:
         return 0
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
+        resp = await client.head(
             f"{settings.supabase_url}/rest/v1/submissions",
-            headers=_supabase_headers(),
+            headers={**_supabase_headers(), "Prefer": "count=exact"},
             params={
                 "user_id": f"eq.{user_id}",
                 "submitted_at": f"gte.{_start_of_month()}",
                 "select": "id",
             },
         )
-    return len(resp.json()) if resp.status_code == 200 else 0
+    if resp.status_code not in (200, 206):
+        return 0
+    content_range = resp.headers.get("content-range", "")
+    if "/" not in content_range:
+        return 0
+    total = content_range.rsplit("/", 1)[-1]
+    return int(total) if total.isdigit() else 0
 
 
 async def _get_user_tier(user_id: str, settings) -> str:
