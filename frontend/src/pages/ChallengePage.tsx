@@ -34,6 +34,7 @@ const GATE_META: Record<GateType, { label: string; color: string; bg: string; de
 
 const NUM_STEPS = 8;
 const CELL = 52;
+const DEFAULT_MAX_GATES = 64;
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -85,7 +86,8 @@ export default function ChallengePage() {
   const [selectedGate, setSelectedGate] = useState<GateType | null>('H');
   const [gates, setGates] = useState<PlacedGate[]>([]);
   const [cnotPending, setCnotPending] = useState<{ qubit: number; step: number } | null>(null);
-  const maxGates = challenge?.constraints.max_gates ?? 64;
+  const [composerError, setComposerError] = useState<string | null>(null);
+  const maxGates = challenge?.constraints.max_gates ?? DEFAULT_MAX_GATES;
 
   // Reset composer when challenge loads
   useEffect(() => {
@@ -93,6 +95,7 @@ export default function ChallengePage() {
       setNumQubits(Math.min(challenge.constraints.max_qubits, PREP_MAX_QUBITS));
       setGates([]);
       setCnotPending(null);
+      setComposerError(null);
     }
   }, [challenge?.slug]);
 
@@ -111,12 +114,15 @@ export default function ChallengePage() {
     if (existing) {
       setGates(prev => prev.filter(g => g.id !== existing.id));
       setCnotPending(null);
+      setComposerError(null);
       return;
     }
 
     if (gates.length >= maxGates) {
+      setComposerError(`Max gates reached (${maxGates})`);
       return;
     }
+    setComposerError(null);
 
     if (selectedGate === 'CNOT') {
       if (!cnotPending) {
@@ -136,6 +142,7 @@ export default function ChallengePage() {
   const clearComposer = () => {
     setGates([]);
     setCnotPending(null);
+    setComposerError(null);
     resetTimer();
     resetResult();
   };
@@ -267,7 +274,7 @@ export default function ChallengePage() {
                 const active = selectedGate === gtype;
                 return (
                   <button key={gtype}
-                    onClick={() => { setSelectedGate(active ? null : gtype); setCnotPending(null); }}
+                    onClick={() => { setSelectedGate(active ? null : gtype); setCnotPending(null); setComposerError(null); }}
                     className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all"
                     style={{
                       borderColor: active ? meta.color : 'rgba(255,255,255,0.08)',
@@ -289,7 +296,7 @@ export default function ChallengePage() {
             <span className="text-xs text-gray-500 font-mono">Qubits:</span>
             {Array.from({ length: Math.min(challenge.constraints.max_qubits, PREP_MAX_QUBITS) }, (_, i) => i + 1).map(n => (
               <button key={n}
-                onClick={() => { setNumQubits(n); setGates([]); setCnotPending(null); }}
+                onClick={() => { setNumQubits(n); setGates([]); setCnotPending(null); setComposerError(null); }}
                 className={`w-8 h-8 rounded-lg font-mono text-sm font-bold transition-all ${
                   numQubits === n
                     ? 'bg-quantum-cyan text-black'
@@ -416,7 +423,10 @@ export default function ChallengePage() {
             )}
 
             {submitError && (
-              <p className="text-red-400 text-xs font-mono">{submitError}</p>
+              <p className="text-red-400 text-xs font-mono" role="status" aria-live="polite">{submitError}</p>
+            )}
+            {composerError && (
+              <p className="text-orange-400 text-xs font-mono" role="status" aria-live="polite">{composerError}</p>
             )}
           </div>
 

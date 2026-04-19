@@ -5,29 +5,29 @@ import type {
   ChallengeListItem, ChallengeDetail, GateInstruction, ScoringResult, LeaderboardEntry,
 } from '../types/challenge';
 
+function getApiErrorMessage(e: unknown, fallback: string) {
+  if (axios.isAxiosError(e)) {
+    const detail = e.response?.data?.detail;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    return e.message || fallback;
+  }
+  if (e instanceof Error && e.message) return e.message;
+  return fallback;
+}
+
 export function useChallengeList(category?: string, difficulty?: string) {
   const [challenges, setChallenges] = useState<ChallengeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getErrorMessage = useCallback((e: unknown, fallback: string) => {
-    if (axios.isAxiosError(e)) {
-      const detail = e.response?.data?.detail;
-      if (typeof detail === 'string' && detail.trim()) return detail;
-      return e.message || fallback;
-    }
-    if (e instanceof Error && e.message) return e.message;
-    return fallback;
-  }, []);
 
   useEffect(() => {
     setError(null);
     setLoading(true);
     fetchChallenges(category, difficulty)
       .then(setChallenges)
-      .catch(e => setError(getErrorMessage(e, 'Failed to load challenges')))
+      .catch(e => setError(getApiErrorMessage(e, 'Failed to load challenges')))
       .finally(() => setLoading(false));
-  }, [category, difficulty, getErrorMessage]);
+  }, [category, difficulty]);
 
   return { challenges, loading, error };
 }
@@ -49,24 +49,18 @@ export function useChallenge(slug: string, token?: string | null) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [canViewLeaderboard, setCanViewLeaderboard] = useState(false);
-  const getErrorMessage = useCallback((e: unknown, fallback: string) => {
-    if (axios.isAxiosError(e)) {
-      const detail = e.response?.data?.detail;
-      if (typeof detail === 'string' && detail.trim()) return detail;
-      return e.message || fallback;
-    }
-    if (e instanceof Error && e.message) return e.message;
-    return fallback;
-  }, []);
-
-  useEffect(() => {
-    setError(null);
-    setResult(null);
+  const resetTimerState = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     setTimerRunning(false);
     startTimeRef.current = null;
     setElapsedSeconds(0);
+  }, []);
+
+  useEffect(() => {
+    setError(null);
+    setResult(null);
+    resetTimerState();
     if (!slug) {
       setChallenge(null);
       setLeaderboard([]);
@@ -98,10 +92,10 @@ export function useChallenge(slug: string, token?: string | null) {
         setChallenge(null);
         setLeaderboard([]);
         setCanViewLeaderboard(false);
-        setError(getErrorMessage(e, 'Failed to load challenge'));
+        setError(getApiErrorMessage(e, 'Failed to load challenge'));
       })
       .finally(() => setLoading(false));
-  }, [slug, token, getErrorMessage]);
+  }, [slug, token, resetTimerState]);
 
   const startTimer = useCallback(() => {
     setElapsedSeconds(0);
@@ -119,10 +113,8 @@ export function useChallenge(slug: string, token?: string | null) {
   }, []);
 
   const resetTimer = useCallback(() => {
-    stopTimer();
-    startTimeRef.current = null;
-    setElapsedSeconds(0);
-  }, [stopTimer]);
+    resetTimerState();
+  }, [resetTimerState]);
 
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
@@ -139,12 +131,12 @@ export function useChallenge(slug: string, token?: string | null) {
         fetchLeaderboard(slug, token).then(setLeaderboard).catch(() => null);
       }
     } catch (e: unknown) {
-      const msg = getErrorMessage(e, 'Submission failed');
+      const msg = getApiErrorMessage(e, 'Submission failed');
       setSubmitError(msg);
     } finally {
       setSubmitting(false);
     }
-  }, [slug, token, elapsedSeconds, stopTimer, getErrorMessage]);
+  }, [slug, token, elapsedSeconds, stopTimer]);
 
   const resetResult = useCallback(() => setResult(null), []);
 
