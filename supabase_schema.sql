@@ -109,9 +109,6 @@ alter table public.submissions enable row level security;
 create policy "Users can read own submissions"
   on public.submissions for select
   using (auth.uid() = user_id);
-create policy "Users can insert own submissions"
-  on public.submissions for insert
-  with check (auth.uid() = user_id);
 
 -- Leaderboard (best score per user per challenge — upserted by backend)
 create table if not exists public.leaderboard (
