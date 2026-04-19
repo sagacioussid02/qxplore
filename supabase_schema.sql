@@ -74,10 +74,14 @@ create table if not exists public.challenges (
   description   text not null,
   hints         jsonb not null default '[]',
   constraints   jsonb not null,   -- {max_qubits, max_gates, time_limit_seconds}
-  expected_sv   jsonb not null,   -- list of [re, im] pairs (null for optimization category)
+  expected_sv   jsonb,            -- list of [re, im] pairs (null only for optimization category)
   optimal_gates int,
   is_active     boolean not null default true,
-  created_at    timestamptz default now()
+  created_at    timestamptz default now(),
+  check (
+    (category = 'optimization' and expected_sv is null) or
+    (category <> 'optimization' and expected_sv is not null)
+  )
 );
 
 alter table public.challenges enable row level security;
