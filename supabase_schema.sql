@@ -85,9 +85,11 @@ create table if not exists public.challenges (
 );
 
 alter table public.challenges enable row level security;
-create policy "Anyone can read active challenges"
-  on public.challenges for select
-  using (is_active = true);
+-- Do not expose challenge definitions directly to client roles because this
+-- table contains sensitive fields such as answer keys / gated hints.
+-- Backend access should use the service role, which bypasses RLS by default.
+-- If client-facing reads are needed, expose a separate sanitized view or
+-- backend endpoint that omits sensitive columns.
 
 -- User submissions
 create table if not exists public.submissions (
