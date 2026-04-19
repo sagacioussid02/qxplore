@@ -24,8 +24,12 @@ export interface ShorResponse {
 }
 
 export const rsaApi = {
-  keygen: (p: number, q: number) =>
-    apiClient.post<KeygenResponse>('/rsa/keygen', { p, q }).then(r => r.data),
+  keygen: (p: number, q: number, accessToken?: string | null) =>
+    apiClient
+      .post<KeygenResponse>('/rsa/keygen', { p, q }, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      })
+      .then(r => r.data),
 
   encrypt: (message_int: number, e: number, n: number) =>
     apiClient.post<EncryptResponse>('/rsa/encrypt', { message_int, e, n }).then(r => r.data),
