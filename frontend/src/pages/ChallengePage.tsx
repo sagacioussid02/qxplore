@@ -213,18 +213,23 @@ export default function ChallengePage() {
           </div>
 
           {/* Hints */}
-          {challenge.hints.length > 0 ? (
-            <HintPanel
-              hints={challenge.hints}
-              locked={!isAuthenticated}
-            />
-          ) : (
-            <div className="card-quantum p-4">
-              <p className="text-xs font-mono text-gray-400 mb-2">Hints</p>
-              <p className="text-xs font-mono text-gray-500">No hints available for this challenge.</p>
-            </div>
-          )}
+          {(() => {
+            const userTier = (user as { tier?: string } | null)?.tier;
+            const hintsLocked = !isAuthenticated || userTier === 'free';
+            const hasHints = challenge.hints.length > 0;
 
+            return hasHints || hintsLocked ? (
+              <HintPanel
+                hints={challenge.hints}
+                locked={hintsLocked}
+              />
+            ) : (
+              <div className="card-quantum p-4">
+                <p className="text-xs font-mono text-gray-400 mb-2">Hints</p>
+                <p className="text-xs font-mono text-gray-500">No hints available for this challenge.</p>
+              </div>
+            );
+          })()}
           {/* Leaderboard */}
           {canViewLeaderboard ? (
             <div className="card-quantum p-4">
