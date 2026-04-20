@@ -201,7 +201,10 @@ async def run_benchmark_endpoint(
         result = run_benchmark(body.template, body.parameters)
     except Exception as e:
         log.exception("Benchmark run failed for template=%s", body.template)
-        raise HTTPException(status_code=500, detail=f"Benchmark failed: {e}") from e
+        raise HTTPException(
+            status_code=500,
+            detail="Benchmark failed due to an internal error.",
+        ) from e
 
     if user:
         run_id = await _save_run(user["sub"], result, settings)
