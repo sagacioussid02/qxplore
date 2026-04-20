@@ -47,6 +47,8 @@ export function RunHistoryList({ runs, onDelete }: Props) {
           {onDelete && (
             <button
               onClick={() => onDelete(run.id)}
+              aria-label={`Delete ${run.template} run`}
+              title={`Delete ${run.template} run`}
               className="text-xs font-mono text-gray-700 hover:text-red-400 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
             >
               ✕
