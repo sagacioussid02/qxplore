@@ -225,8 +225,19 @@ export default function ChallengePage() {
 
           {/* Hints */}
           {(() => {
-            const userTier = (user as { tier?: string } | null)?.tier;
-            const hintsLocked = !isAuthenticated || userTier === 'free';
+            const authUser = user as ({
+              tier?: string;
+              user_metadata?: { tier?: string };
+              app_metadata?: { tier?: string };
+            } | null);
+            const userTier = (
+              authUser?.tier ??
+              authUser?.user_metadata?.tier ??
+              authUser?.app_metadata?.tier
+            )?.toLowerCase();
+            const paidTiers = new Set(['prep', 'pro', 'premium', 'plus', 'team', 'enterprise']);
+            const hasHintAccess = isAuthenticated && !!userTier && paidTiers.has(userTier);
+            const hintsLocked = !hasHintAccess;
             const hasHints = challenge.hints.length > 0;
 
             return hasHints || hintsLocked ? (
