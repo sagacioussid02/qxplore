@@ -74,9 +74,16 @@ export function useRunHistory(token?: string | null) {
   useEffect(() => { load(); }, [load]);
 
   const remove = useCallback(async (id: string) => {
-    if (!token) return;
-    await deleteRun(id, token);
-    setRuns(prev => prev.filter(r => r.id !== id));
+    if (!token) return false;
+    setError(null);
+    try {
+      await deleteRun(id, token);
+      setRuns(prev => prev.filter(r => r.id !== id));
+      return true;
+    } catch (e) {
+      setError(apiError(e, 'Failed to delete run'));
+      return false;
+    }
   }, [token]);
 
   return { runs, loading, error, reload: load, remove };
