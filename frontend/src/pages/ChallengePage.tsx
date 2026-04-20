@@ -261,9 +261,7 @@ export default function ChallengePage() {
           ) : leaderboardStatus === 'error' ? (
             <div className="card-quantum p-4">
               <p className="text-xs font-mono text-gray-400 mb-2">Top Scores</p>
-              <p className="text-xs font-mono text-red-400">
-                {leaderboardError ?? 'Unable to load leaderboard right now. Please try again.'}
-              </p>
+              <p className="text-xs font-mono text-red-400">{leaderboardError}</p>
             </div>
           ) : (
             <div className="card-quantum p-4">
