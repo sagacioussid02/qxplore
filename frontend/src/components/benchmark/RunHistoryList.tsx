@@ -14,7 +14,9 @@ interface Props {
 export function RunHistoryList({ runs, onDelete }: Props) {
   const handleDelete = (id: string) => {
     if (!onDelete) return;
-    void onDelete(id).catch(() => {});
+    void onDelete(id).catch((error) => {
+      console.warn('Failed to delete benchmark run', error);
+    });
   };
 
   if (runs.length === 0) {
