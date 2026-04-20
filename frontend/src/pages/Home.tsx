@@ -68,6 +68,15 @@ const PLATFORM = [
     bg: 'rgba(0,255,255,0.05)',
     border: 'rgba(0,255,255,0.2)',
   },
+  {
+    to: '/benchmark',
+    icon: '⚡',
+    title: 'Benchmarking',
+    tagline: 'Run quantum vs classical algorithms side-by-side. See speedup, circuit stats, complexity.',
+    color: '#f97316',
+    bg: 'rgba(249,115,22,0.05)',
+    border: 'rgba(249,115,22,0.2)',
+  },
 ];
 
 const CONCEPTS = [
