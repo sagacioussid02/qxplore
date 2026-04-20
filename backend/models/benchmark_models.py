@@ -1,7 +1,7 @@
 """Pydantic models for the benchmarking tool."""
 from __future__ import annotations
 from typing import Any, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 TemplateName = Literal["grover", "rng", "shor", "qft", "qaoa", "freeform"]
 
@@ -18,8 +18,8 @@ class QuantumMetrics(BaseModel):
     qubit_count: int
     sim_time_ms: float
     shots: int
-    measurement_distribution: dict[str, int] = {}
-    extra: dict[str, Any] = {}
+    measurement_distribution: dict[str, int] = Field(default_factory=dict)
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 class ClassicalMetrics(BaseModel):

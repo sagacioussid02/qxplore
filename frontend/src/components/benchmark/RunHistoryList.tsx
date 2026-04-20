@@ -8,10 +8,15 @@ const TEMPLATE_ICON: Record<string, string> = {
 
 interface Props {
   runs: BenchmarkRunSummary[];
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => Promise<boolean>;
 }
 
 export function RunHistoryList({ runs, onDelete }: Props) {
+  const handleDelete = (id: string) => {
+    if (!onDelete) return;
+    void onDelete(id).catch(() => {});
+  };
+
   if (runs.length === 0) {
     return <p className="text-xs font-mono text-gray-600 text-center py-4">No runs yet.</p>;
   }
@@ -46,7 +51,7 @@ export function RunHistoryList({ runs, onDelete }: Props) {
           </Link>
           {onDelete && (
             <button
-              onClick={() => onDelete(run.id)}
+              onClick={() => handleDelete(run.id)}
               aria-label={`Delete ${run.template} run`}
               title={`Delete ${run.template} run`}
               className="text-xs font-mono text-gray-700 hover:text-red-400 transition-colors shrink-0 opacity-0 group-hover:opacity-100"

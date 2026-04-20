@@ -22,6 +22,25 @@ _DEFAULT_EDGES: dict[int, list[tuple[int, int]]] = {
 }
 
 
+def _grover_params(params: dict) -> tuple[int, int]:
+    try:
+        n_items = int(params.get("n_items", 16))
+    except (TypeError, ValueError) as e:
+        raise ValueError("n_items must be an integer") from e
+    try:
+        target = int(params.get("target", 0))
+    except (TypeError, ValueError) as e:
+        raise ValueError("target must be an integer") from e
+
+    if not 2 <= n_items <= 256:
+        raise ValueError("n_items must be between 2 and 256, inclusive")
+    if n_items & (n_items - 1):
+        raise ValueError("n_items must be an exact power of 2")
+    if not 0 <= target < n_items:
+        raise ValueError("target must be in range [0, n_items)")
+    return n_items, target
+
+
 def run_benchmark(template: TemplateName, parameters: dict) -> BenchmarkResult:
     quantum = _run_quantum(template, parameters)
     classical = _run_classical(template, parameters)
@@ -40,8 +59,7 @@ def run_benchmark(template: TemplateName, parameters: dict) -> BenchmarkResult:
 
 def _run_quantum(template: TemplateName, params: dict) -> QuantumMetrics:
     if template == "grover":
-        n = int(params.get("n_items", 16))
-        target = int(params.get("target", 0))
+        n, target = _grover_params(params)
         r = run_grover(n, target)
         gate_total = sum(r["gate_count"].values()) if isinstance(r["gate_count"], dict) else r["gate_count"]
         return QuantumMetrics(
@@ -153,8 +171,7 @@ def _run_quantum(template: TemplateName, params: dict) -> QuantumMetrics:
 
 def _run_classical(template: TemplateName, params: dict) -> ClassicalMetrics | None:
     if template == "grover":
-        n = int(params.get("n_items", 16))
-        target = int(params.get("target", 0))
+        n, target = _grover_params(params)
         r = linear_search(n, target)
         return ClassicalMetrics(
             algorithm=r.algorithm, steps=r.steps, time_ms=r.time_ms,
@@ -212,7 +229,7 @@ def _compute_speedup(
     if classical is None or classical.steps == 0:
         return None
     if template == "grover":
-        n = int(params.get("n_items", 16))
+        n, _ = _grover_params(params)
         quantum_steps = max(1, round(math.pi / 4 * math.sqrt(n)))
         return round(classical.steps / quantum_steps, 2)
     if template == "qft":

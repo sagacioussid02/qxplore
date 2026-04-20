@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 import httpx
+from starlette.concurrency import run_in_threadpool
 
 from ..core.supabase_auth import get_optional_user, require_user, _supabase_headers
 from ..core.config import get_settings
@@ -198,7 +199,9 @@ async def run_benchmark_endpoint(
         pass
 
     try:
-        result = run_benchmark(body.template, body.parameters)
+        result = await run_in_threadpool(run_benchmark, body.template, body.parameters)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
         log.exception("Benchmark run failed for template=%s", body.template)
         raise HTTPException(

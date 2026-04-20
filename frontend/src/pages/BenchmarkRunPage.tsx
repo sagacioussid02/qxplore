@@ -2,25 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import { useTemplates } from '../hooks/useBenchmark';
 import { fetchRun } from '../api/benchmarkApi';
 import { CircuitStats } from '../components/benchmark/CircuitStats';
 import { MetricsTable } from '../components/benchmark/MetricsTable';
 import { SpeedupChart } from '../components/benchmark/SpeedupChart';
 import { ComplexityBadge } from '../components/benchmark/ComplexityBadge';
 import type { BenchmarkResult } from '../types/benchmark';
-
-const TEMPLATE_TITLE: Record<string, string> = {
-  grover: "Grover's Search", rng: 'Random Number Generation', shor: "Shor's Factoring",
-  qft: 'Quantum Fourier Transform', qaoa: 'Max-Cut (QAOA)', freeform: 'Free-Form Circuit',
-};
-const TEMPLATE_COMPLEXITY: Record<string, [string, string]> = {
-  grover: ['O(√N)', 'O(N)'],
-  rng: ['O(N) gates', 'O(N) ops'],
-  shor: ['O((log N)³)', 'O(N^¼)'],
-  qft: ['O(n²) gates', 'O(N log N)'],
-  qaoa: ['O(p·|E|)', 'O(2ᴺ)'],
-  freeform: ['User-defined', 'N/A'],
-};
 
 function ScalingTable({ template, n }: { template: string; n: number }) {
   if (template !== 'grover' || n < 4) return null;
@@ -59,26 +47,30 @@ export default function BenchmarkRunPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const { accessToken } = useAuth();
+  const { templates } = useTemplates();
 
   const [result, setResult] = useState<BenchmarkResult | null>(
     (location.state as { result?: BenchmarkResult })?.result ?? null
   );
-  const [loading, setLoading] = useState(!result);
   const [error, setError] = useState<string | null>(null);
+  const needsFetch = !result && id !== 'preview' && !!id && !!accessToken;
+  const notFound = id !== 'preview' && (!id || !accessToken);
 
   useEffect(() => {
-    if (result || id === 'preview') return;
-    if (!id || !accessToken) { setLoading(false); setError('Not found'); return; }
+    if (!needsFetch) return;
     fetchRun(id, accessToken)
       .then(setResult)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [id, accessToken]);
+      .catch(e => setError(e.message));
+  }, [needsFetch, id, accessToken]);
 
-  if (loading) return <p className="font-mono text-gray-500 animate-pulse">Loading run…</p>;
+  if (notFound) return <p className="font-mono text-red-400">Error: Not found</p>;
+  if (!result && !error) return <p className="font-mono text-gray-500 animate-pulse">Loading run…</p>;
   if (error || !result) return <p className="font-mono text-red-400">Error: {error ?? 'Run not found'}</p>;
 
-  const [qComplexity, cComplexity] = TEMPLATE_COMPLEXITY[result.template] ?? ['—', '—'];
+  const templateInfo = templates.find(t => t.name === result.template);
+  const title = templateInfo?.title ?? result.template;
+  const qComplexity = templateInfo?.complexity_quantum ?? '—';
+  const cComplexity = templateInfo?.complexity_classical ?? '—';
   const n = Number(result.parameters?.n_items ?? result.parameters?.n_qubits ?? result.parameters?.n_nodes ?? 0);
 
   return (
@@ -87,13 +79,13 @@ export default function BenchmarkRunPage() {
       <div className="flex items-center gap-2 text-xs font-mono text-gray-600">
         <Link to="/benchmark" className="hover:text-quantum-cyan transition-colors">Benchmark</Link>
         <span>/</span>
-        <span className="text-gray-400">{TEMPLATE_TITLE[result.template] ?? result.template}</span>
+        <span className="text-gray-400">{title}</span>
       </div>
 
       {/* Title */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-mono font-bold text-quantum-cyan">
-          {TEMPLATE_TITLE[result.template] ?? result.template}
+          {title}
         </h1>
         <p className="text-xs font-mono text-gray-500 mt-1">
           {Object.entries(result.parameters)
