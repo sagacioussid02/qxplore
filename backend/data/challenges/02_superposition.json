@@ -1,0 +1,19 @@
+{
+  "slug": "superposition",
+  "title": "Superposition",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## Superposition\n\nApply a **Hadamard (H) gate** to qubit 0 to create an equal superposition of |0⟩ and |1⟩.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|+⟩  =  (|0⟩ + |1⟩) / √2  →  [1/√2, 1/√2]  ≈  [0.707, 0.707]\n```\n\n### Background\nThe Hadamard gate transforms a basis state into an equal superposition:\n- H|0⟩ = (|0⟩ + |1⟩)/√2 = |+⟩\n- H|1⟩ = (|0⟩ − |1⟩)/√2 = |−⟩\n\nWhen measured, |+⟩ collapses to |0⟩ or |1⟩ with equal probability (50/50). This is the quantum analogue of a fair coin toss — but the randomness is **fundamental**, not algorithmic.\n\n### Constraints\n- Use exactly **1 qubit**\n- Solution must be within fidelity ε=0.01 of the target statevector\n\n### Classical Equivalent\n`random.choice([0, 1])` — except quantum randomness is provably non-deterministic.",
+  "hints": [
+    "A single Hadamard gate on qubit 0 is all you need.",
+    "The H gate is the most fundamental gate for creating superposition.",
+    "After H, if you measure many times you should see roughly 50% |0⟩ and 50% |1⟩."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 4,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [[0.7071067811865476, 0.0], [0.7071067811865476, 0.0]],
+  "optimal_gates": 1
+}

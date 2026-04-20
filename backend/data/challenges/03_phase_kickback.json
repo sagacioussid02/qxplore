@@ -1,0 +1,19 @@
+{
+  "slug": "phase-kickback",
+  "title": "Phase Kickback",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## Phase Kickback\n\nApply an **H gate** followed by a **Z gate** to qubit 0 to demonstrate phase kickback — create the |−⟩ state.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|−⟩  =  (|0⟩ − |1⟩) / √2  →  [1/√2, -1/√2]  ≈  [0.707, -0.707]\n```\n\n### Background\nThe Z gate (Pauli-Z) applies a phase flip: it leaves |0⟩ unchanged but flips the sign of |1⟩:\n- Z|0⟩ = |0⟩\n- Z|1⟩ = −|1⟩\n\nWhen applied after H to a |0⟩ input:\n1. H|0⟩ = (|0⟩ + |1⟩)/√2 = |+⟩\n2. Z|+⟩ = (|0⟩ − |1⟩)/√2 = |−⟩\n\n**Phase kickback** is a technique where a phase applied by a gate \"kicks back\" to the control register — critical in Grover's oracle and Shor's algorithm.\n\n### Constraints\n- Use exactly **1 qubit**\n- Minimum **2 gates**\n\n### Classical Equivalent\nA sign flip on one branch of a superposition — no classical equivalent.",
+  "hints": [
+    "Apply H first to create |+⟩, then Z to flip the phase of |1⟩.",
+    "The Z gate doesn't change measurement probabilities — it only changes the phase.",
+    "Phase matters for interference effects, which is how quantum algorithms gain their power."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 6,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [[0.7071067811865476, 0.0], [-0.7071067811865476, 0.0]],
+  "optimal_gates": 2
+}
