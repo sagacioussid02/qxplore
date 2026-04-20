@@ -161,7 +161,7 @@ def prng_bits(n_bits: int) -> ClassicalResult:
             "n_bits": n_bits,
             "csprng_value": secure_val,
             "prng_value": prng_val,
-            "note": "CSPRNG (secrets) is cryptographically secure; PRNG (random) is deterministic from seed",
+            "note": "CSPRNG (secrets) is cryptographically secure; PRNG (random) is not cryptographically secure and, in this function, uses the current global PRNG state",
         },
         complexity_label="O(N)",
         algorithm="Python secrets.randbits + random.getrandbits",
