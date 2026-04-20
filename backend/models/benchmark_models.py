@@ -13,12 +13,12 @@ class BenchmarkRunRequest(BaseModel):
 
 class QuantumMetrics(BaseModel):
     circuit_depth: int
-    gate_count: int | dict
+    gate_count: int | dict[str, int]
     cnot_count: int
     qubit_count: int
     sim_time_ms: float
     shots: int
-    measurement_distribution: dict[str, Any] = {}
+    measurement_distribution: dict[str, int] = {}
     extra: dict[str, Any] = {}
 
 
