@@ -10,6 +10,8 @@ import RSAPage from './pages/RSAPage';
 import CircuitTTTPage from './pages/CircuitTTTPage';
 import PrepPage from './pages/PrepPage';
 import ChallengePage from './pages/ChallengePage';
+import BenchmarkPage from './pages/BenchmarkPage';
+import BenchmarkRunPage from './pages/BenchmarkRunPage';
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
           <Route path="/circuit-ttt" element={<CircuitTTTPage />} />
           <Route path="/prep" element={<PrepPage />} />
           <Route path="/prep/:slug" element={<ChallengePage />} />
+          <Route path="/benchmark" element={<BenchmarkPage />} />
+          <Route path="/benchmark/run/:id" element={<BenchmarkRunPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

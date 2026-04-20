@@ -57,7 +57,7 @@ New (phases add on top)
 **Target**: developers building apps needing quantum randomness, circuit execution, or factoring  
 **Revenue**: Free (100 calls/mo) / Growth $49/mo (10k calls) / Enterprise custom  
 **Timeline estimate**: 2–3 weeks  
-**Status**: Not started  
+**Status**: Planned  
 **Plan**: [PHASE3_API_PRODUCT.md](./PHASE3_API_PRODUCT.md)
 
 ---

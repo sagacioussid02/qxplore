@@ -4,7 +4,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
-from .routers import quantum, games, agents, stripe_router, rsa, circuit_ttt, challenges
+from .routers import quantum, games, agents, stripe_router, rsa, circuit_ttt, challenges, benchmark
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +49,7 @@ app.include_router(stripe_router.router)
 app.include_router(rsa.router)
 app.include_router(circuit_ttt.router)
 app.include_router(challenges.router)
+app.include_router(benchmark.router)
 
 
 @app.get("/health")
