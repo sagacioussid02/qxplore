@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict, deque
 import time
+from threading import Lock
 from fastapi import APIRouter, Depends, HTTPException, Request
 import httpx
 from starlette.concurrency import run_in_threadpool
@@ -21,6 +22,7 @@ _FREE_MONTHLY_RUNS = 3
 _ANON_WINDOW_SECONDS = 300
 _ANON_MAX_RUNS = 3
 _anon_runs_by_ip: dict[str, deque[float]] = defaultdict(deque)
+_anon_runs_lock = Lock()
 
 _TEMPLATES: list[TemplateInfo] = [
     TemplateInfo(
@@ -177,25 +179,28 @@ async def _save_run(user_id: str, result: BenchmarkResult, settings) -> str | No
 
 
 def _client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",", 1)[0].strip() or "unknown"
-    return request.client.host if request.client else "unknown"
+    if request.client and request.client.host:
+        return request.client.host
+    raise HTTPException(
+        status_code=400,
+        detail="Unable to determine client address for anonymous rate limiting. Please try again later.",
+    )
 
 
 def _enforce_anonymous_rate_limit(request: Request) -> None:
     now = time.time()
     cutoff = now - _ANON_WINDOW_SECONDS
     ip = _client_ip(request)
-    runs = _anon_runs_by_ip[ip]
-    while runs and runs[0] < cutoff:
-        runs.popleft()
-    if len(runs) >= _ANON_MAX_RUNS:
-        raise HTTPException(
-            status_code=429,
-            detail="Anonymous benchmark rate limit reached. Sign in or try again in a few minutes.",
-        )
-    runs.append(now)
+    with _anon_runs_lock:
+        runs = _anon_runs_by_ip[ip]
+        while runs and runs[0] < cutoff:
+            runs.popleft()
+        if len(runs) >= _ANON_MAX_RUNS:
+            raise HTTPException(
+                status_code=429,
+                detail="Anonymous benchmark limit reached (3 runs per 5 minutes). Sign in or wait a few minutes.",
+            )
+        runs.append(now)
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
