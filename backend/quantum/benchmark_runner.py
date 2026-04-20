@@ -22,6 +22,94 @@ _DEFAULT_EDGES: dict[int, list[tuple[int, int]]] = {
 }
 
 
+def _qaoa_params(params: dict) -> tuple[int, list[tuple[int, int]]]:
+    try:
+        n_nodes = int(params.get("n_nodes", 4))
+    except (TypeError, ValueError) as e:
+        raise ValueError("n_nodes must be an integer") from e
+    if not 3 <= n_nodes <= 5:
+        raise ValueError("n_nodes must be between 3 and 5, inclusive")
+
+    raw_edges = params.get("edges")
+    if raw_edges is None:
+        return n_nodes, _DEFAULT_EDGES[n_nodes]
+    if not isinstance(raw_edges, list):
+        raise ValueError("edges must be a list of [u, v] pairs")
+
+    edges: list[tuple[int, int]] = []
+    for i, edge in enumerate(raw_edges):
+        if not isinstance(edge, (list, tuple)) or len(edge) != 2:
+            raise ValueError(f"edges[{i}] must be a 2-item list/tuple")
+        try:
+            u = int(edge[0])
+            v = int(edge[1])
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"edges[{i}] must contain integers") from e
+        if u == v:
+            raise ValueError(f"edges[{i}] cannot connect a node to itself")
+        if not (0 <= u < n_nodes and 0 <= v < n_nodes):
+            raise ValueError(f"edges[{i}] nodes must be within [0, {n_nodes})")
+        edges.append((u, v))
+    return n_nodes, edges
+
+
+def _freeform_params(params: dict) -> tuple[int, list[dict]]:
+    try:
+        n_qubits = int(params.get("num_qubits", 2))
+    except (TypeError, ValueError) as e:
+        raise ValueError("num_qubits must be an integer") from e
+    if not 1 <= n_qubits <= 4:
+        raise ValueError("num_qubits must be between 1 and 4, inclusive")
+
+    raw_gates = params.get("gates", [])
+    if not isinstance(raw_gates, list):
+        raise ValueError("gates must be a list")
+
+    allowed = {"H", "X", "Y", "Z", "S", "T", "CNOT"}
+    gates: list[dict] = []
+    for i, gate in enumerate(raw_gates):
+        if not isinstance(gate, dict):
+            raise ValueError(f"gates[{i}] must be an object")
+        if "type" not in gate:
+            raise ValueError(f"gates[{i}].type is required")
+        if "qubit" not in gate:
+            raise ValueError(f"gates[{i}].qubit is required")
+
+        gtype = str(gate["type"]).upper()
+        if gtype not in allowed:
+            raise ValueError(f"gates[{i}].type must be one of {sorted(allowed)}")
+        try:
+            qubit = int(gate["qubit"])
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"gates[{i}].qubit must be an integer") from e
+        if not 0 <= qubit < n_qubits:
+            raise ValueError(f"gates[{i}].qubit must be within [0, {n_qubits})")
+
+        clean_gate: dict = {"type": gtype, "qubit": qubit}
+        if "step" in gate:
+            try:
+                clean_gate["step"] = int(gate["step"])
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"gates[{i}].step must be an integer") from e
+
+        if gtype == "CNOT":
+            if "target" not in gate:
+                raise ValueError(f"gates[{i}].target is required for CNOT")
+            try:
+                target = int(gate["target"])
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"gates[{i}].target must be an integer") from e
+            if not 0 <= target < n_qubits:
+                raise ValueError(f"gates[{i}].target must be within [0, {n_qubits})")
+            if target == qubit:
+                raise ValueError(f"gates[{i}] CNOT target must differ from qubit")
+            clean_gate["target"] = target
+
+        gates.append(clean_gate)
+
+    return n_qubits, gates
+
+
 def _grover_params(params: dict) -> tuple[int, int]:
     try:
         n_items = int(params.get("n_items", 16))
@@ -131,9 +219,7 @@ def _run_quantum(template: TemplateName, params: dict) -> QuantumMetrics:
         )
 
     elif template == "qaoa":
-        n_nodes = int(params.get("n_nodes", 4))
-        edges = params.get("edges") or _DEFAULT_EDGES.get(n_nodes, _DEFAULT_EDGES[4])
-        edges = [tuple(e) for e in edges]
+        n_nodes, edges = _qaoa_params(params)
         r = run_qaoa(n_nodes, edges)
         return QuantumMetrics(
             circuit_depth=r["circuit_depth"],
@@ -148,8 +234,7 @@ def _run_quantum(template: TemplateName, params: dict) -> QuantumMetrics:
 
     elif template == "freeform":
         from .circuit_builder import build_and_run
-        gates = params.get("gates", [])
-        n_qubits = int(params.get("num_qubits", 2))
+        n_qubits, gates = _freeform_params(params)
         t0 = time.perf_counter()
         r = build_and_run(n_qubits, gates)
         sim_ms = (time.perf_counter() - t0) * 1000
@@ -203,9 +288,7 @@ def _run_classical(template: TemplateName, params: dict) -> ClassicalMetrics | N
         )
 
     elif template == "qaoa":
-        n_nodes = int(params.get("n_nodes", 4))
-        edges = params.get("edges") or _DEFAULT_EDGES.get(n_nodes, _DEFAULT_EDGES[4])
-        edges = [tuple(e) for e in edges]
+        n_nodes, edges = _qaoa_params(params)
         r = brute_force_maxcut(n_nodes, edges)
         return ClassicalMetrics(
             algorithm=r.algorithm, steps=r.steps, time_ms=r.time_ms,

@@ -1,7 +1,9 @@
 """Benchmarking tool endpoints."""
 from __future__ import annotations
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from collections import defaultdict, deque
+import time
+from fastapi import APIRouter, Depends, HTTPException, Request
 import httpx
 from starlette.concurrency import run_in_threadpool
 
@@ -16,6 +18,9 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/benchmark", tags=["benchmark"])
 
 _FREE_MONTHLY_RUNS = 3
+_ANON_WINDOW_SECONDS = 300
+_ANON_MAX_RUNS = 3
+_anon_runs_by_ip: dict[str, deque[float]] = defaultdict(deque)
 
 _TEMPLATES: list[TemplateInfo] = [
     TemplateInfo(
@@ -171,6 +176,28 @@ async def _save_run(user_id: str, result: BenchmarkResult, settings) -> str | No
     return None
 
 
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip() or "unknown"
+    return request.client.host if request.client else "unknown"
+
+
+def _enforce_anonymous_rate_limit(request: Request) -> None:
+    now = time.time()
+    cutoff = now - _ANON_WINDOW_SECONDS
+    ip = _client_ip(request)
+    runs = _anon_runs_by_ip[ip]
+    while runs and runs[0] < cutoff:
+        runs.popleft()
+    if len(runs) >= _ANON_MAX_RUNS:
+        raise HTTPException(
+            status_code=429,
+            detail="Anonymous benchmark rate limit reached. Sign in or try again in a few minutes.",
+        )
+    runs.append(now)
+
+
 # ── endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/templates", response_model=list[TemplateInfo])
@@ -181,6 +208,7 @@ async def list_templates():
 @router.post("/run", response_model=BenchmarkResult)
 async def run_benchmark_endpoint(
     body: BenchmarkRunRequest,
+    request: Request,
     user: dict | None = Depends(get_optional_user),
 ):
     settings = get_settings()
@@ -195,8 +223,7 @@ async def run_benchmark_endpoint(
                     detail="Free tier limit: 3 benchmark runs/month. Upgrade to Pro for unlimited.",
                 )
     else:
-        # Anonymous users get 3 total runs (checked via honour system — no persistent count)
-        pass
+        _enforce_anonymous_rate_limit(request)
 
     try:
         result = await run_in_threadpool(run_benchmark, body.template, body.parameters)

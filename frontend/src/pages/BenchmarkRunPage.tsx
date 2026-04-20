@@ -53,6 +53,7 @@ export default function BenchmarkRunPage() {
     (location.state as { result?: BenchmarkResult })?.result ?? null
   );
   const [error, setError] = useState<string | null>(null);
+  const previewExpired = id === 'preview' && !result;
   const needsFetch = !result && id !== 'preview' && !!id && !!accessToken;
   const notFound = id !== 'preview' && (!id || !accessToken);
 
@@ -63,6 +64,14 @@ export default function BenchmarkRunPage() {
       .catch(e => setError(e.message));
   }, [needsFetch, id, accessToken]);
 
+  if (previewExpired) {
+    return (
+      <div className="space-y-4">
+        <p className="font-mono text-gray-400">Preview expired. Please run a new benchmark.</p>
+        <Link to="/benchmark" className="inline-block btn-outline text-sm">← Back to Benchmark</Link>
+      </div>
+    );
+  }
   if (notFound) return <p className="font-mono text-red-400">Error: Not found</p>;
   if (!result && !error) return <p className="font-mono text-gray-500 animate-pulse">Loading run…</p>;
   if (error || !result) return <p className="font-mono text-red-400">Error: {error ?? 'Run not found'}</p>;
