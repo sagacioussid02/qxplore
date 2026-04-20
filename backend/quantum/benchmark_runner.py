@@ -2,7 +2,6 @@
 from __future__ import annotations
 import math
 import time
-import numpy as np
 from qiskit import QuantumCircuit, transpile
 
 from .simulator import get_simulator
