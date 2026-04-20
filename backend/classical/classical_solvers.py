@@ -58,13 +58,13 @@ def pollards_rho(n: int) -> ClassicalResult:
             d = math.gcd(abs(x - y), n)
             if steps > 100_000:
                 break
-        return d if d != n else None
+        return d if 1 < d < n else None
 
     random.seed(42)  # deterministic for benchmarking
     factor = None
     for _ in range(20):
         f = _rho(n)
-        if f and f != n:
+        if f is not None and 1 < f < n:
             factor = f
             break
 
