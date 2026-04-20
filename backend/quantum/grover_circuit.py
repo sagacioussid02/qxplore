@@ -10,13 +10,18 @@ from .simulator import get_simulator
 def run_grover(n_items: int, target: int) -> dict:
     """
     Build and run Grover's search for target in an unsorted list of n_items.
-    n_items must be a power of 2, max 256 (2^8).
+    n_items must be an exact power of 2 between 2 and 256 (2^8), inclusive.
     Returns circuit metrics + measurement distribution.
     """
-    n_qubits = math.ceil(math.log2(max(n_items, 2)))
-    n_qubits = min(n_qubits, 8)
-    n_iter = max(1, round(math.pi / 4 * math.sqrt(2 ** n_qubits)))
+    if not 2 <= n_items <= 256:
+        raise ValueError("n_items must be between 2 and 256, inclusive")
+    if n_items & (n_items - 1):
+        raise ValueError("n_items must be an exact power of 2")
+    if not 0 <= target < n_items:
+        raise ValueError("target must be in range [0, n_items)")
 
+    n_qubits = int(math.log2(n_items))
+    n_iter = max(1, round(math.pi / 4 * math.sqrt(n_items)))
     sim = get_simulator()
     qc = QuantumCircuit(n_qubits)
 
