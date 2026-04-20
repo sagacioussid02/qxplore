@@ -105,12 +105,32 @@ async def _get_monthly_run_count(user_id: str, settings) -> int:
                 headers={**_supabase_headers(), "Prefer": "count=exact"},
                 params={"user_id": f"eq.{user_id}", "created_at": f"gte.{_start_of_month()}", "select": "id"},
             )
+        if resp.status_code not in (200, 206):
+            log.warning(
+                "Failed to get monthly run count: unexpected status %s",
+                resp.status_code,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to verify monthly benchmark run limit right now. Please try again later.",
+            )
         cr = resp.headers.get("content-range", "")
         total = cr.rsplit("/", 1)[-1]
-        return int(total) if total.isdigit() else 0
+        if not total.isdigit():
+            log.warning("Failed to get monthly run count: malformed content-range %r", cr)
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to verify monthly benchmark run limit right now. Please try again later.",
+            )
+        return int(total)
+    except HTTPException:
+        raise
     except Exception as e:
         log.warning("Failed to get monthly run count: %s", e)
-        return 0
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to verify monthly benchmark run limit right now. Please try again later.",
+        ) from e
 
 
 async def _get_user_tier(user_id: str, settings) -> str:
