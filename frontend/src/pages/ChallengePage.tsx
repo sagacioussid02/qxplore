@@ -76,7 +76,7 @@ export default function ChallengePage() {
 
   const {
     challenge, leaderboard, loading, error,
-    canViewLeaderboard,
+    canViewLeaderboard, leaderboardStatus, leaderboardError,
     elapsedSeconds, timerRunning, startTimer, resetTimer,
     result, submitting, submitError, submit, resetResult,
   } = useChallenge(slug ?? '', accessToken);
@@ -257,6 +257,13 @@ export default function ChallengePage() {
             <div className="card-quantum p-4">
               <p className="text-xs font-mono text-gray-400 mb-3">Top Scores</p>
               <LeaderboardTable entries={leaderboard} currentUserId={user?.id} />
+            </div>
+          ) : leaderboardStatus === 'error' ? (
+            <div className="card-quantum p-4">
+              <p className="text-xs font-mono text-gray-400 mb-2">Top Scores</p>
+              <p className="text-xs font-mono text-red-400">
+                {leaderboardError ?? 'Unable to load leaderboard right now. Please try again.'}
+              </p>
             </div>
           ) : (
             <div className="card-quantum p-4">
