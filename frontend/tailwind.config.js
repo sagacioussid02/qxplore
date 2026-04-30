@@ -5,10 +5,10 @@ export default {
     extend: {
       colors: {
         quantum: {
-          navy:    '#0f172a',
-          dark:    '#141f33',
-          surface: '#1a2540',
-          border:  '#2a3d5c',
+          navy:    '#172033',
+          dark:    '#1c2740',
+          surface: '#22304d',
+          border:  '#324669',
           cyan:    '#00ffff',
           purple:  '#8b5cf6',
           pink:    '#ec4899',

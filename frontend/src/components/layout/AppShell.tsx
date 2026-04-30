@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CreditBadge } from './CreditBadge';
+import { CrayonBackground } from './CrayonBackground';
 import { ConceptChat } from '../agents/ConceptChat';
 import { AuthModal } from '../auth/AuthModal';
 import { UserMenu } from '../auth/UserMenu';
@@ -8,9 +9,8 @@ import { useAuth } from '../../hooks/useAuth';
 
 const NAV_LINKS = [
   { to: '/', label: 'Arcade', icon: '🕹', inDev: false },
-  { to: '/coin', label: 'Quantum Coin', icon: '🪙', inDev: false },
-  { to: '/roulette', label: 'Roulette', icon: '🎡', inDev: true },
-  { to: '/ttt', label: 'Quantum TTT', icon: '⊗', inDev: false },
+  { to: '/prep', label: 'Interview Prep', icon: '🎓', inDev: false },
+  { to: '/benchmark', label: 'Benchmarking', icon: '⚡', inDev: false },
   { to: '/circuit', label: 'Circuit Lab', icon: '⊕', inDev: false },
   { to: '/rsa', label: 'RSA vs Shor', icon: '🔐', inDev: false },
 ];
@@ -21,7 +21,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, credits, isAuthenticated, signOut, startStripeCheckout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-quantum-navy flex flex-col">
+    <div className="min-h-screen bg-quantum-navy flex flex-col relative">
+      <CrayonBackground />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
 
       {/* Top nav */}
@@ -89,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content + sidebar */}
-      <div className="flex flex-1 max-w-screen-xl mx-auto w-full px-4 py-6 gap-6">
+      <div className="flex flex-1 max-w-screen-xl mx-auto w-full px-4 py-6 gap-6 relative z-10">
         <main className="flex-1 min-w-0">{children}</main>
         <aside className="hidden xl:block w-80 shrink-0">
           <div className="sticky top-24">
@@ -99,7 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-quantum-border bg-quantum-dark mt-auto">
+      <footer className="border-t border-quantum-border bg-quantum-dark mt-auto relative z-10">
         <div className="max-w-screen-xl mx-auto px-4 h-10 flex items-center justify-center">
           <span className="text-xs text-gray-500 font-mono">
             © {new Date().getFullYear()} Binosus. All rights reserved.
