@@ -4,7 +4,9 @@ A quantum computing simulator and API service built with Express.js and mathjs.
 
 ## Features
 
-- Quantum circuit simulation with support for X and H gates
+- Quantum circuit simulation with support for X, H, Z, Y, S, T gates
+- Parameterized rotation gates (RX, RY, RZ)
+- Multi-qubit gate support (CNOT)
 - RESTful API for running quantum circuits
 - Rate limiting to prevent abuse
 - Input validation for security
@@ -78,6 +80,48 @@ Run a quantum circuit and get the resulting state vector.
 }
 ```
 
+#### Supported Gates
+
+**Single-Qubit Gates:**
+- `X` — Pauli-X (NOT gate)
+- `Y` — Pauli-Y
+- `Z` — Pauli-Z
+- `H` — Hadamard
+- `S` — Phase gate
+- `T` — T gate
+- `RX` — Rotation around X-axis (requires `theta` parameter in radians)
+- `RY` — Rotation around Y-axis (requires `theta` parameter in radians)
+- `RZ` — Rotation around Z-axis (requires `theta` parameter in radians)
+
+**Multi-Qubit Gates:**
+- `CNOT` — Controlled-NOT (requires `control` and `target` qubits)
+
+**Example with Rotation Gates:**
+```json
+{
+  "numQubits": 1,
+  "circuit": {
+    "gates": [
+      { "type": "RX", "target": 0, "theta": 1.5708 },
+      { "type": "RY", "target": 0, "theta": 0.7854 }
+    ]
+  }
+}
+```
+
+**Example with CNOT:**
+```json
+{
+  "numQubits": 2,
+  "circuit": {
+    "gates": [
+      { "type": "H", "target": 0 },
+      { "type": "CNOT", "control": 0, "target": 1 }
+    ]
+  }
+}
+```
+
 **Rate Limiting:**
 - General /api routes: 100 requests per 15 minutes per IP
 - POST /api/circuit/run: 10 requests per 15 minutes per IP
@@ -107,6 +151,7 @@ Health check endpoint (not rate limited).
 │       └── gates.js             # Quantum gate definitions
 ├── tests/
 │   ├── simulator.test.js        # Simulator tests
+│   ├── gates.test.js            # Gate definition and application tests
 │   └── rate-limit.test.js       # Rate limiting tests
 ├── package.json
 ├── .env.example
