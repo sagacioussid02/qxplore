@@ -4,7 +4,7 @@ A quantum computing simulator and API service built with Express.js and mathjs.
 
 ## Features
 
-- Quantum circuit simulation with support for X and H gates
+- Quantum circuit simulation with support for X, Y, Z, H, S, T, CNOT, and rotation gates (RX, RY, RZ)
 - RESTful API for running quantum circuits
 - Rate limiting to prevent abuse
 - Input validation for security
@@ -63,8 +63,8 @@ Run a quantum circuit and get the resulting state vector.
   "numQubits": 2,
   "circuit": {
     "gates": [
-      { "type": "X", "target": 0 },
-      { "type": "H", "target": 1 }
+      { "type": "H", "target": 0 },
+      { "type": "CNOT", "control": 0, "target": 1 }
     ]
   }
 }
@@ -73,9 +73,42 @@ Run a quantum circuit and get the resulting state vector.
 **Response:**
 ```json
 {
-  "stateVector": [0.7071, 0, 0.7071, 0],
+  "stateVector": [0.7071, 0, 0, 0.7071],
   "measurement": [0, 0]
 }
+```
+
+**Supported Gates:**
+
+#### Single-Qubit Gates
+- `X` — Pauli-X (NOT) gate
+- `Y` — Pauli-Y gate
+- `Z` — Pauli-Z gate
+- `H` — Hadamard gate
+- `S` — S (phase) gate
+- `T` — T gate
+- `RX` — RX rotation gate (requires `angle` parameter in radians)
+- `RY` — RY rotation gate (requires `angle` parameter in radians)
+- `RZ` — RZ rotation gate (requires `angle` parameter in radians)
+
+#### Two-Qubit Gates
+- `CNOT` — Controlled-NOT gate (requires `control` and `target` qubits)
+
+**Gate Examples:**
+
+Single-qubit gate:
+```json
+{ "type": "X", "target": 0 }
+```
+
+Rotation gate (angle in radians):
+```json
+{ "type": "RY", "target": 0, "angle": 1.5708 }
+```
+
+Two-qubit gate:
+```json
+{ "type": "CNOT", "control": 0, "target": 1 }
 ```
 
 **Rate Limiting:**
