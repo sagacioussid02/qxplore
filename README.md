@@ -4,7 +4,7 @@ A quantum computing simulator and API service built with Express.js and mathjs.
 
 ## Features
 
-- Quantum circuit simulation with support for X and H gates
+- Quantum circuit simulation with support for X, H, Z, Y, S, and T gates
 - RESTful API for running quantum circuits
 - Rate limiting to prevent abuse
 - Input validation for security
@@ -77,6 +77,14 @@ Run a quantum circuit and get the resulting state vector.
   "measurement": [0, 0]
 }
 ```
+
+**Supported Gates:**
+- **X** — Pauli X gate (NOT gate)
+- **H** — Hadamard gate
+- **Z** — Pauli Z gate
+- **Y** — Pauli Y gate
+- **S** — S gate (phase gate)
+- **T** — T gate
 
 **Rate Limiting:**
 - General /api routes: 100 requests per 15 minutes per IP
