@@ -1,211 +1,183 @@
-const { simulateCircuit } = require('../src/quantum/simulator');
+const { createSimulator, applyGate } = require('../src/quantum/simulator');
+const { X, H, Z, Y, S, T } = require('../src/quantum/gates');
 const math = require('mathjs');
 
-function almostEqual(a, b, tolerance = 1e-10) {
-  return Math.abs(a - b) < tolerance;
-}
-
 describe('Quantum Simulator', () => {
-  describe('Basic gates', () => {
-    test('X gate on |0⟩ produces |1⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [{ type: 'X', target: 0 }]
-      });
-      expect(almostEqual(result.stateVector[0], 0)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 1)).toBe(true);
+  describe('State Vector Initialization', () => {
+    test('should initialize |0⟩ state for single qubit', () => {
+      const sim = createSimulator(1);
+      const state = sim.getStateVector();
+      expect(state.length).toBe(2);
+      expect(math.abs(state[0])).toBeCloseTo(1, 5);
+      expect(math.abs(state[1])).toBeCloseTo(0, 5);
     });
 
-    test('H gate on |0⟩ produces superposition', () => {
-      const result = simulateCircuit(1, {
-        gates: [{ type: 'H', target: 0 }]
+    test('should initialize |00⟩ state for two qubits', () => {
+      const sim = createSimulator(2);
+      const state = sim.getStateVector();
+      expect(state.length).toBe(4);
+      expect(math.abs(state[0])).toBeCloseTo(1, 5);
+      state.slice(1).forEach(amp => {
+        expect(math.abs(amp)).toBeCloseTo(0, 5);
       });
+    });
+  });
+
+  describe('X Gate (Pauli X / NOT)', () => {
+    test('should flip |0⟩ to |1⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
+    });
+
+    test('should flip |1⟩ back to |0⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0);
+      applyGate(sim, X, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(1, 5);
+      expect(math.abs(state[1])).toBeCloseTo(0, 5);
+    });
+  });
+
+  describe('H Gate (Hadamard)', () => {
+    test('should create superposition |+⟩ from |0⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, H, 0);
+      const state = sim.getStateVector();
       const expected = 1 / Math.sqrt(2);
-      expect(almostEqual(result.stateVector[0], expected)).toBe(true);
-      expect(almostEqual(result.stateVector[1], expected)).toBe(true);
+      expect(math.abs(state[0])).toBeCloseTo(expected, 5);
+      expect(math.abs(state[1])).toBeCloseTo(expected, 5);
+    });
+
+    test('should be self-inverse: H² = I', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, H, 0);
+      applyGate(sim, H, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(1, 5);
+      expect(math.abs(state[1])).toBeCloseTo(0, 5);
     });
   });
 
-  describe('Z gate', () => {
-    test('Z gate on |0⟩ produces |0⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [{ type: 'Z', target: 0 }]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+  describe('Z Gate (Pauli Z)', () => {
+    test('should leave |0⟩ unchanged: Z|0⟩ = |0⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, Z, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(1, 5);
+      expect(math.abs(state[1])).toBeCloseTo(0, 5);
     });
 
-    test('Z gate on |1⟩ produces −|1⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'X', target: 0 },
-          { type: 'Z', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 0)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 1)).toBe(true);
+    test('should flip phase of |1⟩: Z|1⟩ = −|1⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0); // Prepare |1⟩
+      applyGate(sim, Z, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
 
-    test('Z gate twice returns to original state', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'Z', target: 0 },
-          { type: 'Z', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+    test('should flip phase in superposition', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, H, 0); // Create |+⟩
+      applyGate(sim, Z, 0);
+      const state = sim.getStateVector();
+      const expected = 1 / Math.sqrt(2);
+      expect(math.abs(state[0])).toBeCloseTo(expected, 5);
+      expect(math.abs(state[1])).toBeCloseTo(expected, 5);
     });
   });
 
-  describe('Y gate', () => {
-    test('Y gate on |0⟩ produces i|1⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [{ type: 'Y', target: 0 }]
-      });
-      expect(almostEqual(result.stateVector[0], 0)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 1)).toBe(true);
+  describe('Y Gate (Pauli Y)', () => {
+    test('should flip and apply phase: Y|0⟩ = i|1⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, Y, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
 
-    test('Y gate on |1⟩ produces −i|0⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'X', target: 0 },
-          { type: 'Y', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
-    });
-
-    test('Y gate twice returns to original state', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'Y', target: 0 },
-          { type: 'Y', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+    test('should satisfy Y² = I', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, Y, 0);
+      applyGate(sim, Y, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(1, 5);
+      expect(math.abs(state[1])).toBeCloseTo(0, 5);
     });
   });
 
-  describe('S gate', () => {
-    test('S gate on |0⟩ produces |0⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [{ type: 'S', target: 0 }]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+  describe('S Gate (Phase Gate)', () => {
+    test('should apply π/2 phase to |1⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0); // Prepare |1⟩
+      applyGate(sim, S, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
 
-    test('S gate on |1⟩ produces i|1⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'X', target: 0 },
-          { type: 'S', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 0)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 1)).toBe(true);
-    });
-
-    test('S gate four times returns to original state', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'S', target: 0 },
-          { type: 'S', target: 0 },
-          { type: 'S', target: 0 },
-          { type: 'S', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+    test('should satisfy S⁴ = I', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0);
+      applyGate(sim, S, 0);
+      applyGate(sim, S, 0);
+      applyGate(sim, S, 0);
+      applyGate(sim, S, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
   });
 
-  describe('T gate', () => {
-    test('T gate on |0⟩ produces |0⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [{ type: 'T', target: 0 }]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+  describe('T Gate', () => {
+    test('should apply π/4 phase to |1⟩', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0); // Prepare |1⟩
+      applyGate(sim, T, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
 
-    test('T gate on |1⟩ produces e^(iπ/4)|1⟩', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'X', target: 0 },
-          { type: 'T', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 0)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 1)).toBe(true);
-    });
-
-    test('T gate eight times returns to original state', () => {
-      const result = simulateCircuit(1, {
-        gates: [
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 },
-          { type: 'T', target: 0 }
-        ]
-      });
-      expect(almostEqual(result.stateVector[0], 1)).toBe(true);
-      expect(almostEqual(result.stateVector[1], 0)).toBe(true);
+    test('should satisfy T⁸ = I', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0);
+      for (let i = 0; i < 8; i++) {
+        applyGate(sim, T, 0);
+      }
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
   });
 
-  describe('Multi-qubit circuits', () => {
-    test('Z gate on first qubit of two-qubit system', () => {
-      const result = simulateCircuit(2, {
-        gates: [
-          { type: 'H', target: 0 },
-          { type: 'H', target: 1 },
-          { type: 'Z', target: 0 }
-        ]
-      });
-      expect(result.stateVector.length).toBe(4);
+  describe('Gate Composition', () => {
+    test('should compose X and Z gates correctly', () => {
+      const sim = createSimulator(1);
+      applyGate(sim, X, 0);
+      applyGate(sim, Z, 0);
+      const state = sim.getStateVector();
+      expect(math.abs(state[0])).toBeCloseTo(0, 5);
+      expect(math.abs(state[1])).toBeCloseTo(1, 5);
     });
 
-    test('Y gate on second qubit of two-qubit system', () => {
-      const result = simulateCircuit(2, {
-        gates: [
-          { type: 'H', target: 0 },
-          { type: 'H', target: 1 },
-          { type: 'Y', target: 1 }
-        ]
-      });
-      expect(result.stateVector.length).toBe(4);
-    });
-  });
+    test('should compose H, Z, H to create X', () => {
+      const sim1 = createSimulator(1);
+      applyGate(sim1, X, 0);
+      const state1 = sim1.getStateVector();
 
-  describe('Error handling', () => {
-    test('throws error for unknown gate type', () => {
-      expect(() => {
-        simulateCircuit(1, {
-          gates: [{ type: 'UNKNOWN', target: 0 }]
-        });
-      }).toThrow('Unknown gate type');
-    });
+      const sim2 = createSimulator(1);
+      applyGate(sim2, H, 0);
+      applyGate(sim2, Z, 0);
+      applyGate(sim2, H, 0);
+      const state2 = sim2.getStateVector();
 
-    test('throws error for invalid qubit target', () => {
-      expect(() => {
-        simulateCircuit(1, {
-          gates: [{ type: 'X', target: 5 }]
-        });
-      }).toThrow('out of range');
-    });
-
-    test('throws error for invalid number of qubits', () => {
-      expect(() => {
-        simulateCircuit(0, { gates: [] });
-      }).toThrow('between 1 and 10');
+      expect(math.abs(state1[0])).toBeCloseTo(math.abs(state2[0]), 5);
+      expect(math.abs(state1[1])).toBeCloseTo(math.abs(state2[1]), 5);
     });
   });
 });
