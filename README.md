@@ -8,6 +8,7 @@ A quantum computing simulator and API service built with Express.js and mathjs.
 - RESTful API for running quantum circuits
 - Rate limiting to prevent abuse
 - Input validation for security
+- Automated unit tests and linting
 
 ## Getting Started
 
@@ -47,8 +48,26 @@ The server will start on `http://localhost:3000`.
 
 ### Running Tests
 
+Run the full test suite:
+
 ```bash
 npm test
+```
+
+Tests validate all quantum gates (X, H, Z, Y, S, T) and their eigenstate behavior.
+
+### Linting
+
+Check code style:
+
+```bash
+npm run lint
+```
+
+Auto-fix linting issues:
+
+```bash
+npm run lint:fix
 ```
 
 ## API Endpoints
@@ -118,6 +137,8 @@ Health check endpoint (not rate limited).
 │   └── rate-limit.test.js       # Rate limiting tests
 ├── package.json
 ├── .env.example
+├── .eslintrc.json               # ESLint configuration
+├── jest.config.js               # Jest test configuration
 └── README.md
 ```
 
@@ -128,6 +149,7 @@ This project implements several security measures:
 1. **Rate Limiting** — Prevents DoS attacks by limiting requests per IP
 2. **Input Validation** — Validates circuit parameters and gate definitions
 3. **Error Handling** — Sanitizes error responses to prevent information leakage
+4. **Code Quality** — Automated linting and testing catch regressions early
 
 ## Contributing
 
