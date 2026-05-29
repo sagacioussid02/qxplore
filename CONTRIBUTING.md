@@ -66,17 +66,7 @@ Most contributions only touch:
 cp .env.example .env
 ```
 
-Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work fully. AI agent endpoints will return errors, which is expected when developing other parts of the app.
-
-### Hard rules for contributors
-
-1. **Never commit a `.env` file** — it is in `.gitignore` and must stay there
-2. **Never hardcode API keys, tokens, or credentials** in source files
-3. **Never add real keys to PR descriptions, comments, or commit messages**
-4. **Never request or expect to receive production credentials** — maintainers will not share them
-5. If you accidentally commit a secret, immediately open an issue marked `security` so the key can be rotated
-
-The CI/CD pipeline uses GitHub Actions secrets scoped to specific environments. Contributors do not have access to those secrets and PRs from forks run in a restricted environment without them.
+Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work without any keys.
 
 ---
 
@@ -84,57 +74,76 @@ The CI/CD pipeline uses GitHub Actions secrets scoped to specific environments. 
 
 ### Prerequisites
 
-| Tool | Version | Purpose |
-|---|---|---|
-| Node.js | 20.11+ | Frontend dev server |
-| Python | 3.11+ | Backend |
-| pip / venv | any | Python deps |
-| Git | any | Version control |
+- **Node.js 16+** (for frontend development)
+- **Node.js 14+** (for backend development)
+- **npm 7+**
+- **Git**
 
-You do **not** need Docker, Terraform, or AWS credentials to contribute.
-
-### Clone and run
+### Clone the Repository
 
 ```bash
-git clone https://github.com/<your-fork>/quantumanic.git
+git clone <repository-url>
 cd quantumanic
-
-# Set up environment (no real keys needed)
-cp .env.example .env
-
-# Backend
-python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
-pip install -r backend/requirements.txt
-
-# Frontend
-cd frontend
-npm install
-cd ..
-
-# Start everything
-chmod +x start.sh
-./start.sh
 ```
 
-The script starts the FastAPI backend on `http://localhost:8000` and the Vite frontend on `http://localhost:5173`.
+### Backend Setup
 
-To start them separately:
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
 
-```bash
-# Terminal 1 — backend
-source venv/bin/activate
-uvicorn backend.main:app --reload --port 8000
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-# Terminal 2 — frontend
-cd frontend && npm run dev
-```
+3. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   ```
 
-### Verify it works
+4. Start the backend server:
+   ```bash
+   npm start
+   ```
 
-- Open `http://localhost:5173`
-- The Quantum Coin and Quantum Tic-Tac-Toe games should load and run (Qiskit works offline)
-- AI-powered features (bracket agents, narration) will show errors — that is expected without real API keys
+   The API will be available at `http://localhost:3000`.
+
+### Frontend Setup
+
+1. In a new terminal, navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+
+   The default `VITE_API_URL=http://localhost:3000` should work if your backend is running locally.
+
+4. Start the frontend development server:
+   ```bash
+   npm run dev
+   ```
+
+   The frontend will be available at `http://localhost:5173`.
+
+### Verify Setup
+
+1. Open `http://localhost:5173` in your browser
+2. The frontend should load without errors
+3. Try building a simple circuit and executing it
+4. If the backend is running, you should see results
+
+For detailed frontend setup instructions, see [FRONTEND.md](FRONTEND.md).
 
 ---
 
@@ -142,106 +151,192 @@ cd frontend && npm run dev
 
 ```
 quantumanic/
-├── frontend/               # React + TypeScript + Vite
-│   └── src/
-│       ├── api/            # HTTP clients
-│       ├── components/     # Reusable UI components
-│       ├── hooks/          # Custom React hooks
-│       ├── pages/          # Route-level pages
-│       ├── store/          # Zustand state stores
-│       └── types/          # Shared TypeScript types
-│
-├── backend/                # Python FastAPI
-│   ├── main.py             # App entry point
-│   ├── core/               # Settings, config
-│   ├── routers/            # API endpoints
-│   ├── agents/             # Claude AI agent base classes
-│   ├── bracket/            # NCAA bracket engine + agents
-│   ├── quantum/            # Qiskit circuit definitions
-│   └── models/             # Pydantic data models
-│
-├── terraform/              # AWS infrastructure (maintainers only)
-├── .github/workflows/      # CI/CD pipelines (maintainers only)
-├── .env.example            # Environment template (safe to read)
-└── start.sh                # Local dev launcher
+├── backend/                    # Express.js API service
+│   ├── src/
+│   │   ├── index.js           # App entry point
+│   │   ├── api/               # API routes
+│   │   └── quantum/           # Quantum simulation logic
+│   ├── tests/                 # Backend tests
+│   ├── package.json
+│   ├── .env.example
+│   └── README.md
+├── frontend/                   # React/TypeScript UI
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   ├── services/          # API client
+│   │   ├── types/             # TypeScript definitions
+│   │   ├── App.tsx
+│   │   └── index.tsx
+│   ├── tests/                 # Frontend tests
+│   ├── package.json
+│   ├── .env.example
+│   ├── vite.config.ts
+│   └── README.md
+├── docs/                       # Documentation
+│   └── adr/                   # Architecture Decision Records
+├── ARCHITECTURE.md            # System architecture
+├── CONTRIBUTING.md            # This file
+├── FRONTEND.md                # Frontend documentation
+├── README.md                  # Main README
+└── package.json               # Root package.json
 ```
+
+For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
 ## Development Workflow
 
-1. **Fork** the repository on GitHub
-2. **Create a branch** from `main`:
-   ```bash
-   git checkout -b feat/my-feature
-   # or
-   git checkout -b fix/the-bug
-   ```
-3. **Make your changes** — keep commits focused and atomic
-4. **Run lint and tests** (see below)
-5. **Push** to your fork and open a Pull Request against `main`
+### Branching Strategy
 
-Branch naming:
-- `feat/` — new feature
-- `fix/` — bug fix
-- `docs/` — documentation only
-- `refactor/` — internal code change, no behavior change
-- `test/` — adding or fixing tests
+All feature branches follow the naming convention:
+```
+minions/<role>/<short-summary>
+```
+
+Examples:
+- `minions/engineer/add-cnot-gate`
+- `minions/documentation_engineer/fix-readme-tech-stack`
+- `minions/cloud_devops/add-health-endpoint`
+
+### Creating a Feature Branch
+
+1. Ensure you're on the main branch:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+2. Create a new feature branch:
+   ```bash
+   git checkout -b minions/<role>/<short-summary>
+   ```
+
+3. Make your changes
+
+4. Commit with clear, descriptive messages:
+   ```bash
+   git commit -m "feat: add CNOT gate support"
+   ```
+
+   Use conventional commit prefixes:
+   - `feat:` — New feature
+   - `fix:` — Bug fix
+   - `docs:` — Documentation
+   - `test:` — Test additions or changes
+   - `chore:` — Build, dependencies, tooling
+   - `refactor:` — Code refactoring without feature changes
+
+5. Push your branch:
+   ```bash
+   git push origin minions/<role>/<short-summary>
+   ```
+
+### Running Tests
+
+**Backend tests:**
+```bash
+cd backend
+npm test
+```
+
+**Frontend tests:**
+```bash
+cd frontend
+npm test
+```
+
+**All tests:**
+```bash
+cd backend && npm test && cd ../frontend && npm test
+```
+
+### Linting
+
+**Backend:**
+```bash
+cd backend
+npm run lint          # Check
+npm run lint:fix      # Auto-fix
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm run lint          # Check
+npm run lint:fix      # Auto-fix
+```
 
 ---
 
 ## Submitting a Pull Request
 
-### Before you open a PR
+1. **Push your branch** to the repository
 
-- [ ] The code runs locally without errors
-- [ ] ESLint passes for frontend changes (`npm run lint` in `frontend/`)
-- [ ] Python code follows the existing style (no new linter warnings)
-- [ ] No secrets, keys, or credentials anywhere in the diff
-- [ ] Commits have clear, descriptive messages
+2. **Open a pull request** on GitHub:
+   - Target: `main` branch
+   - Title: Use conventional commit format (e.g., "feat: add CNOT gate support")
+   - Description: Include context, what changed, and how to test
 
-### PR description
+3. **Ensure CI passes:**
+   - All tests must pass
+   - Linting must pass
+   - No security issues detected
 
-Include:
-- **What changed** — a short summary
-- **Why** — motivation or link to an issue
-- **How to test** — steps a reviewer can follow to verify the change
-- **Screenshots** (for UI changes)
+4. **Request review** from at least one peer
 
-### Review process
+5. **Address feedback** — make requested changes and push updates
 
-- A maintainer will review within a few days
-- Feedback will be left as PR comments — please address all comments or explain why you disagree
-- Once approved, a maintainer will merge the PR
-- Do not force-push to a PR branch after review has started
+6. **Merge** — once approved and CI is green, a maintainer will merge your PR
+
+### PR Description Template
+
+```markdown
+## Description
+Brief description of what this PR does.
+
+## Changes
+- Change 1
+- Change 2
+- Change 3
+
+## Testing
+How to test these changes:
+1. Step 1
+2. Step 2
+
+## Checklist
+- [ ] Tests pass locally
+- [ ] Linting passes
+- [ ] Documentation updated (if applicable)
+- [ ] No breaking changes
+```
 
 ---
 
 ## Coding Standards
 
-### Frontend (TypeScript + React)
+### TypeScript/JavaScript
 
-- TypeScript strict mode is enabled — no `any` unless unavoidable and commented
-- Components are functional with hooks; no class components
-- Zustand for global state; local `useState` for component-only state
-- Tailwind for styling; avoid inline `style` props except for dynamic values (colors, etc.)
-- Framer Motion for animations — keep them subtle and purposeful
-- File names: `PascalCase` for components, `camelCase` for hooks/utilities
+- Use TypeScript for all new code
+- Follow ESLint rules (run `npm run lint:fix` to auto-fix)
+- Use meaningful variable and function names
+- Add JSDoc comments for public functions
+- Keep functions small and focused
 
-### Backend (Python + FastAPI)
+### Commits
 
-- Python 3.11+ style; use type hints everywhere
-- Pydantic models for all request/response schemas
-- FastAPI dependency injection for auth and settings
-- Async endpoints where I/O is involved
-- Keep route handlers thin; business logic belongs in dedicated modules
-- Qiskit circuits go in `backend/quantum/`; AI agent logic in `backend/agents/` or `backend/bracket/agents/`
+- Use conventional commit format
+- Keep commits atomic (one logical change per commit)
+- Write clear, descriptive commit messages
+- Reference issues in commit messages when applicable (e.g., "Fixes #123")
 
-### General
+### Testing
 
-- Keep pull requests small and focused — one concern per PR
-- Do not mix refactors with feature changes
-- Comments should explain *why*, not *what* — the code explains what
+- Write tests for new features
+- Maintain or improve code coverage
+- Test edge cases and error conditions
+- Use descriptive test names
 
 ---
 
@@ -250,36 +345,33 @@ Include:
 ### Backend
 
 ```bash
-source venv/bin/activate
-pytest backend/tests/ -v
-```
-
-The integration test for Quantum Tic-Tac-Toe requires a running backend:
-
-```bash
-# Start the backend first
-uvicorn backend.main:app --port 8000
-
-# Then in a second terminal
-python test_ttt.py
+cd backend
+npm test                    # Run all tests
+npm test -- --watch        # Watch mode
+npm test -- --coverage     # Coverage report
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
-npm run lint        # ESLint check
-npm run build       # Type-check + production build
+npm test                    # Run all tests
+npm test -- --watch        # Watch mode
+npm test -- --coverage     # Coverage report
 ```
-
-Vitest unit tests can be added under `frontend/src/__tests__/` — contributions to expand test coverage are very welcome.
 
 ---
 
 ## Questions and Help
 
-- **Bug reports and feature requests** → open a [GitHub Issue](../../issues)
-- **Questions about quantum mechanics in the code** → open a Discussion
-- **Security issues** → open a private issue marked `security`; do not post publicly
+- **GitHub Issues** — For bugs, feature requests, and discussions
+- **Discussions** — For general questions and ideas
+- **Email** — Contact the maintainers directly
 
-We want contributing to feel approachable regardless of your background. If something in this guide is unclear or a setup step doesn't work, open an issue — that's a documentation bug worth fixing.
+Don't hesitate to ask questions — we're here to help!
+
+---
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.

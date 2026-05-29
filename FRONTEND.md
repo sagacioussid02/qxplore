@@ -1,196 +1,288 @@
-# Frontend Circuit Builder Documentation
+# Frontend Documentation
 
 ## Overview
 
-The Quantumanic frontend is a React/TypeScript web application that provides a user interface for building and executing quantum circuits. The current implementation focuses on an MVP (Minimum Viable Product) scope that allows users to construct circuits visually and submit them to the backend simulator.
+The quantumanic frontend is a React 18+ application built with TypeScript and Vite. It provides a web-based interface for building, visualizing, and executing quantum circuits against the quantumanic backend API.
 
-## Current MVP Scope
+## Technology Stack
 
-### What the Frontend Renders
-
-The current frontend circuit builder provides:
-
-1. **Circuit Visualization** — Static display of quantum circuit gates and qubits
-   - Visual representation of qubits as horizontal lines
-   - Gates rendered as boxes on the circuit grid
-   - Support for single-qubit gates: X, H, Z, Y, S, T
-   - Support for multi-qubit gates: CNOT/CX, SWAP, Toffoli (when implemented in backend)
-
-2. **Gate Selection** — UI controls to add gates to the circuit
-   - Dropdown or button-based gate selection
-   - Target qubit selection for single-qubit gates
-   - Control and target qubit selection for multi-qubit gates
-
-3. **Circuit Parameters** — Basic input fields for circuit configuration
-   - Number of qubits (1–10)
-   - Circuit depth (number of gate layers)
-   - Gate sequence definition
-
-4. **Execution Interface** — Submit circuits to the backend
-   - "Run Circuit" button to execute the circuit
-   - Display of execution results (state vector, measurement outcomes)
-   - Error handling and user feedback for invalid circuits
-
-### Backend Integration
-
-The frontend calls the following backend endpoint:
-
-**Endpoint:** `POST /api/circuit/run`
-
-**Request Payload:**
-```json
-{
-  "numQubits": 2,
-  "circuit": {
-    "gates": [
-      { "type": "X", "target": 0 },
-      { "type": "H", "target": 1 },
-      { "type": "CNOT", "control": 0, "target": 1 }
-    ]
-  }
-}
-```
-
-**Response Payload:**
-```json
-{
-  "stateVector": [0.7071, 0, 0, 0.7071],
-  "measurement": [0, 1],
-  "probabilities": {
-    "00": 0.5,
-    "11": 0.5
-  }
-}
-```
-
-## Deferred Features (Sprint N+1)
-
-The following features are **explicitly deferred** to sprint N+1 or later:
-
-### 1. Drag-and-Drop Circuit Builder
-- Interactive drag-and-drop interface for placing gates on the circuit grid
-- Drag-to-reorder gates within a circuit layer
-- Drag-to-delete gates
-- **Rationale:** Requires finalization of dual-backend architecture (ADR 0001) to avoid rework; MVP static selection is sufficient for initial delivery
-
-### 2. Advanced Circuit Optimization
-- Circuit simplification and optimization suggestions
-- Gate cancellation detection (e.g., X followed by X)
-- Qubit mapping and layout optimization
-- **Rationale:** Requires backend support for optimization algorithms; deferred until multi-qubit gates are stable
-
-### 3. Real-Time Collaboration
-- Multi-user circuit editing
-- Shared circuit sessions
-- Live execution results across users
-- **Rationale:** Requires backend session management and WebSocket support; out of scope for MVP
-
-### 4. Advanced Visualization
-- Bloch sphere visualization for single-qubit states
-- Entanglement diagrams for multi-qubit states
-- Probability histograms and amplitude plots
-- **Rationale:** Requires additional visualization libraries and backend state export; deferred to improve UX incrementally
-
-### 5. Circuit Library and Templates
-- Pre-built circuit templates (e.g., Bell state, GHZ state, Grover's algorithm)
-- User-saved circuit library
-- Circuit sharing and export (QASM, Qiskit format)
-- **Rationale:** Requires backend circuit storage and user authentication; deferred until user management is implemented
+- **React 18+** — UI framework
+- **TypeScript** — Type-safe JavaScript
+- **Vite** — Fast build tool and dev server
+- **Jest** — Unit testing framework
+- **React Testing Library** — Component testing utilities
+- **ESLint** — Code linting and style enforcement
 
 ## Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── components/
-│   │   ├── CircuitBuilder.tsx      # Main circuit builder component
-│   │   ├── GateSelector.tsx        # Gate selection UI
-│   │   ├── CircuitCanvas.tsx       # Circuit visualization
-│   │   └── ResultsDisplay.tsx      # Results and measurement output
-│   ├── pages/
-│   │   └── CircuitPage.tsx         # Main circuit builder page
-│   ├── api/
-│   │   └── client.ts               # Backend API client
-│   ├── types/
-│   │   └── circuit.ts              # TypeScript type definitions
-│   └── App.tsx                     # Root component
-├── public/
-├── package.json
-├── tsconfig.json
-└── README.md
+│   ├── components/          # React components
+│   │   ├── CircuitBuilder/  # Circuit construction UI
+│   │   ├── GatePanel/       # Gate selection and configuration
+│   │   ├── Visualization/   # State vector and probability visualization
+│   │   └── ...
+│   ├── hooks/               # Custom React hooks
+│   ├── services/            # API client and utilities
+│   │   └── api.ts           # Backend API integration
+│   ├── types/               # TypeScript type definitions
+│   ├── App.tsx              # Root component
+│   ├── index.tsx            # Application entry point
+│   └── ...
+├── tests/                   # Test files
+├── public/                  # Static assets
+├── .env.example             # Environment variable template
+├── package.json             # Dependencies and scripts
+├── tsconfig.json            # TypeScript configuration
+├── vite.config.ts           # Vite configuration
+├── jest.config.js           # Jest configuration
+└── README.md                # Frontend-specific README
 ```
+
+## Local Development Setup
+
+### Prerequisites
+
+- Node.js 16+ (check with `node --version`)
+- npm 7+ (check with `npm --version`)
+- A running instance of the quantumanic backend (see main README)
+
+### Installation
+
+1. Clone the repository (if not already done):
+   ```bash
+   git clone <repository-url>
+   cd quantumanic
+   ```
+
+2. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Environment Configuration
+
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and configure the backend API URL (if needed):
+   ```bash
+   VITE_API_URL=http://localhost:3000
+   ```
+
+   - `VITE_API_URL` — The URL where the quantumanic backend API is running
+   - Default: `http://localhost:3000`
+   - For remote backends, use the full URL (e.g., `https://api.example.com`)
+
+### Running the Development Server
+
+1. Start the frontend development server:
+   ```bash
+   npm run dev
+   ```
+
+2. The application will be available at `http://localhost:5173` (or the next available port if 5173 is in use)
+
+3. The dev server includes hot module replacement (HMR), so changes to source files will automatically reload in your browser
+
+### Backend Integration
+
+The frontend communicates with the quantumanic backend API through the `VITE_API_URL` environment variable. Ensure:
+
+1. The backend is running on the configured URL (default: http://localhost:3000)
+2. The backend has CORS enabled to allow requests from the frontend origin
+3. The `VITE_API_URL` environment variable matches your backend's actual location
+
+If the backend is not running or unreachable, the frontend will display an error when attempting to execute circuits.
 
 ## Development Workflow
 
-### Running the Frontend Locally
+### Running Tests
 
+Run the test suite:
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend will start on `http://localhost:5173` (or the next available port).
-
-### Building for Production
-
-```bash
-cd frontend
-npm run build
-```
-
-The production build is output to the `dist/` directory.
-
-### Testing
-
-Frontend tests are configured with Jest and React Testing Library:
-
-```bash
-cd frontend
 npm test
 ```
 
-Test files should be colocated with components (e.g., `CircuitBuilder.test.tsx`).
+Run tests in watch mode (re-run on file changes):
+```bash
+npm test -- --watch
+```
 
-## API Contract
+Run tests with coverage report:
+```bash
+npm test -- --coverage
+```
 
-The frontend expects the backend to provide:
+### Linting and Code Style
 
-1. **Circuit Execution** — `POST /api/circuit/run`
-   - Accepts circuit definition with gates and qubit count
-   - Returns state vector and measurement probabilities
-   - Validates circuit parameters and returns 400 for invalid input
-   - Enforces rate limiting (10 requests per 15 minutes per IP)
+Check code style:
+```bash
+npm run lint
+```
 
-2. **Health Check** — `GET /health`
-   - Returns `{ "status": "ok" }` if backend is operational
-   - Used by frontend to verify backend availability
+Auto-fix linting issues:
+```bash
+npm run lint:fix
+```
 
-## Security Considerations
+### Building for Production
 
-1. **Input Validation** — The frontend should validate circuit parameters before submission:
-   - Number of qubits: 1–10
-   - Gate types: only supported gates (X, H, Z, Y, S, T, CNOT, SWAP, Toffoli)
-   - Target qubits: within valid range [0, numQubits-1]
+Create an optimized production build:
+```bash
+npm run build
+```
 
-2. **Rate Limiting** — The frontend should respect backend rate limits:
-   - Display user-friendly error messages for 429 (Too Many Requests) responses
-   - Implement exponential backoff for retries
-   - Show "Retry-After" header value to users
+The build output will be in the `dist/` directory.
 
-3. **Error Handling** — Gracefully handle backend errors:
-   - Display error messages for 4xx and 5xx responses
-   - Prevent submission of malformed circuits
-   - Log errors for debugging (without exposing sensitive information)
+Preview the production build locally:
+```bash
+npm run preview
+```
 
-## Next Steps
+## API Integration
 
-1. **Sprint N+1** — Implement drag-and-drop circuit builder based on finalized backend architecture
-2. **Sprint N+2** — Add circuit optimization and advanced visualization
-3. **Sprint N+3** — Implement circuit library, templates, and user authentication
+The frontend integrates with the quantumanic backend through the following API endpoints:
 
-## References
+### POST /api/circuit/run
 
-- [Backend API Documentation](README.md#api-endpoints)
-- [Architecture Decision Records](docs/adr/)
-- [Contributing Guide](CONTRIBUTING.md)
+Execute a quantum circuit and retrieve results.
+
+**Request:**
+```typescript
+interface CircuitRequest {
+  qubits: number;           // Number of qubits in the circuit
+  gates: Gate[];            // Array of gates to apply
+  measurements?: number;    // Number of measurement samples (optional)
+}
+
+interface Gate {
+  gate: string;             // Gate name (e.g., "H", "X", "CNOT")
+  target: number;           // Target qubit index
+  control?: number;         // Control qubit index (for controlled gates like CNOT)
+}
+```
+
+**Response:**
+```typescript
+interface CircuitResponse {
+  statevector: number[];    // Complex state vector (flattened)
+  probabilities: Record<string, number>;  // Measurement probabilities
+  measurement_results?: string[];         // Individual measurement outcomes
+}
+```
+
+### GET /health
+
+Check the health status of the backend service.
+
+**Response:**
+```typescript
+interface HealthResponse {
+  status: string;           // "ok" or error status
+  version: string;          // Backend version
+  timestamp: string;        // ISO 8601 timestamp
+}
+```
+
+## Supported Quantum Gates
+
+The frontend supports the following quantum gates (as implemented in the backend):
+
+### Single-Qubit Gates
+
+- **H** (Hadamard) — Creates superposition
+- **X** (Pauli X / NOT) — Bit flip
+- **Y** (Pauli Y) — Bit and phase flip
+- **Z** (Pauli Z) — Phase flip
+- **S** (S gate) — Phase gate (π/2 rotation)
+- **T** (T gate) — π/8 rotation
+
+### Multi-Qubit Gates
+
+- **CNOT** (Controlled NOT / CX) — Entangles two qubits
+- **SWAP** (when implemented) — Exchanges qubit states
+- **Toffoli** (when implemented) — Three-qubit controlled gate
+
+## Deployment
+
+### Static Hosting
+
+The frontend is a static single-page application (SPA) and can be deployed to any static hosting service:
+
+1. Build the application:
+   ```bash
+   npm run build
+   ```
+
+2. Deploy the `dist/` directory to your hosting service (e.g., Netlify, Vercel, AWS S3, GitHub Pages)
+
+3. Configure the `VITE_API_URL` environment variable to point to your production backend
+
+### Docker Deployment
+
+To deploy the frontend in a Docker container:
+
+1. Create a `Dockerfile` in the frontend directory (if not already present)
+2. Build the Docker image
+3. Run the container with the appropriate `VITE_API_URL` environment variable
+
+### CI/CD Integration
+
+The frontend is included in the quantumanic deployment pipeline. See the main README and CONTRIBUTING.md for CI/CD configuration details.
+
+## Troubleshooting
+
+### Port Already in Use
+
+If port 5173 is already in use, Vite will automatically use the next available port. Check the terminal output for the actual URL.
+
+To use a specific port:
+```bash
+npm run dev -- --port 3001
+```
+
+### Backend Connection Issues
+
+If the frontend cannot connect to the backend:
+
+1. Verify the backend is running on the configured `VITE_API_URL`
+2. Check that `VITE_API_URL` is correctly set in `.env`
+3. Ensure CORS is enabled on the backend
+4. Check browser console for detailed error messages
+
+### Build Errors
+
+If you encounter build errors:
+
+1. Clear the node_modules and reinstall:
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+2. Clear the Vite cache:
+   ```bash
+   rm -rf dist .vite
+   ```
+
+3. Try building again:
+   ```bash
+   npm run build
+   ```
+
+## Contributing
+
+For guidelines on contributing to the frontend, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## License
+
+MIT
