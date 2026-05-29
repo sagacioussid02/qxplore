@@ -93,6 +93,35 @@ npm run dev
 
 The frontend will start on `http://localhost:5173` (or the next available port).
 
+### Frontend Setup
+
+The quantumanic project includes a full React/TypeScript frontend for building and visualizing quantum circuits. For detailed frontend setup, development, and deployment instructions, see [FRONTEND.md](FRONTEND.md).
+
+**Quick Start:**
+
+1. Install frontend dependencies:
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. Configure the backend API URL (optional; defaults to http://localhost:3000):
+   ```bash
+   cp .env.example .env
+   # Edit .env and set VITE_API_URL if your backend is on a different host/port
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open your browser to `http://localhost:5173` (or the port shown in your terminal)
+
+5. The frontend will automatically connect to the backend API at the URL specified in `VITE_API_URL`
+
+For more details on frontend architecture, component structure, and production builds, see [FRONTEND.md](FRONTEND.md).
+
 ### Running Tests
 
 **Backend:**
@@ -133,143 +162,63 @@ npm run lint:fix      # Auto-fix linting issues
 
 Run a quantum circuit and get the resulting state vector and measurement probabilities.
 
-**Request:**
+**Request Body:**
 ```json
 {
-  "numQubits": 2,
-  "circuit": {
-    "gates": [
-      { "type": "X", "target": 0 },
-      { "type": "H", "target": 1 },
-      { "type": "CNOT", "control": 0, "target": 1 }
-    ]
-  }
+  "qubits": 2,
+  "gates": [
+    {"gate": "H", "target": 0},
+    {"gate": "CNOT", "control": 0, "target": 1}
+  ],
+  "measurements": 1000
 }
 ```
 
 **Response:**
 ```json
 {
-  "stateVector": [0.7071, 0, 0, 0.7071],
-  "measurement": [0, 1],
+  "statevector": [0.707, 0, 0, 0.707],
   "probabilities": {
     "00": 0.5,
     "11": 0.5
-  }
+  },
+  "measurement_results": ["00", "11", "00", ...]
 }
 ```
 
-**Supported Gates:**
-- **X** — Pauli X gate (NOT gate)
-- **H** — Hadamard gate
-- **Z** — Pauli Z gate
-- **Y** — Pauli Y gate
-- **S** — S gate (phase gate)
-- **T** — T gate
-- **CNOT/CX** — Controlled-NOT gate (multi-qubit)
-- **SWAP** — SWAP gate (multi-qubit)
-- **Toffoli** — Toffoli gate (multi-qubit)
-
-**Rate Limiting:**
-- General /api routes: 100 requests per 15 minutes per IP
-- POST /api/circuit/run: 10 requests per 15 minutes per IP
-- When rate limited, the server returns HTTP 429 with a `Retry-After` header
-
 ### GET /health
 
-Health check endpoint (not rate limited).
+Health check endpoint. Returns service status and version.
 
 **Response:**
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "version": "1.0.0",
+  "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
 
+## Supported Quantum Gates
+
+- **X** (Pauli X / NOT gate) — Single-qubit
+- **H** (Hadamard gate) — Single-qubit
+- **Z** (Pauli Z gate) — Single-qubit
+- **Y** (Pauli Y gate) — Single-qubit
+- **S** (S gate / phase gate) — Single-qubit
+- **T** (T gate) — Single-qubit
+- **CNOT** (Controlled NOT / CX gate) — Two-qubit (when implemented)
+
+For detailed gate definitions and matrix representations, see [FRONTEND.md](FRONTEND.md) and the API documentation.
+
 ## Project Structure
 
-```
-quantumanic/
-├── backend/                         # Express.js API service
-│   ├── src/
-│   │   ├── index.js                # Express app setup and middleware
-│   │   ├── api/
-│   │   │   └── routes.js           # API route handlers
-│   │   └── quantum/
-│   │       ├── simulator.js        # Quantum circuit simulator
-│   │       └── gates.js            # Quantum gate definitions
-│   ├── tests/
-│   │   ├── simulator.test.js       # Simulator tests
-│   │   └── rate-limit.test.js      # Rate limiting tests
-│   ├── package.json
-│   ├── .env.example
-│   ├── .eslintrc.json              # ESLint configuration
-│   ├── jest.config.js              # Jest test configuration
-│   └── README.md
-├── frontend/                        # React/TypeScript UI
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── CircuitBuilder.tsx  # Main circuit builder
-│   │   │   ├── GateSelector.tsx    # Gate selection UI
-│   │   │   ├── CircuitCanvas.tsx   # Circuit visualization
-│   │   │   └── ResultsDisplay.tsx  # Results display
-│   │   ├── pages/
-│   │   ├── api/
-│   │   │   └── client.ts           # Backend API client
-│   │   ├── types/
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── public/
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── vite.config.ts
-│   └── README.md
-├── docs/
-│   └── adr/                         # Architecture Decision Records
-│       └── 0001-dual-backend-architecture.md
-├── ARCHITECTURE.md                  # System architecture overview
-├── FRONTEND.md                      # Frontend circuit builder documentation
-├── CONTRIBUTING.md                  # Contribution guidelines
-├── README.md                        # This file
-└── package.json
-```
-
-## Frontend Circuit Builder
-
-The frontend provides a React-based circuit builder for constructing and executing quantum circuits. See [FRONTEND.md](FRONTEND.md) for detailed documentation on:
-- Current MVP scope and capabilities
-- Backend API integration
-- Deferred features (drag-and-drop, optimization, collaboration)
-- Development workflow
-
-## Security
-
-This project implements several security measures:
-
-1. **Rate Limiting** — Prevents DoS attacks by limiting requests per IP
-2. **Input Validation** — Validates circuit parameters and gate definitions
-3. **Error Handling** — Sanitizes error responses to prevent information leakage
-4. **CORS** — Configured to allow frontend requests from localhost (development) and configured origins (production)
-
-## Architecture
-
-For detailed information on system architecture, backend ownership, and deployment strategy, see:
-- [ARCHITECTURE.md](ARCHITECTURE.md) — System overview and service responsibilities
-- [docs/adr/0001-dual-backend-architecture.md](docs/adr/0001-dual-backend-architecture.md) — Decision record on dual-backend approach
+For a detailed breakdown of the project structure, including frontend and backend directories, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
-- Code of conduct
-- What you can contribute
-- Development workflow
-- Submitting pull requests
-- Coding standards
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started, including local development setup, branching strategy, and the PR review process.
 
 ## License
 
 MIT
-
-## Support
-
-For questions or issues, please open a GitHub issue or contact the maintainers.
