@@ -12,6 +12,7 @@ Thank you for your interest in contributing! Quantum Expedition is an open-sourc
 - [Getting Started Locally](#getting-started-locally)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
+- [Task Assignment and Sprint Participation](#task-assignment-and-sprint-participation)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Coding Standards](#coding-standards)
 - [Running Tests](#running-tests)
@@ -66,17 +67,7 @@ Most contributions only touch:
 cp .env.example .env
 ```
 
-Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work fully. AI agent endpoints will return errors, which is expected when developing other parts of the app.
-
-### Hard rules for contributors
-
-1. **Never commit a `.env` file** — it is in `.gitignore` and must stay there
-2. **Never hardcode API keys, tokens, or credentials** in source files
-3. **Never add real keys to PR descriptions, comments, or commit messages**
-4. **Never request or expect to receive production credentials** — maintainers will not share them
-5. If you accidentally commit a secret, immediately open an issue marked `security` so the key can be rotated
-
-The CI/CD pipeline uses GitHub Actions secrets scoped to specific environments. Contributors do not have access to those secrets and PRs from forks run in a restricted environment without them.
+Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work without any external services.
 
 ---
 
@@ -84,57 +75,71 @@ The CI/CD pipeline uses GitHub Actions secrets scoped to specific environments. 
 
 ### Prerequisites
 
-| Tool | Version | Purpose |
-|---|---|---|
-| Node.js | 20.11+ | Frontend dev server |
-| Python | 3.11+ | Backend |
-| pip / venv | any | Python deps |
-| Git | any | Version control |
+- Node.js 16+ and npm
+- Git
 
-You do **not** need Docker, Terraform, or AWS credentials to contribute.
-
-### Clone and run
+### Clone and Install
 
 ```bash
-git clone https://github.com/<your-fork>/quantumanic.git
+git clone <repository-url>
 cd quantumanic
 
-# Set up environment (no real keys needed)
-cp .env.example .env
+# Install backend dependencies
+cd backend
+npm install
 
-# Backend
-python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
-pip install -r backend/requirements.txt
-
-# Frontend
+# Install frontend dependencies (in a new terminal)
 cd frontend
 npm install
-cd ..
-
-# Start everything
-chmod +x start.sh
-./start.sh
 ```
 
-The script starts the FastAPI backend on `http://localhost:8000` and the Vite frontend on `http://localhost:5173`.
+### Run Locally
 
-To start them separately:
-
+**Backend:**
 ```bash
-# Terminal 1 — backend
-source venv/bin/activate
-uvicorn backend.main:app --reload --port 8000
-
-# Terminal 2 — frontend
-cd frontend && npm run dev
+cd backend
+npm start
 ```
 
-### Verify it works
+API available at `http://localhost:3000`
 
-- Open `http://localhost:5173`
-- The Quantum Coin and Quantum Tic-Tac-Toe games should load and run (Qiskit works offline)
-- AI-powered features (bracket agents, narration) will show errors — that is expected without real API keys
+**Frontend (new terminal):**
+```bash
+cd frontend
+npm run dev
+```
+
+UI available at `http://localhost:5173`
+
+### Run Tests
+
+**Backend:**
+```bash
+cd backend
+npm test
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm test
+```
+
+### Linting
+
+**Backend:**
+```bash
+cd backend
+npm run lint          # Check
+npm run lint:fix      # Auto-fix
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm run lint          # Check
+npm run lint:fix      # Auto-fix
+```
 
 ---
 
@@ -142,144 +147,280 @@ cd frontend && npm run dev
 
 ```
 quantumanic/
-├── frontend/               # React + TypeScript + Vite
-│   └── src/
-│       ├── api/            # HTTP clients
-│       ├── components/     # Reusable UI components
-│       ├── hooks/          # Custom React hooks
-│       ├── pages/          # Route-level pages
-│       ├── store/          # Zustand state stores
-│       └── types/          # Shared TypeScript types
-│
-├── backend/                # Python FastAPI
-│   ├── main.py             # App entry point
-│   ├── core/               # Settings, config
-│   ├── routers/            # API endpoints
-│   ├── agents/             # Claude AI agent base classes
-│   ├── bracket/            # NCAA bracket engine + agents
-│   ├── quantum/            # Qiskit circuit definitions
-│   └── models/             # Pydantic data models
-│
-├── terraform/              # AWS infrastructure (maintainers only)
-├── .github/workflows/      # CI/CD pipelines (maintainers only)
-├── .env.example            # Environment template (safe to read)
-└── start.sh                # Local dev launcher
+├── backend/                    # Express.js API service
+│   ├── src/
+│   │   ├── index.js           # App setup
+│   │   ├── api/
+│   │   │   └── routes.js      # Route handlers
+│   │   └── quantum/
+│   │       ├── simulator.js   # Circuit simulator
+│   │       └── gates.js       # Gate definitions
+│   ├── tests/                 # Jest tests
+│   ├── package.json
+│   └── README.md
+├── frontend/                   # React UI
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+├── docs/
+│   └── adr/                   # Architecture Decision Records
+├── ARCHITECTURE.md
+├── CONTRIBUTING.md            # This file
+├── TASKS.md                   # Task backlog
+├── SPRINT_PLAN.md             # Sprint roadmap
+└── README.md
 ```
 
 ---
 
 ## Development Workflow
 
-1. **Fork** the repository on GitHub
-2. **Create a branch** from `main`:
-   ```bash
-   git checkout -b feat/my-feature
-   # or
-   git checkout -b fix/the-bug
-   ```
-3. **Make your changes** — keep commits focused and atomic
-4. **Run lint and tests** (see below)
-5. **Push** to your fork and open a Pull Request against `main`
+### 1. Create a Feature Branch
 
-Branch naming:
-- `feat/` — new feature
-- `fix/` — bug fix
-- `docs/` — documentation only
-- `refactor/` — internal code change, no behavior change
-- `test/` — adding or fixing tests
+```bash
+git checkout main
+git pull origin main
+git checkout -b minions/engineer/<short-summary>
+```
+
+**Branch naming:** `minions/<role>/<short-summary>`
+- Example: `minions/engineer/implement-cnot-gate`
+- Example: `minions/engineer/enhance-circuit-builder`
+
+### 2. Make Your Changes
+
+- Write code following the coding standards (see below)
+- Add or update tests
+- Update documentation as needed
+
+### 3. Run Tests and Linting
+
+```bash
+# Backend
+cd backend
+npm test
+npm run lint:fix
+
+# Frontend
+cd frontend
+npm test
+npm run lint:fix
+```
+
+### 4. Commit Your Changes
+
+```bash
+git add .
+git commit -m "feat: implement CNOT gate support"
+```
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` for new features
+- `fix:` for bug fixes
+- `docs:` for documentation
+- `test:` for tests
+- `refactor:` for code refactoring
+
+### 5. Push and Open a PR
+
+```bash
+git push origin minions/engineer/<short-summary>
+```
+
+Open a pull request on GitHub targeting `main`. See [Submitting a Pull Request](#submitting-a-pull-request) below.
+
+---
+
+## Task Assignment and Sprint Participation
+
+### For New Engineers
+
+1. **Review TASKS.md** — Familiarize yourself with the unassigned tasks and their acceptance criteria
+2. **Pick a Task** — Start with a high-priority, well-scoped task (e.g., Task 1: CNOT Gate or Task 4: Frontend UI)
+3. **Create an Issue** — Link your task to a GitHub issue for tracking
+4. **Update SPRINT_PLAN.md** — Add your name to the task assignment table
+5. **Implement** — Follow the development workflow above
+6. **Submit PR** — Reference the task and issue in your PR description
+
+### Sprint Participation
+
+- **Planning:** Attend Monday 10:00 AM planning meeting (or async update)
+- **Daily Standup:** Post async updates in #quantumanic-standup
+- **Review & Retro:** Attend Friday 4:00 PM review and retrospective
+- **Capacity:** Plan for ~7 points per engineer per sprint (2-week cycle)
+
+### Definition of Done
+
+A task is complete when:
+- ✅ All acceptance criteria met
+- ✅ Peer review approved
+- ✅ Unit tests pass (>80% coverage)
+- ✅ CI pipeline passes
+- ✅ Documentation updated
+- ✅ PR merged to main
 
 ---
 
 ## Submitting a Pull Request
 
-### Before you open a PR
+### PR Title
 
-- [ ] The code runs locally without errors
-- [ ] ESLint passes for frontend changes (`npm run lint` in `frontend/`)
-- [ ] Python code follows the existing style (no new linter warnings)
-- [ ] No secrets, keys, or credentials anywhere in the diff
-- [ ] Commits have clear, descriptive messages
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+```
+feat: implement CNOT gate support
+fix: correct rate limit calculation
+docs: clarify quantum gate definitions
+```
 
-### PR description
+### PR Description
 
 Include:
-- **What changed** — a short summary
-- **Why** — motivation or link to an issue
-- **How to test** — steps a reviewer can follow to verify the change
-- **Screenshots** (for UI changes)
+1. **Context** — What problem does this solve?
+2. **Changes** — What did you change and why?
+3. **Testing** — How did you test this?
+4. **Related Issues** — Link to GitHub issues or tasks
 
-### Review process
+**Example:**
+```markdown
+## Context
+Task 1: Implement CNOT gate support for multi-qubit circuits.
 
-- A maintainer will review within a few days
-- Feedback will be left as PR comments — please address all comments or explain why you disagree
-- Once approved, a maintainer will merge the PR
-- Do not force-push to a PR branch after review has started
+## Changes
+- Added CNOT gate logic to `backend/src/quantum/gates.js`
+- Implemented control and target qubit validation
+- Added API support for CNOT in `/api/circuit/run`
+
+## Testing
+- Unit tests for CNOT with various qubit indices
+- Integration tests with other gates
+- Manual testing via circuit builder UI
+
+## Related Issues
+Closes #42 (Task 1: Implement CNOT Gate)
+```
+
+### Review Process
+
+1. **Peer Review** — A team member reviews your code
+2. **CI Pipeline** — Automated tests, linting, and build checks
+3. **Operator Approval** — For material decisions (see Hard Rules in CONTRIBUTING.md)
+4. **Merge** — Once approved, your PR is merged to main
+
+**Note:** Do not merge your own PRs. Wait for peer approval.
 
 ---
 
 ## Coding Standards
 
-### Frontend (TypeScript + React)
+### JavaScript/Node.js
 
-- TypeScript strict mode is enabled — no `any` unless unavoidable and commented
-- Components are functional with hooks; no class components
-- Zustand for global state; local `useState` for component-only state
-- Tailwind for styling; avoid inline `style` props except for dynamic values (colors, etc.)
-- Framer Motion for animations — keep them subtle and purposeful
-- File names: `PascalCase` for components, `camelCase` for hooks/utilities
+- Use ESLint configuration in `backend/.eslintrc.json`
+- Indent with 2 spaces
+- Use `const` by default; `let` for reassignment; avoid `var`
+- Use arrow functions for callbacks
+- Add JSDoc comments for public functions
 
-### Backend (Python + FastAPI)
+**Example:**
+```javascript
+/**
+ * Apply a quantum gate to a circuit.
+ * @param {Array} state - Current state vector
+ * @param {string} gate - Gate name (e.g., 'X', 'H', 'CNOT')
+ * @param {Array} qubits - Target qubit indices
+ * @returns {Array} New state vector
+ */
+function applyGate(state, gate, qubits) {
+  // Implementation
+}
+```
 
-- Python 3.11+ style; use type hints everywhere
-- Pydantic models for all request/response schemas
-- FastAPI dependency injection for auth and settings
-- Async endpoints where I/O is involved
-- Keep route handlers thin; business logic belongs in dedicated modules
-- Qiskit circuits go in `backend/quantum/`; AI agent logic in `backend/agents/` or `backend/bracket/agents/`
+### React/TypeScript (Frontend)
 
-### General
+- Use functional components with hooks
+- Use TypeScript for type safety
+- Add prop types or interfaces
+- Use descriptive component names
 
-- Keep pull requests small and focused — one concern per PR
-- Do not mix refactors with feature changes
-- Comments should explain *why*, not *what* — the code explains what
+**Example:**
+```typescript
+interface CircuitBuilderProps {
+  onRun: (circuit: Circuit) => void;
+  gates: Gate[];
+}
+
+const CircuitBuilder: React.FC<CircuitBuilderProps> = ({ onRun, gates }) => {
+  // Implementation
+};
+```
+
+### Tests
+
+- Use Jest for unit tests
+- Aim for >80% code coverage
+- Test happy paths and edge cases
+- Use descriptive test names
+
+**Example:**
+```javascript
+describe('CNOT Gate', () => {
+  it('should apply X to target qubit when control is |1⟩', () => {
+    const state = [0, 1, 0, 0]; // |01⟩
+    const result = applyCNOT(state, 0, 1);
+    expect(result).toEqual([0, 0, 1, 0]); // |10⟩
+  });
+});
+```
 
 ---
 
 ## Running Tests
 
-### Backend
+### Backend Tests
 
 ```bash
-source venv/bin/activate
-pytest backend/tests/ -v
+cd backend
+npm test                    # Run all tests
+npm test -- --coverage      # With coverage report
+npm test -- --watch        # Watch mode
 ```
 
-The integration test for Quantum Tic-Tac-Toe requires a running backend:
-
-```bash
-# Start the backend first
-uvicorn backend.main:app --port 8000
-
-# Then in a second terminal
-python test_ttt.py
-```
-
-### Frontend
+### Frontend Tests
 
 ```bash
 cd frontend
-npm run lint        # ESLint check
-npm run build       # Type-check + production build
+npm test                    # Run all tests
+npm test -- --coverage      # With coverage report
+npm test -- --watch        # Watch mode
 ```
 
-Vitest unit tests can be added under `frontend/src/__tests__/` — contributions to expand test coverage are very welcome.
+### Coverage Requirements
+
+- Statements: >80%
+- Branches: >75%
+- Functions: >80%
+- Lines: >80%
 
 ---
 
 ## Questions and Help
 
-- **Bug reports and feature requests** → open a [GitHub Issue](../../issues)
-- **Questions about quantum mechanics in the code** → open a Discussion
-- **Security issues** → open a private issue marked `security`; do not post publicly
+- **Slack:** #quantumanic (general questions)
+- **GitHub Issues:** For bugs and feature requests
+- **Weekly Sync:** Friday 4:00 PM (team meeting)
+- **Pair Programming:** Ask for help in Slack; we encourage collaboration
 
-We want contributing to feel approachable regardless of your background. If something in this guide is unclear or a setup step doesn't work, open an issue — that's a documentation bug worth fixing.
+---
+
+## Additional Resources
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — System design and deployment
+- [TASKS.md](TASKS.md) — Task backlog and acceptance criteria
+- [SPRINT_PLAN.md](SPRINT_PLAN.md) — Sprint roadmap and team capacity
+- [README.md](README.md) — Project overview and quick start
+- [Conventional Commits](https://www.conventionalcommits.org/) — Commit message format
+- [Jest Documentation](https://jestjs.io/) — Testing framework
+- [ESLint Documentation](https://eslint.org/) — Linting tool
+
+---
+
+Happy coding! 🚀
