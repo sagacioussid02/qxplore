@@ -12,6 +12,7 @@ Thank you for your interest in contributing! Quantum Expedition is an open-sourc
 - [Getting Started Locally](#getting-started-locally)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
+- [Task Assignment and Sprint Participation](#task-assignment-and-sprint-participation)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Coding Standards](#coding-standards)
 - [Running Tests](#running-tests)
@@ -66,7 +67,7 @@ Most contributions only touch:
 cp .env.example .env
 ```
 
-Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work without any keys.
+Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work without any external services.
 
 ---
 
@@ -74,181 +75,55 @@ Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, e
 
 ### Prerequisites
 
-- **Node.js 16+** (for frontend development)
-- **Node.js 14+** (for backend development)
-- **npm 7+**
-- **Git**
+- Node.js 16+ and npm
+- Git
 
-### Clone the Repository
+### Clone and Install
 
 ```bash
 git clone <repository-url>
 cd quantumanic
 ```
 
-### Backend Setup
+# Install backend dependencies
+cd backend
+npm install
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Start the backend server:
-   ```bash
-   npm start
-   ```
-
-   The API will be available at `http://localhost:3000`.
-
-### Frontend Setup
-
-1. In a new terminal, navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-
-   The default `VITE_API_URL=http://localhost:3000` should work if your backend is running locally.
-
-4. Start the frontend development server:
-   ```bash
-   npm run dev
-   ```
-
-   The frontend will be available at `http://localhost:5173`.
-
-### Verify Setup
-
-1. Open `http://localhost:5173` in your browser
-2. The frontend should load without errors
-3. Try building a simple circuit and executing it
-4. If the backend is running, you should see results
-
-For detailed frontend setup instructions, see [FRONTEND.md](FRONTEND.md).
-
----
-
-## Project Structure
-
-```
-quantumanic/
-├── backend/                    # Express.js API service
-│   ├── src/
-│   │   ├── index.js           # App entry point
-│   │   ├── api/               # API routes
-│   │   └── quantum/           # Quantum simulation logic
-│   ├── tests/                 # Backend tests
-│   ├── package.json
-│   ├── .env.example
-│   └── README.md
-├── frontend/                   # React/TypeScript UI
-│   ├── src/
-│   │   ├── components/        # React components
-│   │   ├── services/          # API client
-│   │   ├── types/             # TypeScript definitions
-│   │   ├── App.tsx
-│   │   └── index.tsx
-│   ├── tests/                 # Frontend tests
-│   ├── package.json
-│   ├── .env.example
-│   ├── vite.config.ts
-│   └── README.md
-├── docs/                       # Documentation
-│   └── adr/                   # Architecture Decision Records
-├── ARCHITECTURE.md            # System architecture
-├── CONTRIBUTING.md            # This file
-├── FRONTEND.md                # Frontend documentation
-├── README.md                  # Main README
-└── package.json               # Root package.json
+# Install frontend dependencies (in a new terminal)
+cd frontend
+npm install
 ```
 
-For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
+### Run Locally
 
----
-
-## Development Workflow
-
-### Branching Strategy
-
-All feature branches follow the naming convention:
-```
-minions/<role>/<short-summary>
+**Backend:**
+```bash
+cd backend
+npm start
 ```
 
-Examples:
-- `minions/engineer/add-cnot-gate`
-- `minions/documentation_engineer/fix-readme-tech-stack`
-- `minions/cloud_devops/add-health-endpoint`
+API available at `http://localhost:3000`
 
-### Creating a Feature Branch
+**Frontend (new terminal):**
+```bash
+cd frontend
+npm run dev
+```
 
-1. Ensure you're on the main branch:
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
+UI available at `http://localhost:5173`
 
-2. Create a new feature branch:
-   ```bash
-   git checkout -b minions/<role>/<short-summary>
-   ```
+### Run Tests
 
-3. Make your changes
-
-4. Commit with clear, descriptive messages:
-   ```bash
-   git commit -m "feat: add CNOT gate support"
-   ```
-
-   Use conventional commit prefixes:
-   - `feat:` — New feature
-   - `fix:` — Bug fix
-   - `docs:` — Documentation
-   - `test:` — Test additions or changes
-   - `chore:` — Build, dependencies, tooling
-   - `refactor:` — Code refactoring without feature changes
-
-5. Push your branch:
-   ```bash
-   git push origin minions/<role>/<short-summary>
-   ```
-
-### Running Tests
-
-**Backend tests:**
+**Backend:**
 ```bash
 cd backend
 npm test
 ```
 
-**Frontend tests:**
+**Frontend:**
 ```bash
 cd frontend
 npm test
-```
-
-**All tests:**
-```bash
-cd backend && npm test && cd ../frontend && npm test
 ```
 
 ### Linting
@@ -269,89 +144,250 @@ npm run lint:fix      # Auto-fix
 
 ---
 
+## Project Structure
+
+```
+quantumanic/
+├── backend/                    # Express.js API service
+│   ├── src/
+│   │   ├── index.js           # App setup
+│   │   ├── api/
+│   │   │   └── routes.js      # Route handlers
+│   │   └── quantum/
+│   │       ├── simulator.js   # Circuit simulator
+│   │       └── gates.js       # Gate definitions
+│   ├── tests/                 # Jest tests
+│   ├── package.json
+│   └── README.md
+├── frontend/                   # React UI
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+├── docs/
+│   └── adr/                   # Architecture Decision Records
+├── ARCHITECTURE.md
+├── CONTRIBUTING.md            # This file
+├── TASKS.md                   # Task backlog
+├── SPRINT_PLAN.md             # Sprint roadmap
+└── README.md
+```
+
+For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Development Workflow
+
+### 1. Create a Feature Branch
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b minions/engineer/<short-summary>
+```
+
+**Branch naming:** `minions/<role>/<short-summary>`
+- Example: `minions/engineer/implement-cnot-gate`
+- Example: `minions/engineer/enhance-circuit-builder`
+
+### 2. Make Your Changes
+
+- Write code following the coding standards (see below)
+- Add or update tests
+- Update documentation as needed
+
+### 3. Run Tests and Linting
+
+```bash
+# Backend
+cd backend
+npm test
+npm run lint:fix
+
+# Frontend
+cd frontend
+npm test
+npm run lint:fix
+```
+
+### 4. Commit Your Changes
+
+```bash
+git add .
+git commit -m "feat: implement CNOT gate support"
+```
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` for new features
+- `fix:` for bug fixes
+- `docs:` for documentation
+- `test:` for tests
+- `refactor:` for code refactoring
+
+### 5. Push and Open a PR
+
+```bash
+git push origin minions/engineer/<short-summary>
+```
+
+Open a pull request on GitHub targeting `main`. See [Submitting a Pull Request](#submitting-a-pull-request) below.
+
+---
+
+## Task Assignment and Sprint Participation
+
+### For New Engineers
+
+1. **Review TASKS.md** — Familiarize yourself with the unassigned tasks and their acceptance criteria
+2. **Pick a Task** — Start with a high-priority, well-scoped task (e.g., Task 1: CNOT Gate or Task 4: Frontend UI)
+3. **Create an Issue** — Link your task to a GitHub issue for tracking
+4. **Update SPRINT_PLAN.md** — Add your name to the task assignment table
+5. **Implement** — Follow the development workflow above
+6. **Submit PR** — Reference the task and issue in your PR description
+
+### Sprint Participation
+
+- **Planning:** Attend Monday 10:00 AM planning meeting (or async update)
+- **Daily Standup:** Post async updates in #quantumanic-standup
+- **Review & Retro:** Attend Friday 4:00 PM review and retrospective
+- **Capacity:** Plan for ~7 points per engineer per sprint (2-week cycle)
+
+### Definition of Done
+
+A task is complete when:
+- ✅ All acceptance criteria met
+- ✅ Peer review approved
+- ✅ Unit tests pass (>80% coverage)
+- ✅ CI pipeline passes
+- ✅ Documentation updated
+- ✅ PR merged to main
+
+---
+
 ## Submitting a Pull Request
 
-1. **Push your branch** to the repository
+### PR Title
 
-2. **Open a pull request** on GitHub:
-   - Target: `main` branch
-   - Title: Use conventional commit format (e.g., "feat: add CNOT gate support")
-   - Description: Include context, what changed, and how to test
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+```
+feat: implement CNOT gate support
+fix: correct rate limit calculation
+docs: clarify quantum gate definitions
+```
 
-3. **Ensure CI passes:**
-   - All tests must pass
-   - Linting must pass
-   - No security issues detected
+### PR Description
 
-4. **Request review** from at least one peer
+Include:
+1. **Context** — What problem does this solve?
+2. **Changes** — What did you change and why?
+3. **Testing** — How did you test this?
+4. **Related Issues** — Link to GitHub issues or tasks
 
-5. **Address feedback** — make requested changes and push updates
-
-6. **Merge** — once approved and CI is green, a maintainer will merge your PR
-
-### PR Description Template
-
+**Example:**
 ```markdown
-## Description
-Brief description of what this PR does.
+## Context
+Task 1: Implement CNOT gate support for multi-qubit circuits.
 
 ## Changes
-- Change 1
-- Change 2
-- Change 3
+- Added CNOT gate logic to `backend/src/quantum/gates.js`
+- Implemented control and target qubit validation
+- Added API support for CNOT in `/api/circuit/run`
 
 ## Testing
-How to test these changes:
-1. Step 1
-2. Step 2
+- Unit tests for CNOT with various qubit indices
+- Integration tests with other gates
+- Manual testing via circuit builder UI
 
-## Checklist
-- [ ] Tests pass locally
-- [ ] Linting passes
-- [ ] Documentation updated (if applicable)
-- [ ] No breaking changes
+## Related Issues
+Closes #42 (Task 1: Implement CNOT Gate)
 ```
+
+### Review Process
+
+1. **Peer Review** — A team member reviews your code
+2. **CI Pipeline** — Automated tests, linting, and build checks
+3. **Operator Approval** — For material decisions (see Hard Rules in CONTRIBUTING.md)
+4. **Merge** — Once approved, your PR is merged to main
+
+**Note:** Do not merge your own PRs. Wait for peer approval.
 
 ---
 
 ## Coding Standards
 
-### TypeScript/JavaScript
+### JavaScript/Node.js
 
-- Use TypeScript for all new code
-- Follow ESLint rules (run `npm run lint:fix` to auto-fix)
-- Use meaningful variable and function names
+- Use ESLint configuration in `backend/.eslintrc.json`
+- Indent with 2 spaces
+- Use `const` by default; `let` for reassignment; avoid `var`
+- Use arrow functions for callbacks
 - Add JSDoc comments for public functions
-- Keep functions small and focused
 
-### Commits
+**Example:**
+```javascript
+/**
+ * Apply a quantum gate to a circuit.
+ * @param {Array} state - Current state vector
+ * @param {string} gate - Gate name (e.g., 'X', 'H', 'CNOT')
+ * @param {Array} qubits - Target qubit indices
+ * @returns {Array} New state vector
+ */
+function applyGate(state, gate, qubits) {
+  // Implementation
+}
+```
 
-- Use conventional commit format
-- Keep commits atomic (one logical change per commit)
-- Write clear, descriptive commit messages
-- Reference issues in commit messages when applicable (e.g., "Fixes #123")
+### React/TypeScript (Frontend)
 
-### Testing
+- Use functional components with hooks
+- Use TypeScript for type safety
+- Add prop types or interfaces
+- Use descriptive component names
 
-- Write tests for new features
-- Maintain or improve code coverage
-- Test edge cases and error conditions
+**Example:**
+```typescript
+interface CircuitBuilderProps {
+  onRun: (circuit: Circuit) => void;
+  gates: Gate[];
+}
+
+const CircuitBuilder: React.FC<CircuitBuilderProps> = ({ onRun, gates }) => {
+  // Implementation
+};
+```
+
+### Tests
+
+- Use Jest for unit tests
+- Aim for >80% code coverage
+- Test happy paths and edge cases
 - Use descriptive test names
+
+**Example:**
+```javascript
+describe('CNOT Gate', () => {
+  it('should apply X to target qubit when control is |1⟩', () => {
+    const state = [0, 1, 0, 0]; // |01⟩
+    const result = applyCNOT(state, 0, 1);
+    expect(result).toEqual([0, 0, 1, 0]); // |10⟩
+  });
+});
+```
 
 ---
 
 ## Running Tests
 
-### Backend
+### Backend Tests
 
 ```bash
 cd backend
 npm test                    # Run all tests
+npm test -- --coverage      # With coverage report
 npm test -- --watch        # Watch mode
-npm test -- --coverage     # Coverage report
 ```
 
-### Frontend
+### Frontend Tests
 
 ```bash
 cd frontend
@@ -359,6 +395,17 @@ npm test                    # Run all tests
 npm test -- --watch        # Watch mode
 npm test -- --coverage     # Coverage report
 ```
+
+npm test -- --coverage      # With coverage report
+npm test -- --watch        # Watch mode
+```
+
+### Coverage Requirements
+
+- Statements: >80%
+- Branches: >75%
+- Functions: >80%
+- Lines: >80%
 
 ---
 
@@ -375,3 +422,23 @@ Don't hesitate to ask questions — we're here to help!
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+- **Slack:** #quantumanic (general questions)
+- **GitHub Issues:** For bugs and feature requests
+- **Weekly Sync:** Friday 4:00 PM (team meeting)
+- **Pair Programming:** Ask for help in Slack; we encourage collaboration
+
+---
+
+## Additional Resources
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — System design and deployment
+- [TASKS.md](TASKS.md) — Task backlog and acceptance criteria
+- [SPRINT_PLAN.md](SPRINT_PLAN.md) — Sprint roadmap and team capacity
+- [README.md](README.md) — Project overview and quick start
+- [Conventional Commits](https://www.conventionalcommits.org/) — Commit message format
+- [Jest Documentation](https://jestjs.io/) — Testing framework
+- [ESLint Documentation](https://eslint.org/) — Linting tool
+
+---
+
+Happy coding! 🚀
