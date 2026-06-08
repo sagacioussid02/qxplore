@@ -83,6 +83,7 @@ Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, e
 ```bash
 git clone <repository-url>
 cd quantumanic
+```
 
 # Install backend dependencies
 cd backend
@@ -170,6 +171,8 @@ quantumanic/
 ├── SPRINT_PLAN.md             # Sprint roadmap
 └── README.md
 ```
+
+For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -389,6 +392,10 @@ npm test -- --watch        # Watch mode
 ```bash
 cd frontend
 npm test                    # Run all tests
+npm test -- --watch        # Watch mode
+npm test -- --coverage     # Coverage report
+```
+
 npm test -- --coverage      # With coverage report
 npm test -- --watch        # Watch mode
 ```
@@ -404,6 +411,17 @@ npm test -- --watch        # Watch mode
 
 ## Questions and Help
 
+- **GitHub Issues** — For bugs, feature requests, and discussions
+- **Discussions** — For general questions and ideas
+- **Email** — Contact the maintainers directly
+
+Don't hesitate to ask questions — we're here to help!
+
+---
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.
 - **Slack:** #quantumanic (general questions)
 - **GitHub Issues:** For bugs and feature requests
 - **Weekly Sync:** Friday 4:00 PM (team meeting)
