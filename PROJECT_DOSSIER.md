@@ -1,287 +1,312 @@
 ---
-generated_at: 2026-05-24T10:39:13.634998+00:00
-commit_sha: 1c6cee08e1348c0eea56b5d3d4097d9fcaa84d6c
+generated_at: 2026-06-07T10:50:57.338133+00:00
+commit_sha: ac8b84c2edd361a26c4a20f50765d59dc13f89b1
 crew: discoverer/v1
 sections_present: [architecture, data, infra, security, hot_spots, tech_debt, incidents, questions]
 ---
 
 # Architecture
 
-Quantumanic is a quantum circuit simulation service with two distinct layers: a Node.js/Express API layer (the primary, original service) and a Python/FastAPI backend layer (added later), fronted by a React/TypeScript frontend.
-
-## Node.js Core Service
-
-The root-level service is described as "a quantum computing simulator and API service built with Express.js and mathjs" (`README.md:1-3`). The entry point is `src/index.js` (`src/index.js`), with quantum simulation logic under `src/quantum/` and API routing under `src/api/`. Tests live at `tests/rate-limit.test.js` and `tests/simulator.test.js`.
-
-Key runtime configuration is injected via environment variables (`README.md:20-25`):
-- `PORT` — server port (default 3000)
-- `RATE_LIMIT_WINDOW_MS` — rate-limit window in ms (default 900 000 = 15 min)
-- `RATE_LIMIT_MAX_REQUESTS` — max requests per IP on general `/api` routes (default 100)
-- `CIRCUIT_RUN_RATE_LIMIT` — max requests per IP on `POST /api/circuit/run` (default 10)
-
-The Node.js service exposes a single primary endpoint: `POST /api/circuit/run` (`README.md:37`), which accepts a JSON body containing `numQubits` and a `circuit.gates` array and returns a state vector.
-
-## Python / FastAPI Backend
-
-A second, independent backend lives under `backend/` (`backend/main.py`, `backend/run.py`). Its internal structure is:
-
-| Subdirectory | Purpose |
-|---|---|
-| `backend/agents/` | Agent-based orchestration logic |
-| `backend/classical/` | Classical computation helpers |
-| `backend/core/` | Shared core utilities |
-| `backend/data/` | Data access / persistence helpers |
-| `backend/models/` | Pydantic or ORM model definitions |
-| `backend/quantum/` | Quantum simulation logic (Python) |
-| `backend/routers/` | FastAPI route handlers |
-| `backend/tests/` | Python test suite |
-
-Dependencies for this layer are declared in `backend/requirements.txt`.
+Quantumanic is a full-stack quantum circuit simulation platform composed of three primary layers: a React/TypeScript frontend, a dual-backend API tier (Node.js/Express.js and Python/FastAPI), and cloud infrastructure managed via Terraform.
 
 ## Frontend
 
-The frontend is a Vite + React + TypeScript application (`frontend/package.json`, `frontend/index.html`, `frontend/vite.config.ts`). It uses Tailwind CSS (`frontend/tailwind.config.js`) and PostCSS (`frontend/postcss.config.js`). The source tree lives under `frontend/src/`. Notably, the frontend directory also contains its own `frontend/backend/` subdirectory with a separate `frontend/backend/requirements.txt`, suggesting a BFF (Backend-for-Frontend) pattern or a co-located proxy layer.
+The frontend is a React 18+ single-page application built with Vite and TypeScript (`frontend/package.json:1-5`). It uses Tailwind CSS for styling (`frontend/tailwind.config.js`) and PostCSS for CSS processing (`frontend/postcss.config.js`). The application entry point is `frontend/index.html`, with source code under `frontend/src/`. ESLint is configured at `frontend/eslint.config.js` and TypeScript compilation is governed by `frontend/tsconfig.json`, `frontend/tsconfig.app.json`, and `frontend/tsconfig.node.json`.
 
-## Infrastructure & Deployment
+## Dual-Backend Architecture
 
-The service is containerised via `Dockerfile`. Infrastructure-as-code is managed with Terraform (`terraform/main.tf`, `terraform/backend.tf`, `terraform/variables.tf`, `terraform/outputs.tf`, `terraform/versions.tf`), with a bootstrap stage (`terraform/bootstrap/`) and reusable modules (`terraform/modules/`). A `terraform.tfvars.example` provides a template for variable values.
+The project explicitly adopts a dual-backend strategy, documented in `ARCHITECTURE.md` and referenced in `README.md:14-15`. Two backend runtimes coexist:
 
-CI/CD is handled by GitHub Actions workflows (`.github/workflows/`):
+1. **Node.js/Express.js backend** — handles API routing, rate limiting, and input validation middleware. Its entry point is `src/index.js` (`src/index.js`), with API routes under `src/api/` and quantum simulation utilities under `src/quantum/`. The root `package.json` governs its dependencies.
 
-| Workflow | Purpose |
-|---|---|
-| `deploy.yml` | Deploy the service |
-| `destroy.yml` | Tear down infrastructure |
-| `bootstrap.yml` | Bootstrap Terraform state backend |
-| `auto-pr.yml` | Automated PR creation |
-| `claude-review.yml` | AI-assisted code review |
-| `secret-scan.yml` | Gitleaks secret scanning |
+2. **Python/FastAPI backend** — provides the quantum simulation engine. Its entry point is `backend/main.py` (`backend/main.py`) with an alternate runner at `backend/run.py`. It is organized into sub-packages:
+   - `backend/agents/` — agent-based logic
+   - `backend/classical/` — classical computation helpers
+   - `backend/core/` — core application logic
+   - `backend/data/` — data access layer
+   - `backend/models/` — Pydantic or ORM models
+   - `backend/quantum/` — quantum gate and circuit simulation
+   - `backend/routers/` — FastAPI route definitions
+   - Python dependencies are declared in `backend/requirements.txt`
 
-A shared CI/CD library is vendored under `cicd-library/` (`cicd-library/README.md`), containing reusable GitHub workflow templates (`cicd-library/github-workflows/`), scripts (`cicd-library/scripts/`), and Terraform modules (`cicd-library/terraform/`).
+A secondary `frontend/backend/` directory exists with its own `frontend/backend/requirements.txt`, suggesting a co-located backend stub or proxy used during frontend development.
 
-A Supabase-backed persistence layer is referenced by `supabase_schema.sql`, indicating the Python backend (or BFF) uses Supabase (PostgreSQL) for storage.
+## Containerization
+
+The application is containerized via a single `Dockerfile` at the repository root. The `.dockerignore` file controls build context exclusion. The `start.sh` script provides a convenience launcher.
+
+## Infrastructure
+
+Cloud infrastructure is defined with Terraform under `terraform/`. Key files include:
+- `terraform/main.tf` — primary resource definitions
+- `terraform/backend.tf` — remote state configuration
+- `terraform/variables.tf` and `terraform/outputs.tf` — input/output declarations
+- `terraform/versions.tf` — provider version constraints
+- `terraform/modules/` — reusable Terraform modules
+- `terraform/bootstrap/` — bootstrapping resources (e.g., state bucket)
+- `terraform.tfvars.example` — example variable values
+
+A shared CI/CD library is vendored at `cicd-library/`, containing reusable GitHub Actions workflows (`cicd-library/github-workflows/`), scripts (`cicd-library/scripts/`), and Terraform modules (`cicd-library/terraform/`).
+
+## CI/CD
+
+Six GitHub Actions workflows govern automation (`.github/workflows/`):
+- `auto-pr.yml` — automatic pull request creation
+- `bootstrap.yml` — infrastructure bootstrapping
+- `claude-review.yml` — AI-assisted code review
+- `deploy.yml` — application deployment
+- `destroy.yml` — infrastructure teardown
+- `secret-scan.yml` — secret detection via gitleaks (configured at `.gitleaks.toml`)
+
+## Database
+
+A Supabase-hosted PostgreSQL database is used, with the schema defined in `supabase_schema.sql`.
+
+## Security & Governance Hooks
+
+Claude hooks under `.claude/hooks/` enforce runtime guardrails: `protect-env.sh`, `protect-git-push.sh`, `protect-prod.sh`, `protect-destructive.sh`, `security-scan.sh`, `audit-log.sh`, `cost-tracker.sh`, `auto-draft-pr.sh`, and `notify-email.sh`. Settings are declared in `.claude/settings.json` and `.claude/settings.local.json`.
 
 ---
 
 # Data model & flows
 
-## Quantum Circuit Request/Response (Node.js)
+## Database Schema
 
-The primary data flow through the Node.js service is:
+The persistent data layer is a Supabase-hosted PostgreSQL database. The full schema is defined in `supabase_schema.sql`. No ORM migration files are present in the tree; the schema file is the single source of truth for table definitions.
 
-1. **Client → `POST /api/circuit/run`** — sends a JSON payload (`README.md:38-47`):
-   ```json
-   {
-     "numQubits": 2,
-     "circuit": {
-       "gates": [
-         { "type": "X", "target": 0 },
-         ...
-       ]
-     }
-   }
-   ```
-2. **Rate-limit middleware** — enforces per-IP limits before the request reaches the handler (`README.md:22-25`). Tests for this layer live in `tests/rate-limit.test.js`.
-3. **Simulator** — the quantum simulation engine (under `src/quantum/`) applies gates sequentially to a state vector. Supported gate types are X, H, Z, Y, S, and T (`README.md:5`). Simulator correctness is validated in `tests/simulator.test.js`.
-4. **Response** — the resulting state vector is returned to the client.
+Python-side model definitions reside in `backend/models/` and are used by the FastAPI backend to validate and serialize data exchanged with the database and API consumers.
 
-## Supabase / Database Schema
+## Quantum Circuit Data Flow
 
-Persistent data (teams, brackets, results, or user state) is modelled in `supabase_schema.sql`. The schema targets a Supabase (PostgreSQL) instance. The Python backend's `backend/data/` and `backend/models/` directories contain the application-side representations of these entities.
+1. **User input** — A user constructs a quantum circuit in the React frontend (`frontend/src/`), specifying qubits and gate sequences (X, H, Z, Y, S, T, CNOT/CX, SWAP, Toffoli as enumerated in `README.md:22-24`).
 
-## Python Backend Internal Flow
+2. **API request** — The frontend submits the circuit definition to the backend API. The Node.js layer (`src/api/`) receives the request, applies rate limiting and input validation middleware, then forwards it to the simulation engine.
 
-Requests to the Python service enter via FastAPI routers (`backend/routers/`), are processed through core utilities (`backend/core/`) and optionally delegated to agent logic (`backend/agents/`). Quantum computations are handled by `backend/quantum/`, classical computations by `backend/classical/`. Persistence is mediated through `backend/data/`, with data shapes defined in `backend/models/`.
+3. **Quantum simulation** — The Python backend's `backend/quantum/` package performs matrix-based gate operations on the qubit state vector. Classical helpers in `backend/classical/` may assist with pre/post-processing. Agent logic in `backend/agents/` may orchestrate multi-step simulation workflows.
 
-## Frontend ↔ Backend Communication
+4. **Result serialization** — Simulation results (measurement outcomes and probability distributions) are serialized through `backend/routers/` (FastAPI route handlers) and returned as JSON to the caller.
 
-The React frontend (`frontend/src/`) communicates with one or both backends. The presence of `frontend/backend/` with its own `frontend/backend/requirements.txt` suggests a Python-based BFF or proxy that the frontend calls directly, which in turn fans out to the main `backend/` service or Supabase.
+5. **Frontend rendering** — The React frontend receives the probability/measurement output and renders it to the user.
+
+## Node.js Quantum Utilities
+
+A parallel quantum simulation path exists in the Node.js layer under `src/quantum/`, consistent with the project's Express.js heritage noted in `README.md:13`. This may serve as a lightweight simulation fallback or legacy path.
+
+## Test Coverage Points
+
+- Node.js-layer rate limiting is exercised by `tests/rate-limit.test.js`
+- Simulator behavior is covered by `tests/simulator.test.js`
+- Python backend tests reside under `backend/tests/`
+- A standalone Python test script `test_ttt.py` exists at the repository root
+- Jest configuration is at `jest.config.js` (root) with the root `package.json` governing test execution
 
 ## Environment & Secrets Flow
 
-Secrets and configuration are never inlined; they are referenced by name in `.env.example` and injected at runtime (`README.md:17-25`). The `.gitleaks.toml` configuration and the `secret-scan` CI workflow (`.github/workflows/secret-scan.yml`) enforce that no secret values are committed to the repository.
+Environment variable names are documented in `.env.example`. Secrets are never inlined; they are referenced by name and injected at runtime via the deployment environment or CI secrets store. The `.claude/hooks/protect-env.sh` hook enforces this at the agent level.
 
 # Infra & deploy topology
 
-## Containerisation
+## Containerization
 
-The service is packaged as a Docker image via `Dockerfile` (root-level). Build-time exclusions are controlled by `.dockerignore`. The image encapsulates the Node.js/Express quantum simulation service whose entry point is `src/index.js` and whose runtime port defaults to `3000` (`README.md:20`).
+The application ships as a single Docker image defined at the repository root (`Dockerfile`). Build-context exclusions are governed by `.dockerignore`. A convenience launcher script `start.sh` is present at the root for local execution.
 
-## Infrastructure-as-Code (Terraform)
+## Cloud Infrastructure (Terraform)
 
-All cloud resources are declared in Terraform under `terraform/`:
+All cloud resources are declared with Terraform under `terraform/`:
 
-| File | Role |
-|---|---|
-| `terraform/main.tf` | Primary resource definitions |
-| `terraform/backend.tf` | Remote state backend configuration |
-| `terraform/variables.tf` | Input variable declarations |
-| `terraform/outputs.tf` | Output value declarations |
-| `terraform/versions.tf` | Provider and Terraform version constraints |
+- **Primary resources** — `terraform/main.tf`
+- **Remote state backend** — `terraform/backend.tf`
+- **Input variables** — `terraform/variables.tf`
+- **Output declarations** — `terraform/outputs.tf`
+- **Provider version constraints** — `terraform/versions.tf`
+- **Reusable modules** — `terraform/modules/`
+- **Bootstrap resources** (e.g., state bucket provisioning) — `terraform/bootstrap/`
+- **Example variable values** — `terraform.tfvars.example`
 
-A bootstrap stage (`terraform/bootstrap/`) provisions the prerequisites for the remote state backend (e.g., S3 bucket / DynamoDB table or equivalent) before the main Terraform root module can be initialised. Reusable resource patterns are extracted into `terraform/modules/`. Variable values are templated in `terraform.tfvars.example`.
+A vendored CI/CD library at `cicd-library/` provides shared Terraform modules (`cicd-library/terraform/`), reusable GitHub Actions workflow templates (`cicd-library/github-workflows/`), and helper scripts (`cicd-library/scripts/`).
 
-A parallel, vendored CI/CD library at `cicd-library/terraform/` provides additional shared Terraform modules that can be consumed across projects (`cicd-library/README.md`).
+## CI/CD Pipelines
 
-## CI/CD Pipelines (GitHub Actions)
+Six GitHub Actions workflows drive the full automation lifecycle (`.github/workflows/`):
 
-All automation runs through `.github/workflows/`:
+| Workflow | File | Purpose |
+|---|---|---|
+| Auto PR | `.github/workflows/auto-pr.yml` | Automatic pull request creation |
+| Bootstrap | `.github/workflows/bootstrap.yml` | Infrastructure bootstrapping (state bucket, IAM) |
+| Claude Review | `.github/workflows/claude-review.yml` | AI-assisted code review gate |
+| Deploy | `.github/workflows/deploy.yml` | Application deployment |
+| Destroy | `.github/workflows/destroy.yml` | Infrastructure teardown |
+| Secret Scan | `.github/workflows/secret-scan.yml` | Secret detection via gitleaks (`.gitleaks.toml`) |
 
-| Workflow | Trigger / Purpose |
-|---|---|
-| `.github/workflows/bootstrap.yml` | Provisions the Terraform state backend (runs before `deploy.yml`) |
-| `.github/workflows/deploy.yml` | Builds the Docker image and applies Terraform to deploy the service |
-| `.github/workflows/destroy.yml` | Tears down all Terraform-managed infrastructure |
-| `.github/workflows/auto-pr.yml` | Automates pull-request creation for agent-generated branches |
-| `.github/workflows/claude-review.yml` | AI-assisted peer code review gate |
-| `.github/workflows/secret-scan.yml` | Runs Gitleaks against every push/PR to prevent secret leakage (config: `.gitleaks.toml`) |
+## Database
 
-Reusable workflow templates and helper scripts are vendored in `cicd-library/github-workflows/` and `cicd-library/scripts/` respectively (`cicd-library/README.md`).
+The persistent layer is a Supabase-hosted PostgreSQL database. The full schema is defined in `supabase_schema.sql`. No ORM migration files are present; this file is the single source of truth for table structure.
 
-## Multi-Layer Application Topology
+## Dual-Backend Deployment Topology
 
-Three distinct runtime layers are present in the repository:
+The application runs two backend runtimes, as documented in `ARCHITECTURE.md` and noted in `README.md:14-15`:
 
-1. **Node.js/Express service** — root-level (`src/index.js`, `src/quantum/`, `src/api/`). Exposes `POST /api/circuit/run` (`README.md:37`). Declared dependencies in root `package.json`.
-2. **Python/FastAPI backend** — `backend/main.py`, `backend/run.py`, with routers at `backend/routers/`, agent logic at `backend/agents/`, and quantum simulation at `backend/quantum/`. Dependencies declared in `backend/requirements.txt`.
-3. **React/TypeScript frontend** — Vite-based SPA under `frontend/src/` (`frontend/package.json`, `frontend/vite.config.ts`). A co-located BFF or proxy layer lives at `frontend/backend/` with its own `frontend/backend/requirements.txt`, suggesting a Python-based Backend-for-Frontend pattern.
+1. **Node.js/Express.js** — entry point `src/index.js`, handles API routing, rate limiting, and input validation. Dependencies declared in `package.json`.
+2. **Python/FastAPI** — entry point `backend/main.py`, alternate runner `backend/run.py`, provides the quantum simulation engine. Dependencies declared in `backend/requirements.txt`.
 
-## Persistence
+A co-located backend stub or development proxy exists at `frontend/backend/` with its own `frontend/backend/requirements.txt`, used during frontend development.
 
-A Supabase (PostgreSQL) instance is used for persistent storage. The schema is defined in `supabase_schema.sql`. Application-side data access is mediated through `backend/data/` and `backend/models/`.
+The React/TypeScript frontend is built with Vite (`frontend/package.json`) and served as a static single-page application from `frontend/index.html`.
 
-## Environment & Secrets Injection
+## Security & Governance Hooks
 
-No secret values are inlined in the repository. Configuration is injected at runtime via environment variables documented in `.env.example`. Key variables include (`README.md:20-25`):
+Runtime guardrails are enforced via Claude hooks under `.claude/hooks/`:
 
-- `PORT` — server port (default `3000`)
-- `RATE_LIMIT_WINDOW_MS` — rate-limit window in ms (default `900000`)
-- `RATE_LIMIT_MAX_REQUESTS` — max requests per IP on general `/api` routes (default `100`)
-- `CIRCUIT_RUN_RATE_LIMIT` — max requests per IP on `POST /api/circuit/run` (default `10`)
-
-Secret hygiene is enforced at commit time by `.gitleaks.toml` and at CI time by `.github/workflows/secret-scan.yml`.
-
-## Local Development Bootstrap
-
-A convenience script `start.sh` is present at the repository root for local startup. Hook scaffolding for developer workstations is provided by `scripts/setup-hooks.sh` and the hooks under `scripts/hooks/`, with Claude-specific hooks under `.claude/hooks/` (audit logging, cost tracking, PR automation, and environment/production protection guards — `.claude/settings.json`).
-
-# Security posture
-
-## Secret Management & Leak Prevention
-
-Secret hygiene is enforced at two layers. A Gitleaks configuration (`.gitleaks.toml`) defines scanning rules, and the dedicated CI workflow (`.github/workflows/secret-scan.yml`) runs Gitleaks against every push and pull request to prevent secret values from entering the repository. Runtime configuration is never inlined; all sensitive values are referenced by name only and injected via environment variables documented in `.env.example`. The `.gitignore` and `.dockerignore` files provide additional exclusion layers to prevent accidental inclusion of `.env` files in commits or container images.
-
-## Claude Agent Hook Guardrails
-
-A suite of shell hooks under `.claude/hooks/` enforces security controls on agent-driven operations:
-
-- **`.claude/hooks/protect-env.sh`** — guards against reads or modifications of environment/secret files.
-- **`.claude/hooks/protect-git-push.sh`** — prevents direct pushes to protected branches.
-- **`.claude/hooks/protect-prod.sh`** — blocks destructive operations against production resources.
-- **`.claude/hooks/protect-destructive.sh`** — general guard against destructive commands.
-- **`.claude/hooks/audit-log.sh`** — records agent actions to an audit trail.
-- **`.claude/hooks/security-scan.sh`** — runs security scanning as part of the agent workflow.
+- `protect-env.sh` — prevents secret inlining
+- `protect-git-push.sh` — guards branch push rules
+- `protect-prod.sh` — blocks unauthorized production changes
+- `protect-destructive.sh` — intercepts destructive operations
+- `security-scan.sh` — inline security scanning
+- `audit-log.sh` — operation audit trail
+- `cost-tracker.sh` — cloud cost monitoring
+- `auto-draft-pr.sh` — automated PR drafting
+- `notify-email.sh` — alerting notifications
 
 Hook configuration is declared in `.claude/settings.json` and `.claude/settings.local.json`.
 
-## Rate Limiting & Input Validation
+## Environment & Secrets
 
-The Node.js/Express service implements per-IP rate limiting on all API routes, with tighter limits on the compute-intensive endpoint. Configuration is injected via environment variables (`README.md:22-25`):
+Environment variable names are documented in `.env.example`. Secrets are never inlined; they are injected at runtime via the deployment environment or CI secrets store. The `protect-env.sh` hook enforces this constraint at the agent level.
 
-- `RATE_LIMIT_WINDOW_MS` — window duration (default 900 000 ms / 15 min)
-- `RATE_LIMIT_MAX_REQUESTS` — ceiling for general `/api` routes (default 100)
-- `CIRCUIT_RUN_RATE_LIMIT` — ceiling for `POST /api/circuit/run` (default 10)
+# Security posture
 
-Rate-limit behaviour is covered by an automated test suite at `tests/rate-limit.test.js`. Input validation for the circuit endpoint is called out explicitly as a security feature (`README.md:8`).
+## Overview
 
-## CI/CD Security Gates
+Quantumanic has a layered security posture spanning secret management, CI/CD controls, runtime guardrails, input validation, and infrastructure governance. The following assessment is grounded exclusively in the repository readings provided.
 
-The GitHub Actions pipeline includes a mandatory AI-assisted code review gate (`.github/workflows/claude-review.yml`) and automated PR creation controls (`.github/workflows/auto-pr.yml`). The `destroy.yml` workflow (`.github/workflows/destroy.yml`) is isolated from the standard deploy path, reducing the blast radius of accidental or malicious infrastructure teardown. A bootstrap workflow (`.github/workflows/bootstrap.yml`) separates state-backend provisioning from application deployment.
+---
 
-## Dependency Audit Trail
+## Secret Management
 
-A `DEPENDENCY_AUDIT.md` file is present at the repository root, indicating that third-party dependency risk is tracked explicitly. Dependencies are declared across three distinct manifests — `package.json` (Node.js root service), `backend/requirements.txt` (Python/FastAPI backend), and `frontend/package.json` (React frontend) — plus a fourth at `frontend/backend/requirements.txt` for the co-located BFF layer. ESLint is configured via `.eslintrc.json` and `frontend/eslint.config.js` to enforce code-quality rules that reduce the surface for injection and logic errors.
+Secrets are never inlined in source. Environment variable names are documented by reference only in `.env.example`, and the `.gitignore` ensures `.env` files are excluded from version control. The Claude hook `.claude/hooks/protect-env.sh` enforces this constraint at the agent level, blocking any attempt to read or inline secret material at runtime. The `.dockerignore` file further prevents accidental inclusion of sensitive files in Docker build contexts (`Dockerfile`, `.dockerignore`).
 
-## Infrastructure Hardening
+---
 
-Terraform state is managed remotely (`.github/workflows/bootstrap.yml`, `terraform/backend.tf`), preventing local state files containing sensitive resource metadata from being committed. Variable values are templated in `terraform.tfvars.example` rather than committed directly. Reusable Terraform modules are vendored in `cicd-library/terraform/` and `terraform/modules/`, enabling consistent, reviewed infrastructure patterns across deployments.
+## Secret Scanning in CI
 
-## Identified Gaps & Risks
+A dedicated secret-scanning workflow runs in CI via `.github/workflows/secret-scan.yml`, powered by gitleaks with project-specific configuration at `.gitleaks.toml`. This provides automated detection of accidentally committed credentials on every push or pull request, forming a continuous backstop against secret leakage.
 
-1. **No SAST or SCA workflow visible.** The CI pipeline includes secret scanning (`.github/workflows/secret-scan.yml`) but no static application security testing (e.g., Semgrep, Bandit for Python, or `npm audit` enforcement) or software-composition analysis workflow is evident from the directory tree or CI file list. This leaves dependency vulnerabilities and code-level security bugs without an automated detection layer.
+---
 
-2. **Multiple independent dependency manifests.** Four separate dependency files (`package.json`, `backend/requirements.txt`, `frontend/package.json`, `frontend/backend/requirements.txt`) increase the operational burden of keeping all layers patched. The `DEPENDENCY_AUDIT.md` file suggests awareness of this risk, but automated enforcement is not confirmed by the available CI files.
+## Branch and Push Protection
 
-3. **`frontend/backend/` co-location.** The presence of a separate Python runtime inside the frontend directory (`frontend/backend/requirements.txt`) introduces an additional attack surface that may not be covered by the same security controls applied to the primary `backend/` service.
+The Claude hook `.claude/hooks/protect-git-push.sh` guards branch push rules at the agent level, enforcing that commits to `main`/`master` are blocked and changes flow through pull requests. The `.github/workflows/auto-pr.yml` workflow automates PR creation, ensuring changes are always reviewed before merge. The `.github/workflows/claude-review.yml` workflow adds an AI-assisted code review gate as an additional check before operator review.
 
-4. **`test_ttt.py` at repository root.** A loose test file (`test_ttt.py`) at the root level is outside the structured test directories (`backend/tests/`, `tests/`). Unstructured test files can inadvertently import or expose internal modules in ways not covered by the main test harness.
+---
 
-5. **`ncaainfo.txt` and `cbs-sports-2026-bracket.pdf` in repository.** Binary and plain-text data files committed to the repository (`ncaainfo.txt`, `cbs-sports-2026-bracket.pdf`) may contain personally identifiable or proprietary information and should be reviewed for data-classification compliance.
+## Runtime Guardrails (Claude Hooks)
+
+A comprehensive set of hooks under `.claude/hooks/` enforces security and governance controls at the agent runtime layer:
+
+- `.claude/hooks/protect-env.sh` — prevents secret inlining
+- `.claude/hooks/protect-git-push.sh` — guards branch push rules
+- `.claude/hooks/protect-prod.sh` — blocks unauthorized production changes
+- `.claude/hooks/protect-destructive.sh` — intercepts destructive operations
+- `.claude/hooks/security-scan.sh` — inline security scanning on agent actions
+- `.claude/hooks/audit-log.sh` — maintains an operation audit trail
+- `.claude/hooks/cost-tracker.sh` — monitors cloud cost changes
+- `.claude/hooks/auto-draft-pr.sh` — ensures changes surface as reviewable PRs
+- `.claude/hooks/notify-email.sh` — alerting for notable events
+
+Hook configuration is declared in `.claude/settings.json` and `.claude/settings.local.json`.
+
+---
+
+## Input Validation and Rate Limiting
+
+The Node.js/Express.js backend (`src/index.js`, `src/api/`) applies rate limiting and input validation middleware, as documented in `README.md:26-27`. Rate limiting behavior is exercised by a dedicated test suite at `tests/rate-limit.test.js`. This provides a defense-in-depth layer against abuse and malformed input reaching the quantum simulation engine.
+
+---
+
+## Infrastructure Security
+
+Terraform-managed infrastructure (`terraform/main.tf`, `terraform/backend.tf`, `terraform/variables.tf`, `terraform/versions.tf`) uses remote state with a dedicated bootstrap phase (`terraform/bootstrap/`) for state bucket and IAM provisioning. Provider version constraints are pinned in `terraform/versions.tf`, reducing supply-chain risk from unexpected provider upgrades. Example variable values are provided in `terraform.tfvars.example` without real credentials.
+
+The `.github/workflows/destroy.yml` workflow exists for infrastructure teardown, which represents a high-risk operation; its presence as a named, auditable workflow (rather than ad-hoc CLI execution) is a governance positive, though access controls on this workflow are not verifiable from the readings provided.
+
+---
+
+## Dependency Management
+
+Python backend dependencies are declared in `backend/requirements.txt` and `frontend/backend/requirements.txt`. Frontend dependencies are declared in `frontend/package.json` and the root `package.json`. A `DEPENDENCY_AUDIT.md` file exists at the repository root, indicating that dependency auditing is a documented practice. ESLint is configured at `.eslintrc.json` and `frontend/eslint.config.js` for static analysis of JavaScript/TypeScript code.
+
+---
+
+## Identified Gaps and Risks
+
+| Area | Observation | Risk |
+|---|---|---|
+| Dependency pinning | No lock-file pinning verification in CI is visible from the readings; `backend/requirements.txt` format is not confirmed to use exact pins | Supply-chain drift |
+| Destroy workflow access | `.github/workflows/destroy.yml` exists but its access controls (environment protection rules, required reviewers) are not verifiable from the readings | Accidental or unauthorized infrastructure teardown |
+| Frontend/backend stub | A co-located backend at `frontend/backend/` with its own `frontend/backend/requirements.txt` exists; its security posture (auth, validation) is not documented in the readings | Unknown attack surface if exposed |
+| Test coverage scope | Python backend tests are under `backend/tests/` and a standalone `test_ttt.py` exists at root; coverage extent is not verifiable from the readings | Security-relevant paths may be untested |
+| Supabase schema | `supabase_schema.sql` is the single source of truth for the database schema; no migration tooling or schema drift detection is visible | Schema drift, potential for unreviewed schema changes |
+
+---
+
+## Summary
+
+Quantumanic demonstrates a solid foundational security posture: secrets are managed by reference and never inlined (`.env.example`, `.claude/hooks/protect-env.sh`), CI enforces secret scanning (`.github/workflows/secret-scan.yml`, `.gitleaks.toml`), branch protection and PR-gating are enforced by both hooks and workflows (`.claude/hooks/protect-git-push.sh`, `.github/workflows/auto-pr.yml`, `.github/workflows/claude-review.yml`), and runtime guardrails cover production protection, destructive-operation interception, and audit logging (`.claude/hooks/`). The primary open risks are around the destroy workflow's access controls, the security posture of the `frontend/backend/` stub, and the verifiability of dependency pinning and test coverage depth.
 
 # Hot spots
 
-1. **Fragmented dependency surface across four manifests.** The repository maintains independent dependency declarations in `package.json` (Node.js root service), `backend/requirements.txt` (Python/FastAPI backend), `frontend/package.json` (React frontend), and `frontend/backend/requirements.txt` (co-located BFF layer). Any one of these can drift out of patch compliance without the others signalling it. The existence of `DEPENDENCY_AUDIT.md` at the root acknowledges the risk, but no automated SCA or `npm audit` enforcement workflow is visible among the CI files (`.github/workflows/`).
+**Dual-backend complexity** — The project explicitly adopts a dual-backend strategy (`ARCHITECTURE.md`, `README.md:14-15`) with two separate runtimes: a Node.js/Express.js layer (`src/index.js`, `src/api/`, `src/quantum/`) and a Python/FastAPI layer (`backend/main.py`, `backend/run.py`, `backend/quantum/`). This split creates two parallel quantum simulation paths — one in Node.js (`src/quantum/`) and one in Python (`backend/quantum/`) — whose behavioral parity is not guaranteed by any visible cross-runtime integration test. The `tests/simulator.test.js` covers the Node.js path and `backend/tests/` covers the Python path, but no test file bridges both.
 
-2. **Loose artefacts committed to the repository root.** Two data files — `ncaainfo.txt` and `cbs-sports-2026-bracket.pdf` — sit at the repository root alongside source code. Binary and plain-text data files committed to version control can contain proprietary or personally identifiable information and are not subject to the same access controls as runtime secrets. Their presence alongside `supabase_schema.sql` (which describes the live persistence schema) compounds the data-classification risk.
+**Co-located frontend backend stub** — A third backend surface exists at `frontend/backend/` with its own dependency file (`frontend/backend/requirements.txt`). Its role (dev proxy, stub, or production component) is not documented in the directory tree or README, making it an ambiguous and potentially unreviewed attack surface.
 
-3. **`test_ttt.py` outside all structured test directories.** A standalone test file (`test_ttt.py`) lives at the repository root, outside both `backend/tests/` and `tests/`. Files outside the structured test harness are not guaranteed to be executed by CI, may import internal modules in unreviewed ways, and can accumulate stale or incorrect assertions without detection.
+**Single-commit history** — The repo readings show only one recent commit (`ac8b84c feat: add task tracking and sprint planning documentation (#30)`), and all high-churn files show exactly 1 touch each (`.claude/hooks/audit-log.sh`, `.claude/hooks/protect-env.sh`, `.github/workflows/auto-pr.yml`, etc.). This suggests the repository was either recently initialized or rebased, making it impossible to identify genuine churn-based hot spots from historical data. The entire `.claude/hooks/` directory and all six CI workflows were introduced in a single wave, meaning none have been battle-tested through iterative change.
 
-4. **`frontend/backend/` as an uncontrolled fourth runtime.** The presence of `frontend/backend/requirements.txt` indicates a Python runtime co-located inside the frontend directory tree. This layer is architecturally distinct from `backend/` but shares no visible CI security gate of its own. It represents an additional attack surface that may not be covered by the same controls (rate limiting, input validation, secret scanning) applied to the primary backend.
+**Standalone test script at root** — `test_ttt.py` exists at the repository root outside of any organized test directory (`backend/tests/`, `tests/`). Its scope, what it tests, and whether it is executed in CI are not verifiable from the readings, making it a maintenance liability.
 
-5. **Single-commit history visible.** The recent-commits listing shows only one commit (`1c6cee0`) in the available window. This makes it impossible to assess velocity, review cadence, or whether CI gates are being exercised regularly. It is a hot spot for process risk: if the repository was bulk-initialised in a single commit, the full change history and review trail may be absent.
+**Supabase schema as sole migration artifact** — `supabase_schema.sql` is the single source of truth for the database schema with no ORM migration tooling or schema drift detection visible in the directory tree. Any schema change requires manual coordination with no automated rollback path.
 
 ---
 
 # Tech-debt register
 
-| # | Item | Location | Severity | Notes |
-|---|------|----------|----------|-------|
-| TD-01 | No SAST or SCA workflow | `.github/workflows/` | High | Secret scanning exists (`.github/workflows/secret-scan.yml`) but no static analysis (Semgrep, Bandit, `npm audit --audit-level`) is present in the CI file list. Dependency vulnerabilities and code-level security bugs have no automated detection layer. |
-| TD-02 | Four independent dependency manifests with no unified patch policy | `package.json`, `backend/requirements.txt`, `frontend/package.json`, `frontend/backend/requirements.txt` | High | `DEPENDENCY_AUDIT.md` records awareness but no automated enforcement is confirmed by the available CI files. |
-| TD-03 | `frontend/backend/` BFF layer lacks clear ownership and CI coverage | `frontend/backend/requirements.txt` | Medium | A Python runtime inside the frontend directory is architecturally ambiguous. It is unclear whether it is deployed independently, proxied through the frontend build, or tested at all. |
-| TD-04 | `test_ttt.py` is outside the structured test harness | `test_ttt.py` | Medium | Not co-located with `backend/tests/` or `tests/`. Likely not executed by CI. Represents unreviewed test logic at the repository root. |
-| TD-05 | `supabase_schema.sql` committed to repository root | `supabase_schema.sql` | Medium | The live database schema is version-controlled in plain SQL at the root. Schema migrations are not evidenced by a dedicated migrations directory or tool (e.g., Alembic, Flyway), raising the risk of schema drift between environments. |
-| TD-06 | Data files (`ncaainfo.txt`, `cbs-sports-2026-bracket.pdf`) in version control | `ncaainfo.txt`, `cbs-sports-2026-bracket.pdf` | Medium | Binary and plain-text data committed to the repo are not subject to secret-scanning rules in `.gitleaks.toml` and may contain proprietary or PII data. |
-| TD-07 | No TODO/FIXME markers found | (none reported by tooling) | Low | The absence of inline debt markers may indicate clean code or, equally, that debt is not being tracked inline. Given the single-commit history, this cannot be distinguished without deeper file reads. |
-| TD-08 | Dual quantum simulation implementations (Node.js and Python) | `src/quantum/` (Node.js), `backend/quantum/` (Python) | Low | Two independent quantum simulation engines exist in the same repository. Without a clear ownership boundary or deprecation plan, they will diverge in gate support, correctness, and maintenance burden. The Node.js service documents gates X, H, Z, Y, S, T (`README.md:5`); the Python layer's gate coverage is undocumented in the available readings. |
-| TD-09 | `terraform.tfvars.example` present but no `terraform.tfvars` validation in CI | `terraform.tfvars.example`, `terraform/variables.tf` | Low | Variable values are templated but there is no visible CI step that validates Terraform plans against a known variable set, leaving infrastructure changes untested until `deploy.yml` runs. |
+| ID | Description | Location | Severity |
+|---|---|---|---|
+| TD-01 | **Dual quantum simulation paths** — Quantum gate logic is implemented in both `src/quantum/` (Node.js/mathjs) and `backend/quantum/` (Python). The README acknowledges the Express.js heritage (`README.md:13`) and notes the dual-backend as a deliberate but transitional choice (`README.md:14-15`). Without a canonical owner, the two implementations will diverge silently. | `src/quantum/`, `backend/quantum/` | High |
+| TD-02 | **Undocumented frontend/backend stub** — `frontend/backend/` with `frontend/backend/requirements.txt` has no documented purpose, ownership, or security posture. It may be a leftover dev artifact or an active proxy; neither case is documented. | `frontend/backend/`, `frontend/backend/requirements.txt` | High |
+| TD-03 | **No database migration tooling** — `supabase_schema.sql` is the sole schema artifact. There is no Alembic, Flyway, or equivalent migration chain. Schema changes cannot be applied incrementally, rolled back, or audited through standard tooling. | `supabase_schema.sql` | High |
+| TD-04 | **Root-level test script outside CI** — `test_ttt.py` at the repository root is outside the organized test directories and its CI integration is not verifiable from the readings. It may represent dead or orphaned test code. | `test_ttt.py` | Medium |
+| TD-05 | **Dependency pinning not confirmed** — `backend/requirements.txt` and `frontend/backend/requirements.txt` exist but their pinning discipline (exact versions vs. ranges) is not verifiable. No lock-file verification step is visible in CI workflows (`.github/workflows/deploy.yml`, `.github/workflows/bootstrap.yml`). | `backend/requirements.txt`, `frontend/backend/requirements.txt` | Medium |
+| TD-06 | **Destroy workflow access controls unverifiable** — `.github/workflows/destroy.yml` exists as a named workflow for infrastructure teardown, but whether it is gated by environment protection rules or required reviewers cannot be determined from the readings. An unprotected destroy workflow is a high-risk operational gap. | `.github/workflows/destroy.yml` | Medium |
+| TD-07 | **Duplicate ESLint configurations** — ESLint is configured at both `.eslintrc.json` (root, legacy format) and `frontend/eslint.config.js` (frontend, flat config format). These two configurations may produce inconsistent linting behavior across the Node.js and frontend codebases. | `.eslintrc.json`, `frontend/eslint.config.js` | Low |
+| TD-08 | **Multiple tsconfig files without clear hierarchy** — The frontend uses three TypeScript configuration files (`frontend/tsconfig.json`, `frontend/tsconfig.app.json`, `frontend/tsconfig.node.json`) whose inheritance and override relationships are not documented. | `frontend/tsconfig.json`, `frontend/tsconfig.app.json`, `frontend/tsconfig.node.json` | Low |
+| TD-09 | **PDF and text data files in repository** — `cbs-sports-2026-bracket.pdf` and `ncaainfo.txt` are committed to the repository root. Their relationship to the quantum simulation platform is not documented and they inflate repository size unnecessarily. | `cbs-sports-2026-bracket.pdf`, `ncaainfo.txt` | Low |
 
 ---
 
 # Recent incidents (last 90d)
 
-The only commit visible in the recent-commits window is:
+No incidents can be confirmed from the repository readings. The commit history provided contains only a single entry (`ac8b84c feat: add task tracking and sprint planning documentation (#30)`), and no incident reports, post-mortems, hotfix commits, or revert commits are visible. The `LESSONS_LEARNED.md` file exists at the repository root, which may contain retrospective incident data, but its contents are not included in the repo readings and no claims can be made about it.
 
-> `1c6cee0` — `docs: add LESSONS_LEARNED.md (operator-curated incident log) (#25)`
+The high-churn file list shows every file with exactly 1 touch, consistent with a repository that was either recently bootstrapped or had its history compacted. No file shows the repeated-touch pattern (e.g., 5–20 touches) that would indicate a hot incident response cycle.
 
-This commit introduces a `LESSONS_LEARNED.md` file (`LESSONS_LEARNED.md`), described in the commit message as an "operator-curated incident log." The file exists in the repository tree (`LESSONS_LEARNED.md`) but its contents were not included in the provided repo readings, so individual incident entries cannot be cited directly.
-
-**What can be stated with confidence:**
-- An operator-maintained incident log exists at `LESSONS_LEARNED.md` and was added within the 90-day window covered by the commit history provided.
-- The commit was merged via pull request `#25`, indicating it passed at least the PR-creation gate (`.github/workflows/auto-pr.yml`) and presumably the AI review gate (`.github/workflows/claude-review.yml`).
-
-**What cannot be stated without fabrication:**
-- The number, nature, or severity of incidents recorded in `LESSONS_LEARNED.md` — the file contents were not surfaced in the repo readings.
-- Whether any incidents relate to the rate-limiting layer (`tests/rate-limit.test.js`), the quantum simulator (`tests/simulator.test.js`), the Terraform infrastructure, or the Supabase persistence layer.
-
-> ⚠️ **Gap:** The operator should surface the contents of `LESSONS_LEARNED.md` in the next dossier cycle so that incident patterns can be analysed and mapped to the tech-debt register above.
+**Conclusion:** No incidents can be documented for the last 90 days from the available source material.
 
 ---
 
 # Open questions for operator
 
-1. **What is the intended relationship between the Node.js quantum simulator (`src/quantum/`) and the Python quantum simulator (`backend/quantum/`)?** Are they serving different clients, or is one slated for deprecation? Without a clear ownership boundary, both will accumulate independent bugs and gate-coverage gaps.
+1. **Dual-backend ownership decision** — The README explicitly flags the dual-backend architecture as requiring clarification (`README.md:14-15`, `ARCHITECTURE.md`). Which runtime — Node.js/Express.js or Python/FastAPI — is the canonical production backend for quantum simulation? The parallel `src/quantum/` and `backend/quantum/` implementations need a designated owner and a deprecation plan for the other. This is a prerequisite for any performance or correctness benchmarking.
 
-2. **What does `LESSONS_LEARNED.md` contain?** The file was added as an "operator-curated incident log" (`1c6cee0`) but its contents were not available in the repo readings. Surfacing the incident entries is necessary to close the gap in the Recent Incidents section and to validate whether any open tech-debt items (TD-01 through TD-09) are already known failure modes.
+2. **`frontend/backend/` purpose and lifecycle** — What is `frontend/backend/` with its own `frontend/backend/requirements.txt`? Is it a development proxy, a production component, or an artifact to be deleted? If it is exposed in any environment, what authentication and input validation does it apply?
 
-3. **Is `frontend/backend/` a deployed service, a development proxy, or an artefact of a refactor?** The presence of `frontend/backend/requirements.txt` implies a live Python runtime, but its deployment topology, CI coverage, and ownership are unclear. If it is deployed, it needs the same security gates as `backend/`.
+3. **Database migration strategy** — `supabase_schema.sql` is the sole schema artifact with no migration tooling visible. How are schema changes applied to production? Who has write access to the Supabase project, and is there a change-approval process for schema modifications?
 
-4. **What is the data-classification status of `ncaainfo.txt` and `cbs-sports-2026-bracket.pdf`?** These files are committed to the repository root. If they contain proprietary sports data or PII, they may need to be removed from history and stored in a controlled artefact store rather than version control.
+4. **Destroy workflow access controls** — `.github/workflows/destroy.yml` can tear down all cloud infrastructure. What environment protection rules, required reviewers, or approval gates are configured on this workflow in GitHub? This cannot be determined from the repository files alone and requires operator confirmation.
 
-5. **Is there a schema migration strategy for `supabase_schema.sql`?** The file represents the database schema but there is no visible migrations directory or tool. How are schema changes applied to staging and production environments, and how is drift detected?
+5. **`test_ttt.py` scope and CI integration** — What does `test_ttt.py` test, and is it executed in any CI pipeline? If it is not wired into CI, it should either be integrated or removed to avoid false confidence in test coverage.
 
-6. **What is the intended scope of `test_ttt.py`?** The file sits outside all structured test directories (`test_ttt.py`). Is it a throwaway scratch file, an integration test, or a test for a feature not yet integrated into the main harness? It should either be moved into `backend/tests/` or `tests/` and wired into CI, or deleted.
+6. **`cbs-sports-2026-bracket.pdf` and `ncaainfo.txt` relevance** — These files (`cbs-sports-2026-bracket.pdf`, `ncaainfo.txt`) are committed to the repository root. Are they inputs to a sports-analytics feature, sample data for a demo, or accidental commits? If they are not part of the product, they should be removed and the history cleaned.
 
-7. **Is there a plan to introduce SAST/SCA into CI?** The current pipeline has secret scanning (`.github/workflows/secret-scan.yml`) but no static analysis or dependency vulnerability scanning. Given four independent dependency manifests, the operator should decide on tooling (e.g., Dependabot, Snyk, Bandit, Semgrep) and the acceptable vulnerability threshold before the service handles production traffic.
+7. **Dependency pinning policy** — Is there a policy requiring exact version pins in `backend/requirements.txt` and `frontend/backend/requirements.txt`? Is dependency pinning verified in CI (e.g., `pip install --require-hashes`)? The `DEPENDENCY_AUDIT.md` file exists but its contents and enforcement status are not available in the readings.
 
-8. **What cloud provider and region is Terraform targeting?** `terraform/variables.tf` and `terraform.tfvars.example` exist but their contents were not surfaced. Understanding the target environment is necessary to assess blast radius for the `destroy.yml` workflow and to validate that the bootstrap state backend (`terraform/bootstrap/`) is correctly isolated from the application stack.
+8. **`LESSONS_LEARNED.md` contents** — This file exists at the repository root but its contents were not included in the readings. Does it document past incidents, architectural mistakes, or operational failures that should inform the current tech-debt register or risk assessment?
