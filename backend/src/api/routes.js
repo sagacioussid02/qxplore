@@ -1,67 +1,111 @@
 const express = require('express');
 const router = express.Router();
-const simulator = require('../quantum/simulator');
 
-// Health check endpoint
-router.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
+// Mock Python engine endpoint for now
+const PYTHON_ENGINE_URL = process.env.PYTHON_ENGINE_URL || 'http://localhost:5000';
 
-// Circuit execution endpoint
-router.post('/circuit/run', async (req, res, next) => {
+/**
+ * POST /api/circuit/run
+ * Execute a quantum circuit and return measurement results.
+ *
+ * Request body:
+ * {
+ *   "circuit": [
+ *     { "gate": "H", "target": 0 },
+ *     { "gate": "CNOT", "control": 0, "target": 1 },
+ *     { "gate": "measure", "targets": [0, 1] }
+ *   ],
+ *   "numQubits": 2,
+ *   "shots": 1000
+ * }
+ *
+ * Response (success):
+ * {
+ *   "counts": { "00": 500, "11": 500 },
+ *   "statevector": [0.707, 0, 0, 0.707],
+ *   "executionTime": 1.23
+ * }
+ *
+ * Response (error):
+ * {
+ *   "error": "<sanitized message>",
+ *   "code": "<error code>"
+ * }
+ */
+router.post('/circuit/run', async (req, res) => {
   try {
-    const { circuit, shots = 1024 } = req.body;
+    const { circuit, numQubits, shots } = req.body;
 
-    // Validate input
+    // Validate circuit is present
     if (!circuit) {
       return res.status(400).json({
-        error: 'Missing circuit definition',
-        code: 'INVALID_INPUT'
+        error: 'Circuit definition is required',
+        code: 'MISSING_CIRCUIT'
       });
     }
 
-    // Call Python simulation engine
-    let result;
+    // Call Python engine
+    let pythonResponse;
     try {
-      result = await simulator.run(circuit, shots);
+      const fetch = (await import('node-fetch')).default;
+      const response = await fetch(`${PYTHON_ENGINE_URL}/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circuit, numQubits, shots })
+      });
+
+      if (!response.ok) {
+        return res.status(500).json({
+          error: 'Quantum simulation engine unavailable',
+          code: 'ENGINE_UNAVAILABLE'
+        });
+      }
+
+      pythonResponse = await response.json();
     } catch (pythonError) {
-      // Python engine is unreachable or crashed
-      console.error('Python engine error:', pythonError.message);
+      // Log the actual error server-side for debugging
+      console.error('Python engine error:', pythonError);
       return res.status(500).json({
         error: 'Quantum simulation engine unavailable',
-        code: 'ENGINE_UNAVAILABLE',
-        details: pythonError.message
+        code: 'ENGINE_UNAVAILABLE'
       });
     }
 
     // Validate Python response structure
-    if (!result || typeof result !== 'object') {
-      console.error('Invalid Python response: not an object', result);
+    if (typeof pythonResponse !== 'object' || pythonResponse === null) {
+      console.error('Python engine returned non-object response:', pythonResponse);
       return res.status(500).json({
-        error: 'Invalid response from quantum simulation engine',
-        code: 'INVALID_ENGINE_RESPONSE'
+        error: 'Quantum simulation engine unavailable',
+        code: 'ENGINE_UNAVAILABLE'
       });
     }
 
-    if (!result.counts && !result.statevector) {
-      console.error('Invalid Python response: missing counts or statevector', result);
+    // Validate required fields in response
+    if (!pythonResponse.counts && !pythonResponse.statevector) {
+      console.error('Python engine response missing required fields:', pythonResponse);
       return res.status(400).json({
-        error: 'Malformed response from quantum simulation engine',
-        code: 'MALFORMED_ENGINE_RESPONSE',
-        details: 'Response must include counts or statevector'
+        error: 'Invalid response from quantum simulation engine',
+        code: 'MALFORMED_ENGINE_RESPONSE'
       });
     }
 
-    // Return successful result
-    res.status(200).json({
-      success: true,
-      result: result,
-      shots: shots
+    // Return success response
+    return res.status(200).json(pythonResponse);
+  } catch (err) {
+    console.error('Unexpected error in /circuit/run:', err);
+    return res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR'
     });
-  } catch (error) {
-    // Catch any unexpected errors and pass to global error handler
-    next(error);
   }
+});
+
+/**
+ * GET /api/health
+ * Health check endpoint.
+ */
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 module.exports = router;
