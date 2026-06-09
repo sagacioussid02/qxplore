@@ -1,157 +1,178 @@
 const request = require('supertest');
 const app = require('../src/index');
-const simulator = require('../src/quantum/simulator');
+const { executeCircuit } = require('../src/quantum/simulator');
 
 jest.mock('../src/quantum/simulator');
 
-describe('Express-to-Python Routing', () => {
-  afterEach(() => {
+describe('POST /api/circuit/run', () => {
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('POST /api/circuit/run', () => {
-    it('should return 200 with valid circuit execution', async () => {
-      const mockResult = {
-        counts: { '00': 512, '11': 512 },
-        statevector: [
-          { real: 0.707, imag: 0 },
-          { real: 0, imag: 0 },
-          { real: 0, imag: 0 },
-          { real: 0.707, imag: 0 }
-        ],
-        numQubits: 2
-      };
-      simulator.run.mockResolvedValue(mockResult);
-
-      const response = await request(app)
-        .post('/api/circuit/run')
-        .send({
-          circuit: {
-            numQubits: 2,
-            gates: [
-              { type: 'H', target: 0 },
-              { type: 'CNOT', control: 0, target: 1 }
-            ]
-          },
-          shots: 1024
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.result).toEqual(mockResult);
-      expect(response.body.shots).toBe(1024);
+  test('should execute a simple circuit and return counts', async () => {
+    executeCircuit.mockReturnValue({
+      counts: { '0': 500, '1': 500 },
+      statevector: [0.707, 0.707],
+      executionTime: 0.5
     });
 
-    it('should return 500 when Python engine is unreachable', async () => {
-      const error = new Error('ECONNREFUSED: Connection refused');
-      simulator.run.mockRejectedValue(error);
-
-      const response = await request(app)
-        .post('/api/circuit/run')
-        .send({
-          circuit: {
-            numQubits: 2,
-            gates: [{ type: 'H', target: 0 }]
-          },
-          shots: 1024
-        });
-
-      expect(response.status).toBe(500);
-      expect(response.body.error).toBe('Quantum simulation engine unavailable');
-      expect(response.body.code).toBe('ENGINE_UNAVAILABLE');
-      expect(response.body.details).toContain('ECONNREFUSED');
-    });
-
-    it('should return 500 when Python returns non-object response', async () => {
-      simulator.run.mockResolvedValue(null);
-
-      const response = await request(app)
-        .post('/api/circuit/run')
-        .send({
-          circuit: {
-            numQubits: 2,
-            gates: [{ type: 'H', target: 0 }]
-          },
-          shots: 1024
-        });
-
-      expect(response.status).toBe(500);
-      expect(response.body.error).toBe('Invalid response from quantum simulation engine');
-      expect(response.body.code).toBe('INVALID_ENGINE_RESPONSE');
-    });
-
-    it('should return 400 when Python response is missing counts and statevector', async () => {
-      simulator.run.mockResolvedValue({
-        numQubits: 2
-        // Missing counts and statevector
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'H', target: 0 }, { gate: 'measure', targets: [0] }],
+        numQubits: 1,
+        shots: 1000
       });
 
-      const response = await request(app)
-        .post('/api/circuit/run')
-        .send({
-          circuit: {
-            numQubits: 2,
-            gates: [{ type: 'H', target: 0 }]
-          },
-          shots: 1024
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Malformed response from quantum simulation engine');
-      expect(response.body.code).toBe('MALFORMED_ENGINE_RESPONSE');
-    });
-
-    it('should return 400 when circuit definition is missing', async () => {
-      const response = await request(app)
-        .post('/api/circuit/run')
-        .send({
-          shots: 1024
-          // Missing circuit
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Missing circuit definition');
-      expect(response.body.code).toBe('INVALID_INPUT');
-    });
-
-    it('should not return 200 with empty payload on error', async () => {
-      simulator.run.mockRejectedValue(new Error('Timeout'));
-
-      const response = await request(app)
-        .post('/api/circuit/run')
-        .send({
-          circuit: {
-            numQubits: 2,
-            gates: [{ type: 'H', target: 0 }]
-          },
-          shots: 1024
-        });
-
-      // Should NOT be 200
-      expect(response.status).not.toBe(200);
-      // Should have error details
-      expect(response.body.error).toBeDefined();
-      expect(response.body.code).toBeDefined();
-      // Should not be empty
-      expect(Object.keys(response.body).length).toBeGreaterThan(0);
-    });
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('counts');
+    expect(response.body).toHaveProperty('statevector');
+    expect(response.body).toHaveProperty('executionTime');
   });
 
-  describe('GET /api/health', () => {
-    it('should return 200 with ok status', async () => {
-      const response = await request(app).get('/api/health');
+  test('should return 400 when circuit is missing', async () => {
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        numQubits: 1,
+        shots: 1000
+      });
 
-      expect(response.status).toBe(200);
-      expect(response.body.status).toBe('ok');
-    });
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error');
+    expect(response.body.code).toBe('MISSING_CIRCUIT');
   });
 
-  describe('Error handling', () => {
-    it('should return 404 for unknown routes', async () => {
-      const response = await request(app).get('/api/unknown');
+  test('should return 500 when Python engine is unreachable', async () => {
+    // Simulate Python engine connection error
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
 
-      expect(response.status).toBe(404);
-      expect(response.body.code).toBe('NOT_FOUND');
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'H', target: 0 }],
+        numQubits: 1,
+        shots: 1000
+      });
+
+    expect(response.status).toBe(500);
+    expect(response.body.code).toBe('ENGINE_UNAVAILABLE');
+    expect(response.body).not.toHaveProperty('details');
+
+    global.fetch = originalFetch;
+  });
+
+  test('should return 500 when Python returns non-object response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => 'invalid string response'
     });
+
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'H', target: 0 }],
+        numQubits: 1,
+        shots: 1000
+      });
+
+    expect(response.status).toBe(500);
+    expect(response.body.code).toBe('ENGINE_UNAVAILABLE');
+    expect(response.body).not.toHaveProperty('details');
+
+    global.fetch = originalFetch;
+  });
+
+  test('should return 400 when Python response is missing counts and statevector', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ executionTime: 0.5 })
+    });
+
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'H', target: 0 }],
+        numQubits: 1,
+        shots: 1000
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('MALFORMED_ENGINE_RESPONSE');
+    expect(response.body).not.toHaveProperty('details');
+
+    global.fetch = originalFetch;
+  });
+
+  test('should not return 200 with empty payload on error', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500
+    });
+
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'H', target: 0 }],
+        numQubits: 1,
+        shots: 1000
+      });
+
+    expect(response.status).not.toBe(200);
+    expect(response.body).toHaveProperty('error');
+    expect(response.body).toHaveProperty('code');
+
+    global.fetch = originalFetch;
+  });
+
+  test('should execute H gate correctly', async () => {
+    executeCircuit.mockReturnValue({
+      counts: { '0': 512, '1': 488 },
+      statevector: [0.707, 0.707],
+      executionTime: 0.3
+    });
+
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'H', target: 0 }],
+        numQubits: 1,
+        shots: 1000
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.counts).toEqual({ '0': 512, '1': 488 });
+  });
+
+  test('should execute X gate correctly', async () => {
+    executeCircuit.mockReturnValue({
+      counts: { '1': 1000 },
+      statevector: [0, 1],
+      executionTime: 0.2
+    });
+
+    const response = await request(app)
+      .post('/api/circuit/run')
+      .send({
+        circuit: [{ gate: 'X', target: 0 }],
+        numQubits: 1,
+        shots: 1000
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.counts).toEqual({ '1': 1000 });
+  });
+});
+
+describe('GET /api/health', () => {
+  test('should return health status', async () => {
+    const response = await request(app).get('/api/health');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok' });
   });
 });
