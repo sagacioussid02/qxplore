@@ -21,29 +21,13 @@ const circuitRunLimiter = rateLimit({
   message: 'Too many circuit run requests from this IP, please try again later.'
 });
 
-app.use('/api/', generalLimiter);
+app.use('/api', generalLimiter);
 app.use('/api/circuit/run', circuitRunLimiter);
 
 // Routes
 app.use('/api', routes);
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  
-  // Default to 500 Internal Server Error
-  const statusCode = err.statusCode || 500;
-  const errorCode = err.code || 'INTERNAL_ERROR';
-  const message = err.message || 'An unexpected error occurred';
-  
-  res.status(statusCode).json({
-    error: message,
-    code: errorCode,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
-
-// 404 handler
+// 404 handler (before global error handler)
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not found',
@@ -51,8 +35,27 @@ app.use((req, res) => {
   });
 });
 
+// Global error handler (must have 4 parameters for Express to recognize it)
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const statusCode = err.statusCode || 500;
+  const response = {
+    error: err.message || 'Internal server error',
+    code: err.code || 'INTERNAL_ERROR'
+  };
+
+  if (isDevelopment) {
+    response.stack = err.stack;
+  }
+
+  res.status(statusCode).json(response);
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`Quantum simulator API running on port ${PORT}`);
+  console.log(`Quantumanic API server running on http://localhost:${PORT}`);
 });
 
 module.exports = app;
