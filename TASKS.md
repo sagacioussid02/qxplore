@@ -1,181 +1,221 @@
-# Quantumanic Task Backlog
+# Quantumanic Task Registry
 
-This document tracks unassigned engineering tasks for the quantumanic project. Each task includes acceptance criteria, priority, and effort estimate.
+This document tracks all pending engineer tasks for the quantumanic project. Tasks are prioritized and available for assignment.
 
-## Task 1: Implement Multi-Qubit Gate Support (CNOT/CX)
+## Task Assignment Workflow
 
-**Priority:** High  
-**Effort:** 8 points  
-**Status:** Unassigned  
-
-### Description
-
-Implement CNOT (Controlled-NOT / CX) gate support in the quantum simulator. This is a two-qubit gate essential for quantum circuit construction.
-
-### Acceptance Criteria
-
-- [ ] CNOT gate logic implemented in `backend/src/quantum/gates.js`
-- [ ] Gate accepts control and target qubit indices
-- [ ] Correctly applies controlled X operation to target qubit
-- [ ] Unit tests cover single and multiple CNOT operations
-- [ ] API endpoint `/api/circuit/run` accepts CNOT in circuit definition
-- [ ] Documentation updated in README.md with CNOT example
-
-### Technical Notes
-
-- CNOT matrix for 2 qubits: applies X gate to target if control qubit is |1⟩
-- Use mathjs for matrix operations (consistent with existing gates)
-- Validate qubit indices are within circuit size
+See [TASK_ASSIGNMENT_POLICY.md](TASK_ASSIGNMENT_POLICY.md) for the full assignment and lifecycle workflow.
 
 ---
 
-## Task 2: Implement SWAP Gate
+## Pending Tasks (12 total)
 
+### High Priority
+
+#### TASK-001: Implement Toffoli Gate
 **Priority:** High  
+**Status:** Unassigned  
 **Effort:** 5 points  
-**Status:** Unassigned  
+**Description:** Implement the Toffoli (CCNOT) three-qubit gate in the quantum simulator.
 
-### Description
+**Acceptance Criteria:**
+- Toffoli gate correctly applies to three qubits
+- Unit tests cover all input combinations
+- Documentation updated in gates.js
+- Integration test passes with circuit runner
 
-Implement SWAP gate for exchanging quantum states between two qubits.
-
-### Acceptance Criteria
-
-- [ ] SWAP gate logic implemented in `backend/src/quantum/gates.js`
-- [ ] Correctly exchanges state vectors of two qubits
-- [ ] Unit tests verify state exchange for |0⟩, |1⟩, and superposition states
-- [ ] API endpoint `/api/circuit/run` accepts SWAP in circuit definition
-- [ ] Integration test with other gates (e.g., H followed by SWAP)
-
-### Technical Notes
-
-- SWAP matrix: [[1,0,0,0],[0,0,1,0],[0,1,0,0],[0,0,0,1]]
-- Validate qubit indices are distinct and within circuit size
+**Files:** `backend/src/quantum/gates.js`, `backend/tests/gates.test.js`
 
 ---
 
-## Task 3: Implement Toffoli (CCNOT) Gate
-
-**Priority:** Medium  
-**Effort:** 13 points  
-**Status:** Unassigned  
-
-### Description
-
-Implement Toffoli (Controlled-Controlled-NOT) gate for three-qubit operations. This is a universal gate for reversible computation.
-
-### Acceptance Criteria
-
-- [ ] Toffoli gate logic implemented in `backend/src/quantum/gates.js`
-- [ ] Accepts two control qubits and one target qubit
-- [ ] Applies X to target only if both controls are |1⟩
-- [ ] Unit tests cover all 8 basis states for 3-qubit system
-- [ ] API endpoint `/api/circuit/run` accepts Toffoli in circuit definition
-- [ ] Performance tested with circuits containing multiple Toffoli gates
-
-### Technical Notes
-
-- Toffoli is a 3-qubit gate; matrix is 8×8
-- Validate all three qubit indices are distinct and within circuit size
-- Consider performance implications for larger circuits
-
----
-
-## Task 4: Enhance Frontend Circuit Builder UI
-
-**Priority:** Medium  
-**Effort:** 8 points  
-**Status:** Unassigned  
-
-### Description
-
-Improve the React-based circuit builder UI with drag-and-drop gate placement, visual circuit representation, and real-time state preview.
-
-### Acceptance Criteria
-
-- [ ] Drag-and-drop gate placement implemented
-- [ ] Visual circuit grid displays qubits and gates clearly
-- [ ] Gate palette shows all supported gates (X, H, Z, Y, S, T, CNOT, SWAP)
-- [ ] Real-time state vector preview updates as circuit is modified
-- [ ] "Run Circuit" button executes circuit via backend API
-- [ ] Results display shows measurement probabilities and final state
-- [ ] Unit tests for circuit builder components (Jest + React Testing Library)
-- [ ] Responsive design works on desktop and tablet
-
-### Technical Notes
-
-- Use React hooks for state management
-- Integrate with existing `/api/circuit/run` endpoint
-- Consider accessibility (ARIA labels, keyboard navigation)
-
----
-
-## Task 5: Add Comprehensive Test Coverage for Quantum Simulator
-
+#### TASK-002: Add SWAP Gate Support
 **Priority:** High  
+**Status:** Unassigned  
+**Effort:** 3 points  
+**Description:** Implement the SWAP gate for exchanging qubit states.
+
+**Acceptance Criteria:**
+- SWAP gate correctly exchanges two qubits
+- Works with multi-qubit circuits
+- Unit tests pass
+- API endpoint accepts SWAP in circuit definition
+
+**Files:** `backend/src/quantum/gates.js`, `backend/src/api/routes.js`
+
+---
+
+#### TASK-003: Implement Circuit Optimization
+**Priority:** High  
+**Status:** Unassigned  
 **Effort:** 8 points  
-**Status:** Unassigned  
+**Description:** Add circuit optimization pass to reduce gate count and improve simulation performance.
 
-### Description
+**Acceptance Criteria:**
+- Consecutive identical gates are merged
+- Redundant gates (e.g., X-X) are removed
+- Optimization preserves circuit semantics
+- Performance improvement measured and documented
 
-Expand test suite for the quantum simulator to achieve >80% code coverage and validate correctness of all gate operations.
-
-### Acceptance Criteria
-
-- [ ] Unit tests for all single-qubit gates (X, H, Z, Y, S, T)
-- [ ] Unit tests for all multi-qubit gates (CNOT, SWAP, Toffoli)
-- [ ] Integration tests for multi-gate circuits
-- [ ] Tests for measurement and probability calculations
-- [ ] Tests for edge cases (invalid qubit indices, malformed circuits)
-- [ ] Code coverage report shows >80% coverage for `backend/src/quantum/`
-- [ ] All tests pass in CI pipeline
-
-### Technical Notes
-
-- Use Jest test framework (already in package.json)
-- Test against known quantum states and expected outputs
-- Include tests for numerical precision (floating-point comparisons)
+**Files:** `backend/src/quantum/optimizer.js`, `backend/tests/optimizer.test.js`
 
 ---
 
-## Task 6: Implement Rate Limiting Audit Logging
+### Medium Priority
 
+#### TASK-004: Enhance Rate Limiting
 **Priority:** Medium  
-**Effort:** 5 points  
 **Status:** Unassigned  
+**Effort:** 5 points  
+**Description:** Implement per-user rate limiting (currently IP-based only) and add rate limit headers to responses.
 
-### Description
+**Acceptance Criteria:**
+- Rate limiting works with user authentication
+- Rate limit info included in response headers
+- Graceful degradation when rate limit exceeded
+- Tests cover edge cases
 
-Add audit logging for rate limit violations to track abuse patterns and support security investigations.
-
-### Acceptance Criteria
-
-- [ ] Rate limit violations logged with timestamp, IP, endpoint, and request count
-- [ ] Logs written to a dedicated audit log file or service
-- [ ] Audit log includes successful rate limit resets
-- [ ] Sensitive data (full request bodies) not logged
-- [ ] Log rotation configured to prevent unbounded disk usage
-- [ ] Documentation added to CONTRIBUTING.md on audit log access
-- [ ] Unit tests verify logging behavior
-
-### Technical Notes
-
-- Integrate with existing rate limiting middleware in `backend/src/`
-- Use structured logging (JSON format for easy parsing)
-- Consider log aggregation for production deployments
+**Files:** `backend/src/middleware/rateLimit.js`, `backend/tests/rateLimit.test.js`
 
 ---
 
-## Assignment Guidelines
+#### TASK-005: Add Circuit Visualization Export
+**Priority:** Medium  
+**Status:** Unassigned  
+**Effort:** 6 points  
+**Description:** Implement export of circuit diagrams as SVG or PNG for documentation and sharing.
 
-1. **New Engineer Onboarding:** Start with Task 1 (CNOT) or Task 4 (Frontend UI) — both are well-scoped and have clear acceptance criteria.
-2. **Pair Programming:** Consider pairing Task 1 and Task 5 (tests) to ensure quality.
-3. **Sprint Planning:** Assign 2–3 tasks per 2-week sprint based on team capacity.
-4. **Blockers:** Task 3 (Toffoli) depends on Task 1 (CNOT) being complete.
+**Acceptance Criteria:**
+- Circuits can be exported as SVG
+- Export includes gate labels and qubit indices
+- API endpoint returns exportable format
+- Frontend integration tested
 
-## Updating This Document
+**Files:** `backend/src/quantum/visualizer.js`, `backend/src/api/routes.js`
 
-When a task is assigned:
-1. Update the **Status** field to the assignee's name
-2. Create a corresponding GitHub issue or link to the PR
-3. Move the task to the current sprint in SPRINT_PLAN.md
+---
+
+#### TASK-006: Implement Measurement Error Simulation
+**Priority:** Medium  
+**Status:** Unassigned  
+**Effort:** 7 points  
+**Description:** Add realistic measurement error modeling to simulate real quantum hardware noise.
+
+**Acceptance Criteria:**
+- Configurable error rates per qubit
+- Error model applied during measurement
+- Results match expected statistical distribution
+- Documentation explains error model
+
+**Files:** `backend/src/quantum/simulator.js`, `backend/tests/simulator.test.js`
+
+---
+
+#### TASK-007: Add Circuit History and Undo
+**Priority:** Medium  
+**Status:** Unassigned  
+**Effort:** 4 points  
+**Description:** Implement circuit history tracking and undo/redo functionality in the frontend.
+
+**Acceptance Criteria:**
+- Circuit state history is maintained
+- Undo/redo buttons work correctly
+- History persists during session
+- Tests cover edge cases (empty history, multiple undos)
+
+**Files:** `frontend/src/store/circuitStore.ts`, `frontend/src/components/CircuitBuilder.tsx`
+
+---
+
+### Low Priority
+
+#### TASK-008: Improve Error Messages
+**Priority:** Low  
+**Status:** Unassigned  
+**Effort:** 3 points  
+**Description:** Enhance error messages for better developer experience and debugging.
+
+**Acceptance Criteria:**
+- Error messages are descriptive and actionable
+- Include suggestions for common mistakes
+- Consistent formatting across API
+- Tests verify error message content
+
+**Files:** `backend/src/api/routes.js`, `backend/src/quantum/simulator.js`
+
+---
+
+#### TASK-009: Add Telemetry and Monitoring
+**Priority:** Low  
+**Status:** Unassigned  
+**Effort:** 6 points  
+**Description:** Implement basic telemetry collection for circuit execution metrics and API usage.
+
+**Acceptance Criteria:**
+- Circuit execution time tracked
+- API endpoint usage logged
+- Metrics exportable for analysis
+- Privacy-respecting (no sensitive data logged)
+
+**Files:** `backend/src/middleware/telemetry.js`, `backend/src/api/routes.js`
+
+---
+
+#### TASK-010: Expand Gate Library Documentation
+**Priority:** Low  
+**Status:** Unassigned  
+**Effort:** 2 points  
+**Description:** Add comprehensive documentation for all supported quantum gates with examples.
+
+**Acceptance Criteria:**
+- Each gate has a documentation section
+- Includes matrix representation
+- Includes usage examples
+- Links to quantum computing references
+
+**Files:** `docs/GATES.md` (new), `backend/src/quantum/gates.js`
+
+---
+
+#### TASK-011: Implement Batch Circuit Execution
+**Priority:** Low  
+**Status:** Unassigned  
+**Effort:** 5 points  
+**Description:** Add API endpoint for executing multiple circuits in a single request for efficiency.
+
+**Acceptance Criteria:**
+- Batch endpoint accepts array of circuits
+- Results returned in same order
+- Performance improvement over sequential calls
+- Tests cover batch size limits
+
+**Files:** `backend/src/api/routes.js`, `backend/tests/routes.test.js`
+
+---
+
+#### TASK-012: Add Accessibility Improvements to Frontend
+**Priority:** Low  
+**Status:** Unassigned  
+**Effort:** 4 points  
+**Description:** Improve frontend accessibility with ARIA labels, keyboard navigation, and screen reader support.
+
+**Acceptance Criteria:**
+- ARIA labels on all interactive elements
+- Keyboard navigation works throughout UI
+- Screen reader tested and verified
+- WCAG 2.1 AA compliance
+
+**Files:** `frontend/src/components/CircuitBuilder.tsx`, `frontend/src/components/GatePanel.tsx`
+
+---
+
+## Assignment Instructions
+
+1. **Self-assign:** Comment on the task or update this file with your name
+2. **Create branch:** `minions/engineer/<task-id>-<short-title>`
+3. **Work:** Follow the acceptance criteria and files listed
+4. **Submit PR:** Reference the task ID in your PR title
+5. **Review:** Peer review required before merge
+
+## Completed Tasks
+
+(None yet — this is the initial task registry)
