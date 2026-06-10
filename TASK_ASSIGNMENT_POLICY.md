@@ -1,175 +1,199 @@
-# Task Assignment and Workflow Policy
-
-This document defines the task assignment workflow, engineer responsibilities, and lifecycle management for quantumanic project tasks.
+# Task Assignment Policy
 
 ## Overview
 
-The quantumanic project uses a centralized task registry ([TASKS.md](TASKS.md)) to track pending work. This policy ensures consistent assignment, execution, and completion of tasks.
+This document defines how tasks are assigned, tracked, and completed in the quantumanic project. All engineers must follow this policy to maintain project coherence and prevent duplicate work.
+
+---
 
 ## Task Lifecycle
 
+### States
+
+1. **Pending** — Task is identified but not yet assigned or started
+2. **In Progress** — Task is assigned and work has begun
+3. **In Review** — Task is complete; PR is open and awaiting review
+4. **Completed** — Task is merged and closed
+
+### Transitions
+
 ```
-Unassigned → Assigned → In Progress → Review → Done
+Pending → In Progress → In Review → Completed
 ```
 
-### 1. Unassigned
-- Task is listed in [TASKS.md](TASKS.md) with status "Unassigned"
-- Available for any engineer to claim
-- Includes priority, effort estimate, and acceptance criteria
+Once a task reaches **Completed**, it is archived and not reopened. If similar work is needed, a new task is created.
 
-### 2. Assigned
-- Engineer claims the task by:
-  - Commenting on the task in TASKS.md, or
-  - Opening an issue with the task ID, or
-  - Creating a feature branch with the task ID in the name
-- Update TASKS.md with engineer name and assignment date
-- Create feature branch: `minions/engineer/<TASK-ID>-<short-title>`
+---
 
-### 3. In Progress
-- Engineer works on the task following acceptance criteria
-- Commits follow conventional commit format: `feat: <description>` or `fix: <description>`
-- Branch protection prevents direct commits to main/master
-- Regular commits demonstrate progress
+## Assignment Rules
 
-### 4. Review
-- Engineer opens a Pull Request (PR) targeting main
-- PR title includes task ID: `feat: TASK-001 implement toffoli gate`
-- PR description references acceptance criteria
-- Peer review required (another engineer reviews first)
-- CI must pass (tests, linting, security checks)
-- Operator approval required before merge
+### Who Can Assign Tasks
 
-### 5. Done
-- PR merged to main
-- Task status updated to "Done" in TASKS.md
-- Task moved to "Completed Tasks" section
-- Engineer credited in commit history
+- **Operator** — Can assign any task to any engineer
+- **Engineer** — Can self-assign a task if it is currently unassigned
+- **Tech Lead** — Can reassign tasks if an engineer becomes unavailable
 
-## Engineer Responsibilities
+### Assignment Constraints
 
-### Before Starting
-- [ ] Read the task acceptance criteria carefully
-- [ ] Understand the files that need modification
-- [ ] Check for any dependencies or blockers
-- [ ] Ask for clarification if criteria are unclear
+- Each task must have exactly one assignee (no co-ownership)
+- An engineer cannot be assigned more than 5 active tasks at once
+- Tasks must be assigned before work begins; self-assignment is acceptable
+- If an engineer cannot complete a task, they must notify the operator immediately
 
-### During Development
-- [ ] Follow the project's coding standards (see CONTRIBUTING.md)
-- [ ] Write tests for new functionality
-- [ ] Update documentation as needed
-- [ ] Keep commits atomic and well-described
-- [ ] Do not modify CI configuration or delete files
-- [ ] Stay within the scope of the task
+---
 
-### Before Submitting PR
-- [ ] Run all tests locally: `npm test`
-- [ ] Run linter: `npm run lint`
-- [ ] Verify acceptance criteria are met
-- [ ] Update TASKS.md with completion status
-- [ ] Write clear PR description with context
+## PR and Commit Rules
 
-### During Review
-- [ ] Respond promptly to reviewer feedback
-- [ ] Make requested changes in new commits
-- [ ] Do not merge your own work
-- [ ] Wait for peer approval, then operator approval
+### Branch Naming
 
-## Task Assignment Rules
+All work must be done on a feature branch named:
 
-1. **One engineer per task** — Avoid duplicate work by claiming tasks explicitly
-2. **Respect priority** — High priority tasks should be addressed first
-3. **Effort estimates** — Use story points as guidance; adjust if needed
-4. **Escalation** — If blocked, notify the operator immediately
-5. **Abandonment** — If you cannot complete a task, return it to "Unassigned" status
+```
+minions/<role>/<short-summary>
+```
 
-## Communication
+Example: `minions/engineer/implement-toffoli-gate`
 
-### Task Questions
-- Post questions as comments in the task issue or PR
-- Tag the operator (@operator) for clarification on acceptance criteria
-- Document answers in the task for future reference
+**Branch Protection Enforcement:** Engineers do not have write access to `main` or `master`. This is enforced by repository-level branch protection rules. Attempts to push directly to these branches will be rejected by the Git server.
 
-### Blockers
-- If a task is blocked by another task, document the dependency in TASKS.md
-- Notify the operator of critical blockers
-- Consider working on a different task while waiting
+### Commit Messages
 
-### Progress Updates
-- Commit regularly to show progress
-- Update PR description with status if work spans multiple days
-- Notify the operator if estimated effort changes significantly
+Each commit must reference the task ID:
 
-## Acceptance Criteria Compliance
+```
+feat(TASK-001): implement Toffoli gate logic
+```
 
-Every task must satisfy its acceptance criteria before the PR is merged:
+Format: `<type>(<TASK-ID>): <description>`
 
-1. **Functional requirements** — Feature works as specified
-2. **Testing** — Unit tests pass; coverage maintained or improved
-3. **Documentation** — Code comments and docs updated
-4. **Code quality** — Linting passes; no security issues
-5. **Integration** — Changes integrate cleanly with existing code
+Valid types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`
 
-## Escalation Path
+### Pull Requests
 
-1. **Peer review stuck** → Tag the operator in the PR
-2. **Acceptance criteria unclear** → Open an issue and tag the operator
-3. **Task blocked by external dependency** → Notify the operator
-4. **Estimated effort exceeded significantly** → Discuss with operator before continuing
+- One PR per task (or one PR per closely-related task group)
+- PR title must match commit message format
+- PR description must include:
+  - Task ID and title
+  - Acceptance criteria checklist
+  - Testing approach
+  - Any blockers or dependencies
 
-## Examples
+---
 
-### Example 1: Claiming a Task
+## Review Process
+
+### Peer Review (Round 1)
+
+1. Engineer opens PR on feature branch
+2. Peer engineer reviews code, docs, and tests
+3. Peer approves or requests changes
+4. If changes requested, engineer commits fix and re-requests review
+
+### Operator Review (Round 2)
+
+1. After peer approval, operator reviews the PR
+2. Operator checks:
+   - Task acceptance criteria are met
+   - No scope creep
+   - No security or policy violations
+3. Operator approves or requests changes
+4. If approved, operator merges PR to main
+
+### CI Requirements
+
+Before any review, CI must pass:
+- All tests pass
+- Linting passes
+- No security vulnerabilities introduced
+- Branch protection rules enforced (engineers cannot merge)
+
+---
+
+## Task Tracking
+
+### TASKS.md Registry
+
+All tasks are tracked in `TASKS.md` at the repository root. This file is the source of truth.
+
+**Format:**
 
 ```markdown
-# In TASKS.md
-
-#### TASK-001: Implement Toffoli Gate
-**Status:** Assigned (alice, 2024-01-15)  
-**Effort:** 5 points
+### TASK-NNN: <Title>
+**Priority:** <High|Medium|Low>  
+**Assignee:** <Name or "Unassigned">  
+**Status:** <Pending|In Progress|In Review|Completed>  
+**Milestone:** <Optional: Q3 2026, etc.>  
+**Description:** <One-line summary>  
+**Acceptance Criteria:**
+- Criterion 1
+- Criterion 2
 ```
 
-Then create a branch:
-```bash
-git checkout -b minions/engineer/TASK-001-implement-toffoli-gate
-```
+### Updating TASKS.md
 
-### Example 2: PR Title and Description
+- When a task is assigned, update the **Assignee** field
+- When work begins, update **Status** to "In Progress"
+- When a PR is opened, update **Status** to "In Review"
+- When a PR is merged, update **Status** to "Completed" and move to the "Completed Tasks" section
+- Do not delete tasks; archive them in the "Completed Tasks" section
 
-**Title:**
-```
-feat: TASK-001 implement toffoli gate
-```
+---
 
-**Description:**
+## Decision Records
+
+Material decisions (feature scope, dependency upgrades, security patches, cost changes, team composition) require a Decision Record before implementation.
+
+**Decision Record Template:**
+
 ```markdown
-## Task
-TASK-001: Implement Toffoli Gate
+# Decision Record: <Title>
 
-## Changes
-- Added Toffoli gate implementation in gates.js
-- Implemented three-qubit gate logic
-- Added comprehensive unit tests
+**Date:** YYYY-MM-DD  
+**Proposer:** <Engineer Name>  
+**Approver:** <Operator Name>  
+**Status:** <Proposed|Approved|Rejected|Superseded>
 
-## Acceptance Criteria
-- [x] Toffoli gate correctly applies to three qubits
-- [x] Unit tests cover all input combinations
-- [x] Documentation updated in gates.js
-- [x] Integration test passes with circuit runner
+## Context
 
-## Testing
-All tests pass: `npm test`
-Linting passes: `npm run lint`
+<Why is this decision needed?>
+
+## Options Considered
+
+1. <Option A>
+2. <Option B>
+3. <Option C>
+
+## Decision
+
+<Which option was chosen and why?>
+
+## Consequences
+
+<What are the trade-offs and long-term implications?>
 ```
 
-## Metrics and Tracking
+Decision Records are stored in `docs/decisions/` and referenced in PRs that implement them.
 
-- **Velocity** — Tasks completed per sprint
-- **Cycle time** — Time from assignment to completion
-- **Effort accuracy** — Estimated vs. actual effort
-- **Blocker frequency** — Tasks blocked by dependencies
+---
 
-These metrics help improve future task estimation and planning.
+## Escalation
 
-## Policy Updates
+If an engineer encounters a blocker, they must:
 
-This policy may be updated as the team grows or processes evolve. Changes require operator approval and should be documented in a Decision Record.
+1. Document the blocker in the PR description
+2. Notify the operator via the PR comment thread
+3. Do not merge without operator approval
+
+If a task is reassigned or cancelled, the operator must update `TASKS.md` and notify all stakeholders.
+
+---
+
+## Audit and Compliance
+
+The operator conducts a monthly audit of `TASKS.md` to ensure:
+- No tasks are stale (>30 days without status update)
+- Assignees are still available
+- Completed tasks are properly archived
+- No duplicate tasks exist
+
+Results are logged in `docs/audit/` for compliance tracking.
