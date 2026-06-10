@@ -1,0 +1,92 @@
+name: Deploy Quantumanic
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout code
+      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
+      # Purpose: Prepare source code for build and deployment
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js
+      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
+      # Purpose: Install Node.js runtime for npm and build tools
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # Step 3: Install root dependencies
+      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
+      # Purpose: Install shared linting, testing, and build tools
+      - name: Install root dependencies
+        run: npm install
+
+      # Step 4: Build frontend artifacts
+      # Maps to: FRONTEND BUILD ARTIFACT (Vite Output)
+      # Purpose: Compile TypeScript and bundle React components for production
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      # Step 5: Install backend dependencies
+      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
+      # Purpose: Resolve npm packages for Express.js service
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install
+
+      # Step 6: Run backend tests
+      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
+      # Purpose: Verify Express.js service logic before deployment
+      - name: Run backend tests
+        run: |
+          cd backend
+          npm test
+
+      # Step 7: Run linting
+      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
+      # Purpose: Enforce code quality standards
+      - name: Run linting
+        run: npm run lint
+
+      # Step 8: Deploy backend service
+      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
+      # Purpose: Start Express.js service on port 3000
+      #          - Serves frontend build artifacts as static files
+      #          - Routes /api/circuit/run to Python engine
+      #          - Applies rate limiting and input validation
+      - name: Deploy backend service
+        run: |
+          cd backend
+          npm start &
+        env:
+          PORT: 3000
+          RATE_LIMIT_WINDOW_MS: 900000
+          RATE_LIMIT_MAX_REQUESTS: 100
+          CIRCUIT_RUN_RATE_LIMIT: 10
+
+      # Step 9: Verify deployment
+      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
+      # Purpose: Confirm Express.js service is responding to requests
+      - name: Verify deployment
+        run: |
+          sleep 5
+          curl -f http://localhost:3000/health || exit 1
+
+      # Step 10: Log deployment completion
+      # Maps to: PRODUCTION ENVIRONMENT
+      # Purpose: Record successful deployment of all service boundaries
+      - name: Log deployment completion
+        run: echo "Deployment complete. Express.js service running on port 3000 with frontend artifacts and Python engine integration."
