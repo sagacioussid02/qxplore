@@ -12,7 +12,7 @@ Quantumanic is a quantum computing simulator and API service. The project consis
 ```
 quantumanic/
 ├── backend/                    # Primary API service
-│   ├── requirements.txt        # Python dependencies
+│   ├── requirements.txt        # Python dependencies (AUTHORITATIVE PATH — see PE-2 audit note below)
 │   ├── src/
 │   │   ├── index.js           # Express app setup
 │   │   ├── api/
@@ -25,7 +25,7 @@ quantumanic/
 │   └── README.md
 ├── frontend/                   # Frontend application
 │   ├── backend/               # Secondary backend (see ADR 0001)
-│   │   └── requirements.txt   # Python dependencies
+│   │   └── requirements.txt   # Python dependencies (DUPLICATE — see PE-2 audit note below)
 │   ├── src/
 │   ├── package.json
 │   └── README.md
@@ -42,13 +42,14 @@ quantumanic/
 
 ### Primary Backend (`backend/`)
 
-**Technology:** Express.js (Node.js) + Python simulation engine
+**Technology:** Express.js (Node.js) + Python simulation engine (numpy/scipy)
 
 **Responsibilities:**
-- RESTful API routing and request validation
+- Quantum circuit simulation
+- RESTful API for circuit execution
 - Rate limiting and security controls
-- Forwarding circuit execution requests to Python engine
-- Response formatting and error handling
+- Input validation
+- Express-to-Python routing layer
 
 **Key Endpoints:**
 - `POST /api/circuit/run` — Execute a quantum circuit
@@ -64,51 +65,39 @@ quantumanic/
 
 **Deployment:** This is the canonical backend service for production deployment.
 
-### Python Simulation Engine
-
-**Technology:** Python with numpy/scipy for matrix operations
-
-**Responsibilities:**
-- Quantum circuit simulation
-- Gate matrix computation and application
-- Measurement and probability calculations
-- State vector management
-
-**Integration:** Runs as a separate service; Express.js routes circuit execution requests to this engine via HTTP or IPC.
-
 ### Secondary Backend (`frontend/backend/`)
 
 **Status:** See [ADR 0001](docs/adr/0001-dual-backend-architecture.md) for clarification.
 
 The purpose and deployment strategy for this backend should be documented in `frontend/backend/README.md`.
 
+**Note on duplicate requirements.txt:** A known active bug (PE-2 in sprint plan) exists where `backend/requirements.txt` and `frontend/backend/requirements.txt` can diverge, causing security patches applied to one file to not ship via the other. The sprint plan tasks `cloud_devops` with auditing which file is authoritative and consolidating before the next deployment. Until PE-2 is resolved, deploy.yml targets `backend/requirements.txt` as the authoritative path.
+
 ## Deployment
 
 ### Development
 
 ```bash
-# Install backend dependencies
+# Install dependencies
 cd backend
 npm install
 pip install -r requirements.txt
 
-# Start the Express server
+# Start the server
 npm start
-
-# In another terminal, start the Python engine
-python -m quantum_engine
 ```
 
 The API will be available at `http://localhost:3000`.
 
 ### Production
 
-Deploy both the Express.js service and Python simulation engine to your cloud platform. Ensure:
+Deploy the `backend/` service to your cloud platform. Ensure:
 - Environment variables are properly configured (see `backend/.env.example`)
+- Python dependencies are installed from `backend/requirements.txt` (authoritative path per PE-2 audit)
 - Rate limiting is enabled
-- Health checks are configured for both services
+- Health checks are configured
 - Logs are collected and monitored
-- GitHub Environment protection rules are enforced for deployments
+- Express-to-Python routing layer returns proper HTTP error codes (4xx/5xx) on failures, not silent 200 responses
 
 ## Security
 
@@ -119,17 +108,16 @@ Deploy both the Express.js service and Python simulation engine to your cloud pl
 
 ### Input Validation
 
-All circuit parameters and gate definitions are validated before execution. The Express layer validates request format; the Python engine validates circuit semantics.
+All circuit parameters and gate definitions are validated before execution.
 
 ### Dependency Management
 
-Both `backend/requirements.txt` and `frontend/backend/requirements.txt` should be regularly audited for security vulnerabilities. See the sprint plan for dependency audit procedures.
+Both `backend/requirements.txt` and `frontend/backend/requirements.txt` should be regularly audited for security vulnerabilities. See the sprint plan (PE-2 task) for dependency audit and consolidation procedures. Until consolidation is complete, deploy.yml targets `backend/requirements.txt` as the authoritative source.
 
 ## Development Workflow
 
 1. Create a feature branch: `minions/<role>/<short-summary>`
-2. Make changes
-3. Test locally
-4. Open a PR targeting `main`
-5. Address review feedback
-6. Merge after approval and CI passes
+2. Make changes and test locally
+3. Push to the branch and open a PR targeting `main`
+4. Address peer review feedback
+5. Merge after approval and CI passes
