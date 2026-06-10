@@ -4,81 +4,109 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production  # Requires GitHub Environment protection rules
+    environment: production
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js (Express.js backend)
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # Step 3: Install Express.js dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
       - name: Install backend dependencies
         run: |
           cd backend
           npm install
 
-      # Step 4: Set up Python (Python simulation engine)
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      # Step 5: Install Python dependencies
-      # Maps to ARCHITECTURE.md: Python Simulation Engine service setup
       - name: Install Python dependencies
         run: |
           cd backend
+          # NOTE: PE-2 audit task (sprint plan) will consolidate duplicate requirements.txt files.
+          # This path (backend/requirements.txt) is the authoritative source for production deployment.
+          # See ARCHITECTURE.md for details on the known duplicate-file bug and consolidation timeline.
           pip install -r requirements.txt
 
-      # Step 6: Start Express.js backend in background
-      # Maps to ARCHITECTURE.md: Primary Backend (Express.js) deployment
-      - name: Start Express.js backend
+      - name: Start Express.js service
         run: |
           cd backend
-          npm start &
-          sleep 2  # Wait for server to start
+          npm start > express.log 2>&1 &
+          echo $! > express.pid
+          sleep 3
 
-      # Step 7: Start Python simulation engine in background
-      # Maps to ARCHITECTURE.md: Python Simulation Engine deployment
+      - name: Capture Express startup logs
+        if: always()
+        run: |
+          if [ -f backend/express.log ]; then
+            echo "=== Express.js startup logs ==="
+            cat backend/express.log
+          fi
+
       - name: Start Python simulation engine
         run: |
           cd backend
-          python -m quantum_engine &
-          sleep 2  # Wait for engine to start
+          python -m simulation_engine > python.log 2>&1 &
+          echo $! > python.pid
+          sleep 3
 
-      # Step 8: Verify deployment - health check
-      # Maps to ARCHITECTURE.md: Health check endpoint
-      - name: Verify deployment
+      - name: Capture Python startup logs
+        if: always()
+        run: |
+          if [ -f backend/python.log ]; then
+            echo "=== Python service startup logs ==="
+            cat backend/python.log
+          fi
+
+      - name: Verify Express health endpoint
         run: |
           curl -f http://localhost:3000/health || exit 1
 
-      # Step 9: Verify Express-to-Python routing
-      # Maps to ARCHITECTURE.md: API routing and error handling
-      - name: Verify Express-to-Python routing
+      - name: Verify Express-to-Python routing contract (circuit execution)
         run: |
-          response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/circuit/run \
+          # Test that Express-to-Python routing returns proper HTTP error codes, not silent 200 with empty body.
+          # This validates the fix for the sprint plan bug: "Fix silent Express-to-Python routing failures returning 200 with empty or malformed payload".
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/circuit/run \
             -H "Content-Type: application/json" \
-            -d '{"circuit": "invalid"}')
-          http_code=$(echo "$response" | tail -n1)
-          if [ "$http_code" -ge 400 ]; then
-            echo "Routing validation passed: received HTTP $http_code for invalid request"
-          else
-            echo "ERROR: Expected 4xx/5xx response, got HTTP $http_code"
+            -d '{"circuit": "invalid_circuit_data"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          # Verify we get a 4xx/5xx error, not 200 with empty body
+          if [ "$HTTP_CODE" = "200" ] && [ -z "$BODY" ]; then
+            echo "ERROR: Silent routing failure detected (200 with empty body)"
             exit 1
           fi
+          
+          if [ "$HTTP_CODE" -lt 400 ]; then
+            echo "ERROR: Expected 4xx/5xx error for malformed request, got $HTTP_CODE"
+            exit 1
+          fi
+          
+          echo "✓ Express-to-Python routing contract validated (HTTP $HTTP_CODE)"
 
-      # Step 10: Deploy to production environment
-      # Requires manual approval via GitHub Environment protection rules
-      - name: Deploy to production
+      - name: Verify Python service is reachable
         run: |
-          echo "Deployment to production environment approved and proceeding"
-          # Add actual deployment commands here (e.g., docker push, kubectl apply, etc.)
+          # Confirm Python service responds to a valid circuit request
+          curl -f -X POST http://localhost:3000/api/circuit/run \
+            -H "Content-Type: application/json" \
+            -d '{"gates": ["H"], "qubits": 1}' || exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f backend/express.pid ]; then
+            kill $(cat backend/express.pid) || true
+          fi
+          if [ -f backend/python.pid ]; then
+            kill $(cat backend/python.pid) || true
+          fi
