@@ -67,7 +67,9 @@ Most contributions only touch:
 cp .env.example .env
 ```
 
-Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The backend will log warnings for missing keys but will still start. Quantum circuit endpoints work without any external services.
+Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The app will work fine without them.
+
+**Never commit `.env` files or real secrets to the repository.**
 
 ---
 
@@ -75,71 +77,37 @@ Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, e
 
 ### Prerequisites
 
-- Node.js 16+ and npm
-- Git
+- **Node.js** 16+ and npm
+- **Python** 3.8+ (for backend quantum simulation)
+- **Git**
 
 ### Clone and Install
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/your-org/quantumanic.git
 cd quantumanic
-```
 
-# Install backend dependencies
+# Backend
 cd backend
 npm install
 
-# Install frontend dependencies (in a new terminal)
+# Frontend (in a new terminal)
 cd frontend
 npm install
 ```
 
 ### Run Locally
 
-**Backend:**
 ```bash
+# Terminal 1: Backend
 cd backend
 npm start
-```
+# API runs on http://localhost:3000
 
-API available at `http://localhost:3000`
-
-**Frontend (new terminal):**
-```bash
+# Terminal 2: Frontend
 cd frontend
 npm run dev
-```
-
-UI available at `http://localhost:5173`
-
-### Run Tests
-
-**Backend:**
-```bash
-cd backend
-npm test
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm test
-```
-
-### Linting
-
-**Backend:**
-```bash
-cd backend
-npm run lint          # Check
-npm run lint:fix      # Auto-fix
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm run lint          # Check
-npm run lint:fix      # Auto-fix
+# UI runs on http://localhost:5173
 ```
 
 ---
@@ -150,117 +118,125 @@ npm run lint:fix      # Auto-fix
 quantumanic/
 ├── backend/                    # Express.js API service
 │   ├── src/
-│   │   ├── index.js           # App setup
+│   │   ├── index.js           # App entry point
 │   │   ├── api/
-│   │   │   └── routes.js      # Route handlers
+│   │   │   └── routes.js      # API endpoints
 │   │   └── quantum/
 │   │       ├── simulator.js   # Circuit simulator
 │   │       └── gates.js       # Gate definitions
-│   ├── tests/                 # Jest tests
+│   ├── tests/                 # Jest test suite
 │   ├── package.json
 │   └── README.md
-├── frontend/                   # React UI
+├── frontend/                   # React/TypeScript UI
 │   ├── src/
+│   │   ├── components/        # React components
+│   │   ├── store/             # State management
+│   │   └── App.tsx            # Root component
+│   ├── tests/                 # Vitest test suite
 │   ├── package.json
 │   └── README.md
 ├── docs/
-│   └── adr/                   # Architecture Decision Records
+│   ├── adr/                   # Architecture Decision Records
+│   └── GATES.md               # Gate documentation
+├── TASKS.md                   # Task registry and assignments
+├── TASK_ASSIGNMENT_POLICY.md  # Task workflow policy
 ├── ARCHITECTURE.md
 ├── CONTRIBUTING.md            # This file
-├── TASKS.md                   # Task backlog
-├── SPRINT_PLAN.md             # Sprint roadmap
 └── README.md
 ```
-
-For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
 ## Development Workflow
 
-### 1. Create a Feature Branch
+### 1. Pick a Task
+
+See [TASKS.md](TASKS.md) for the list of pending work. Tasks are prioritized and include acceptance criteria.
+
+For detailed assignment workflow, see [TASK_ASSIGNMENT_POLICY.md](TASK_ASSIGNMENT_POLICY.md).
+
+### 2. Create a Feature Branch
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b minions/engineer/<short-summary>
+git checkout -b minions/engineer/<TASK-ID>-<short-title>
 ```
 
-**Branch naming:** `minions/<role>/<short-summary>`
-- Example: `minions/engineer/implement-cnot-gate`
-- Example: `minions/engineer/enhance-circuit-builder`
+Example:
+```bash
+git checkout -b minions/engineer/TASK-001-implement-toffoli-gate
+```
 
-### 2. Make Your Changes
+### 3. Make Changes
 
-- Write code following the coding standards (see below)
-- Add or update tests
+- Follow the acceptance criteria in the task
+- Write tests for new functionality
 - Update documentation as needed
+- Keep commits atomic and descriptive
 
-### 3. Run Tests and Linting
+### 4. Run Tests and Linting
 
 ```bash
 # Backend
 cd backend
 npm test
-npm run lint:fix
+npm run lint
+npm run lint:fix  # Auto-fix linting issues
 
 # Frontend
 cd frontend
 npm test
-npm run lint:fix
+npm run lint
 ```
 
-### 4. Commit Your Changes
+### 5. Commit and Push
 
 ```bash
 git add .
-git commit -m "feat: implement CNOT gate support"
+git commit -m "feat: TASK-001 implement toffoli gate"
+git push origin minions/engineer/TASK-001-implement-toffoli-gate
 ```
 
-Use [Conventional Commits](https://www.conventionalcommits.org/):
-- `feat:` for new features
-- `fix:` for bug fixes
-- `docs:` for documentation
-- `test:` for tests
-- `refactor:` for code refactoring
+### 6. Open a Pull Request
 
-### 5. Push and Open a PR
+- Title: `feat: TASK-001 implement toffoli gate`
+- Description: Include context, changes, and testing approach
+- Reference the task ID
+- Link to any related issues
 
-```bash
-git push origin minions/engineer/<short-summary>
-```
+### 7. Code Review
 
-Open a pull request on GitHub targeting `main`. See [Submitting a Pull Request](#submitting-a-pull-request) below.
+- A peer engineer reviews your code first
+- Address feedback in new commits
+- Do not merge your own work
+- Wait for operator approval before merge
 
 ---
 
 ## Task Assignment and Sprint Participation
 
-### For New Engineers
+### Claiming a Task
 
-1. **Review TASKS.md** — Familiarize yourself with the unassigned tasks and their acceptance criteria
-2. **Pick a Task** — Start with a high-priority, well-scoped task (e.g., Task 1: CNOT Gate or Task 4: Frontend UI)
-3. **Create an Issue** — Link your task to a GitHub issue for tracking
-4. **Update SPRINT_PLAN.md** — Add your name to the task assignment table
-5. **Implement** — Follow the development workflow above
-6. **Submit PR** — Reference the task and issue in your PR description
+1. Review [TASKS.md](TASKS.md) and find an unassigned task
+2. Check the acceptance criteria and effort estimate
+3. Claim the task by creating a feature branch or commenting on the issue
+4. Update TASKS.md with your name and assignment date
 
-### Sprint Participation
+### Task Workflow
 
-- **Planning:** Attend Monday 10:00 AM planning meeting (or async update)
-- **Daily Standup:** Post async updates in #quantumanic-standup
-- **Review & Retro:** Attend Friday 4:00 PM review and retrospective
-- **Capacity:** Plan for ~7 points per engineer per sprint (2-week cycle)
+See [TASK_ASSIGNMENT_POLICY.md](TASK_ASSIGNMENT_POLICY.md) for:
+- Full task lifecycle (Unassigned → Assigned → In Progress → Review → Done)
+- Engineer responsibilities
+- Communication and escalation procedures
+- Examples of task assignment and PR submission
 
-### Definition of Done
+### Effort Estimates
 
-A task is complete when:
-- ✅ All acceptance criteria met
-- ✅ Peer review approved
-- ✅ Unit tests pass (>80% coverage)
-- ✅ CI pipeline passes
-- ✅ Documentation updated
-- ✅ PR merged to main
+Tasks include story point estimates (3, 5, 8 points). Use these as guidance:
+- **3 points** — 1–2 hours of focused work
+- **5 points** — 2–4 hours of work
+- **8 points** — 1–2 days of work
+
+If your actual effort differs significantly, notify the operator.
 
 ---
 
@@ -268,177 +244,215 @@ A task is complete when:
 
 ### PR Title
 
-Use [Conventional Commits](https://www.conventionalcommits.org/):
+Use conventional commit format:
+- `feat: <description>` — new feature
+- `fix: <description>` — bug fix
+- `docs: <description>` — documentation only
+- `test: <description>` — tests only
+- `refactor: <description>` — code refactoring
+
+Example:
 ```
-feat: implement CNOT gate support
-fix: correct rate limit calculation
-docs: clarify quantum gate definitions
+feat: TASK-001 implement toffoli gate
 ```
 
 ### PR Description
 
 Include:
 1. **Context** — What problem does this solve?
-2. **Changes** — What did you change and why?
-3. **Testing** — How did you test this?
-4. **Related Issues** — Link to GitHub issues or tasks
+2. **Changes** — What did you change?
+3. **Acceptance Criteria** — Which criteria are met?
+4. **Testing** — How did you test this?
+5. **Files** — What files were modified?
 
-**Example:**
+Template:
 ```markdown
+## Task
+TASK-001: Implement Toffoli Gate
+
 ## Context
-Task 1: Implement CNOT gate support for multi-qubit circuits.
+The Toffoli gate is a fundamental three-qubit gate needed for quantum error correction.
 
 ## Changes
-- Added CNOT gate logic to `backend/src/quantum/gates.js`
-- Implemented control and target qubit validation
-- Added API support for CNOT in `/api/circuit/run`
+- Added Toffoli gate implementation in `backend/src/quantum/gates.js`
+- Implemented three-qubit gate logic with matrix representation
+- Added comprehensive unit tests
+
+## Acceptance Criteria
+- [x] Toffoli gate correctly applies to three qubits
+- [x] Unit tests cover all input combinations
+- [x] Documentation updated in gates.js
+- [x] Integration test passes with circuit runner
 
 ## Testing
-- Unit tests for CNOT with various qubit indices
-- Integration tests with other gates
-- Manual testing via circuit builder UI
+```bash
+npm test
+npm run lint
+```
+All tests pass. Coverage maintained at 85%.
 
-## Related Issues
-Closes #42 (Task 1: Implement CNOT Gate)
+## Files Changed
+- `backend/src/quantum/gates.js`
+- `backend/tests/gates.test.js`
 ```
 
-### Review Process
+### Checklist
 
-1. **Peer Review** — A team member reviews your code
-2. **CI Pipeline** — Automated tests, linting, and build checks
-3. **Operator Approval** — For material decisions (see Hard Rules in CONTRIBUTING.md)
-4. **Merge** — Once approved, your PR is merged to main
-
-**Note:** Do not merge your own PRs. Wait for peer approval.
+Before submitting:
+- [ ] Tests pass locally
+- [ ] Linting passes
+- [ ] Acceptance criteria met
+- [ ] Documentation updated
+- [ ] No secrets or `.env` files committed
+- [ ] Branch name follows convention
+- [ ] PR title is descriptive
 
 ---
 
 ## Coding Standards
 
-### JavaScript/Node.js
+### JavaScript/TypeScript
 
-- Use ESLint configuration in `backend/.eslintrc.json`
-- Indent with 2 spaces
-- Use `const` by default; `let` for reassignment; avoid `var`
+- Use `const` by default, `let` if needed, avoid `var`
 - Use arrow functions for callbacks
+- Use template literals for string interpolation
+- Use async/await over promises
 - Add JSDoc comments for public functions
 
-**Example:**
+Example:
 ```javascript
 /**
- * Apply a quantum gate to a circuit.
- * @param {Array} state - Current state vector
- * @param {string} gate - Gate name (e.g., 'X', 'H', 'CNOT')
- * @param {Array} qubits - Target qubit indices
- * @returns {Array} New state vector
+ * Apply a quantum gate to a qubit.
+ * @param {Array} state - Qubit state vector
+ * @param {string} gate - Gate name (e.g., 'X', 'H')
+ * @returns {Array} New state after gate application
  */
-function applyGate(state, gate, qubits) {
-  // Implementation
-}
-```
-
-### React/TypeScript (Frontend)
-
-- Use functional components with hooks
-- Use TypeScript for type safety
-- Add prop types or interfaces
-- Use descriptive component names
-
-**Example:**
-```typescript
-interface CircuitBuilderProps {
-  onRun: (circuit: Circuit) => void;
-  gates: Gate[];
-}
-
-const CircuitBuilder: React.FC<CircuitBuilderProps> = ({ onRun, gates }) => {
-  // Implementation
+const applyGate = async (state, gate) => {
+  const result = await simulator.apply(state, gate);
+  return result;
 };
 ```
 
-### Tests
+### Python
 
-- Use Jest for unit tests
-- Aim for >80% code coverage
-- Test happy paths and edge cases
+- Follow PEP 8 style guide
+- Use type hints for function signatures
+- Use docstrings for modules and functions
+- Use f-strings for formatting
+
+### Testing
+
+- Write tests for all new functionality
+- Aim for 80%+ code coverage
 - Use descriptive test names
+- Test both happy path and error cases
 
-**Example:**
+Example:
 ```javascript
-describe('CNOT Gate', () => {
-  it('should apply X to target qubit when control is |1⟩', () => {
-    const state = [0, 1, 0, 0]; // |01⟩
-    const result = applyCNOT(state, 0, 1);
-    expect(result).toEqual([0, 0, 1, 0]); // |10⟩
+describe('Toffoli Gate', () => {
+  it('should apply correctly to three qubits', () => {
+    const state = [1, 0, 0, 0, 0, 0, 0, 0];
+    const result = applyToffoli(state, 0, 1, 2);
+    expect(result).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it('should throw on invalid qubit indices', () => {
+    expect(() => applyToffoli([1, 0], 0, 1, 5)).toThrow();
   });
 });
 ```
+
+### Documentation
+
+- Add comments for complex logic
+- Update README.md if adding features
+- Add inline examples for public APIs
+- Link to relevant ADRs or issues
 
 ---
 
 ## Running Tests
 
-### Backend Tests
+### Backend
 
 ```bash
 cd backend
-npm test                    # Run all tests
-npm test -- --coverage      # With coverage report
-npm test -- --watch        # Watch mode
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
+
+# Run specific test file
+npm test -- gates.test.js
 ```
 
-### Frontend Tests
+### Frontend
 
 ```bash
 cd frontend
-npm test                    # Run all tests
-npm test -- --watch        # Watch mode
-npm test -- --coverage     # Coverage report
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
 ```
 
-npm test -- --coverage      # With coverage report
-npm test -- --watch        # Watch mode
+### Linting
+
+```bash
+# Backend
+cd backend
+npm run lint           # Check for issues
+npm run lint:fix       # Auto-fix issues
+
+# Frontend
+cd frontend
+npm run lint           # Check for issues
+npm run lint:fix       # Auto-fix issues
 ```
-
-### Coverage Requirements
-
-- Statements: >80%
-- Branches: >75%
-- Functions: >80%
-- Lines: >80%
 
 ---
 
 ## Questions and Help
 
-- **GitHub Issues** — For bugs, feature requests, and discussions
-- **Discussions** — For general questions and ideas
-- **Email** — Contact the maintainers directly
+### Getting Help
 
-Don't hesitate to ask questions — we're here to help!
+1. **Check existing issues** — Your question may already be answered
+2. **Read the docs** — See README.md, ARCHITECTURE.md, and FRONTEND.md
+3. **Ask in PR comments** — Tag reviewers with specific questions
+4. **Open an issue** — For bugs or feature requests
+5. **Contact the operator** — For policy or process questions
+
+### Reporting Bugs
+
+Include:
+- Steps to reproduce
+- Expected behavior
+- Actual behavior
+- Environment (Node version, OS, etc.)
+- Screenshots or logs if applicable
+
+### Suggesting Features
+
+Include:
+- Use case or problem statement
+- Proposed solution
+- Alternatives considered
+- Potential impact on existing code
 
 ---
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
-- **Slack:** #quantumanic (general questions)
-- **GitHub Issues:** For bugs and feature requests
-- **Weekly Sync:** Friday 4:00 PM (team meeting)
-- **Pair Programming:** Ask for help in Slack; we encourage collaboration
+By contributing, you agree that your contributions will be licensed under the same license as the project (MIT).
 
----
-
-## Additional Resources
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) — System design and deployment
-- [TASKS.md](TASKS.md) — Task backlog and acceptance criteria
-- [SPRINT_PLAN.md](SPRINT_PLAN.md) — Sprint roadmap and team capacity
-- [README.md](README.md) — Project overview and quick start
-- [Conventional Commits](https://www.conventionalcommits.org/) — Commit message format
-- [Jest Documentation](https://jestjs.io/) — Testing framework
-- [ESLint Documentation](https://eslint.org/) — Linting tool
-
----
-
-Happy coding! 🚀
+Thank you for contributing to quantumanic! 🚀
