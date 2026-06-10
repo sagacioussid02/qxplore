@@ -1,6 +1,6 @@
-# Contributing to Quantum Expedition
+# Contributing to Quantumanic
 
-Thank you for your interest in contributing! Quantum Expedition is an open-source quantum computing education platform built on real Qiskit circuits and AI agents. This guide covers everything you need to get started.
+Thank you for your interest in contributing! Quantumanic is a quantum computing simulator and API service. This guide covers everything you need to get started.
 
 ---
 
@@ -12,10 +12,11 @@ Thank you for your interest in contributing! Quantum Expedition is an open-sourc
 - [Getting Started Locally](#getting-started-locally)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
+- [Running Tests](#running-tests)
+- [Linting](#linting)
 - [Task Assignment and Sprint Participation](#task-assignment-and-sprint-participation)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Coding Standards](#coding-standards)
-- [Running Tests](#running-tests)
 - [Questions and Help](#questions-and-help)
 
 ---
@@ -29,11 +30,11 @@ Be respectful, constructive, and welcoming. We follow the standard [Contributor 
 ## What You Can Contribute
 
 - **Bug fixes** — open an issue first if the bug is non-trivial
-- **New quantum games or circuit mechanics** — Qiskit-backed ideas welcome
+- **New quantum gates and circuit mechanics** — see TASKS.md for planned gates
 - **Frontend UI/UX improvements** — animations, accessibility, responsiveness
 - **Documentation** — explanations of quantum concepts, inline code comments
-- **Tests** — the test coverage is thin; adding pytest or Vitest tests is very welcome
-- **Performance improvements** — especially in the bracket streaming pipeline
+- **Tests** — the test coverage is thin; adding Jest tests is very welcome
+- **Performance improvements** — especially in circuit simulation
 
 If you are planning a large change, please open an issue to discuss it before writing code. This avoids duplicate effort and misaligned expectations.
 
@@ -41,25 +42,22 @@ If you are planning a large change, please open an issue to discuss it before wr
 
 ## Environment Variables and Secrets Policy
 
-**Contributors never need real API keys to run or develop locally.** The project is designed so that core quantum mechanics (Qiskit simulations) and frontend UI work without any external services.
+**Never commit `.env` files or real secrets to the repository.**
 
 ### What requires real keys (maintainers only)
 
 | Service | Purpose | Required for |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Claude AI agents | AI game narration, bracket agents |
-| `OPENAI_API_KEY` | GPT-4o bracket agent | Bracket challenge |
-| `GOOGLE_API_KEY` | Gemini bracket agent | Bracket challenge |
-| `SPORTTSDATAIO_API_KEY` | Live NCAA bracket data | March Madness live mode |
-| `SUPABASE_URL` + keys | Auth + database | User accounts, saved sessions |
-| `STRIPE_SECRET_KEY` + keys | Payments | Credit purchases |
+| `ANTHROPIC_API_KEY` | Claude AI agents | Future AI features |
+| `OPENAI_API_KEY` | GPT-4o | Future AI features |
+| `GOOGLE_API_KEY` | Gemini | Future AI features |
 
 ### What contributors need (nothing secret)
 
 Most contributions only touch:
 - **Frontend UI** — no backend keys needed; run `npm run dev` and mock the API
-- **Qiskit circuits** — quantum simulation runs locally with no API keys
-- **Backend logic** — the FastAPI app starts cleanly with missing keys (services degrade gracefully)
+- **Quantum simulation** — circuit simulation runs locally with no API keys
+- **Backend logic** — the Express.js app starts cleanly with missing keys (services degrade gracefully)
 
 ### Setup for local development
 
@@ -67,9 +65,7 @@ Most contributions only touch:
 cp .env.example .env
 ```
 
-Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, etc.). The app will work fine without them.
-
-**Never commit `.env` files or real secrets to the repository.**
+Leave all values in `.env` as the placeholder strings. The app will work fine without real credentials for local development.
 
 ---
 
@@ -77,38 +73,46 @@ Leave all values in `.env` as the placeholder strings (`sk-ant-your-key-here`, e
 
 ### Prerequisites
 
-- **Node.js** 16+ and npm
-- **Python** 3.8+ (for backend quantum simulation)
+- **Node.js 14+** and **npm**
 - **Git**
 
-### Clone and Install
+### Installation
 
 ```bash
-git clone https://github.com/your-org/quantumanic.git
+git clone <repository-url>
 cd quantumanic
 
-# Backend
+# Install backend dependencies
 cd backend
 npm install
 
-# Frontend (in a new terminal)
+# Install frontend dependencies (in a new terminal)
 cd frontend
 npm install
 ```
 
-### Run Locally
+### Configuration
 
+**Backend:**
 ```bash
-# Terminal 1: Backend
 cd backend
-npm start
-# API runs on http://localhost:3000
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-# UI runs on http://localhost:5173
+cp .env.example .env
 ```
+
+Key environment variables:
+- `PORT` — Server port (default: 3000)
+- `RATE_LIMIT_WINDOW_MS` — Rate limit window in milliseconds (default: 900000 = 15 min)
+- `RATE_LIMIT_MAX_REQUESTS` — Max requests per IP for general /api routes (default: 100)
+- `CIRCUIT_RUN_RATE_LIMIT` — Max requests per IP for POST /api/circuit/run (default: 10)
+
+**Frontend:**
+```bash
+cd frontend
+cp .env.example .env
+```
+
+Key environment variables:
+- `VITE_API_URL` — Backend API URL (default: http://localhost:3000)
 
 ---
 
@@ -120,192 +124,155 @@ quantumanic/
 │   ├── src/
 │   │   ├── index.js           # App entry point
 │   │   ├── api/
-│   │   │   └── routes.js      # API endpoints
+│   │   │   └── routes.js      # API routes
 │   │   └── quantum/
-│   │       ├── simulator.js   # Circuit simulator
+│   │       ├── simulator.js   # Quantum circuit simulator
 │   │       └── gates.js       # Gate definitions
 │   ├── tests/                 # Jest test suite
 │   ├── package.json
 │   └── README.md
 ├── frontend/                   # React/TypeScript UI
 │   ├── src/
-│   │   ├── components/        # React components
-│   │   ├── store/             # State management
-│   │   └── App.tsx            # Root component
-│   ├── tests/                 # Vitest test suite
+│   ├── tests/                 # Jest test suite
 │   ├── package.json
 │   └── README.md
-├── docs/
-│   ├── adr/                   # Architecture Decision Records
-│   └── GATES.md               # Gate documentation
-├── TASKS.md                   # Task registry and assignments
-├── TASK_ASSIGNMENT_POLICY.md  # Task workflow policy
+├── docs/                       # Documentation
 ├── ARCHITECTURE.md
-├── CONTRIBUTING.md            # This file
-└── README.md
+├── CONTRIBUTING.md             # This file
+├── README.md
+└── package.json
 ```
 
 ---
 
 ## Development Workflow
 
-### 1. Pick a Task
+1. **Create a feature branch** from `main`:
+   ```bash
+   git checkout -b minions/<role>/<short-summary>
+   ```
+   Example: `minions/engineer/add-toffoli-gate`
 
-See [TASKS.md](TASKS.md) for the list of pending work. Tasks are prioritized and include acceptance criteria.
+2. **Make your changes** and commit with clear messages:
+   ```bash
+   git commit -m "feat: add Toffoli gate support"
+   ```
 
-For detailed assignment workflow, see [TASK_ASSIGNMENT_POLICY.md](TASK_ASSIGNMENT_POLICY.md).
+3. **Run tests and linting** locally (see sections below).
 
-### 2. Create a Feature Branch
+4. **Push your branch** and open a pull request:
+   ```bash
+   git push origin minions/<role>/<short-summary>
+   ```
+
+5. **Request review** from the team. At least one peer review is required before merge.
+
+6. **Address feedback** and push updates to the same branch.
+
+7. **Merge** only after peer approval and CI passes.
+
+---
+
+## Running Tests
+
+### Backend Tests
 
 ```bash
-git checkout -b minions/engineer/<TASK-ID>-<short-title>
+cd backend
+npm test
 ```
 
-Example:
+This runs Jest on all test files in `backend/tests/`.
+
+### Frontend Tests
+
 ```bash
-git checkout -b minions/engineer/TASK-001-implement-toffoli-gate
+cd frontend
+npm test
 ```
 
-### 3. Make Changes
+This runs Jest on all test files in `frontend/tests/`.
 
-- Follow the acceptance criteria in the task
-- Write tests for new functionality
-- Update documentation as needed
-- Keep commits atomic and descriptive
+### Watch Mode
 
-### 4. Run Tests and Linting
+To run tests in watch mode (re-run on file changes):
 
 ```bash
 # Backend
 cd backend
-npm test
-npm run lint
-npm run lint:fix  # Auto-fix linting issues
+npm test -- --watch
 
 # Frontend
 cd frontend
-npm test
+npm test -- --watch
+```
+
+---
+
+## Linting
+
+### Run ESLint
+
+```bash
+cd backend
 npm run lint
 ```
 
-### 5. Commit and Push
+This checks code style and common errors in `src/` and `tests/`.
+
+### Auto-fix Linting Issues
 
 ```bash
-git add .
-git commit -m "feat: TASK-001 implement toffoli gate"
-git push origin minions/engineer/TASK-001-implement-toffoli-gate
+cd backend
+npm run lint:fix
 ```
 
-### 6. Open a Pull Request
-
-- Title: `feat: TASK-001 implement toffoli gate`
-- Description: Include context, changes, and testing approach
-- Reference the task ID
-- Link to any related issues
-
-### 7. Code Review
-
-- A peer engineer reviews your code first
-- Address feedback in new commits
-- Do not merge your own work
-- Wait for operator approval before merge
+This automatically fixes many linting issues (indentation, semicolons, etc.).
 
 ---
 
 ## Task Assignment and Sprint Participation
 
-### Claiming a Task
+All tasks are tracked in `TASKS.md`. Task assignments follow the policy in `TASK_ASSIGNMENT_POLICY.md`.
 
-1. Review [TASKS.md](TASKS.md) and find an unassigned task
-2. Check the acceptance criteria and effort estimate
-3. Claim the task by creating a feature branch or commenting on the issue
-4. Update TASKS.md with your name and assignment date
+**Before starting work:**
+1. Check `TASKS.md` for available tasks matching your role.
+2. Assign yourself to a task (update the "Assigned To" field).
+3. Update the task status as you progress ("In Progress" → "In Review" → "Done").
+4. Link your PR to the task in the PR description.
 
-### Task Workflow
+**Example PR description:**
+```
+Closes TASK-001: Implement Toffoli Gate
 
-See [TASK_ASSIGNMENT_POLICY.md](TASK_ASSIGNMENT_POLICY.md) for:
-- Full task lifecycle (Unassigned → Assigned → In Progress → Review → Done)
-- Engineer responsibilities
-- Communication and escalation procedures
-- Examples of task assignment and PR submission
-
-### Effort Estimates
-
-Tasks include story point estimates (3, 5, 8 points). Use these as guidance:
-- **3 points** — 1–2 hours of focused work
-- **5 points** — 2–4 hours of work
-- **8 points** — 1–2 days of work
-
-If your actual effort differs significantly, notify the operator.
+## Summary
+Adds support for the Toffoli (CCNOT) gate to the quantum simulator.
+...
+```
 
 ---
 
 ## Submitting a Pull Request
 
-### PR Title
+1. **Title:** Use conventional commit format:
+   - `feat: add Toffoli gate`
+   - `fix: correct CNOT matrix calculation`
+   - `docs: update README with new gates`
+   - `test: add integration tests for rate limiting`
 
-Use conventional commit format:
-- `feat: <description>` — new feature
-- `fix: <description>` — bug fix
-- `docs: <description>` — documentation only
-- `test: <description>` — tests only
-- `refactor: <description>` — code refactoring
+2. **Description:** Include:
+   - What problem does this solve?
+   - How does it solve it?
+   - Any breaking changes?
+   - Link to related tasks (e.g., "Closes TASK-001")
 
-Example:
-```
-feat: TASK-001 implement toffoli gate
-```
+3. **Tests:** Ensure all tests pass locally:
+   ```bash
+   npm test
+   npm run lint
+   ```
 
-### PR Description
-
-Include:
-1. **Context** — What problem does this solve?
-2. **Changes** — What did you change?
-3. **Acceptance Criteria** — Which criteria are met?
-4. **Testing** — How did you test this?
-5. **Files** — What files were modified?
-
-Template:
-```markdown
-## Task
-TASK-001: Implement Toffoli Gate
-
-## Context
-The Toffoli gate is a fundamental three-qubit gate needed for quantum error correction.
-
-## Changes
-- Added Toffoli gate implementation in `backend/src/quantum/gates.js`
-- Implemented three-qubit gate logic with matrix representation
-- Added comprehensive unit tests
-
-## Acceptance Criteria
-- [x] Toffoli gate correctly applies to three qubits
-- [x] Unit tests cover all input combinations
-- [x] Documentation updated in gates.js
-- [x] Integration test passes with circuit runner
-
-## Testing
-```bash
-npm test
-npm run lint
-```
-All tests pass. Coverage maintained at 85%.
-
-## Files Changed
-- `backend/src/quantum/gates.js`
-- `backend/tests/gates.test.js`
-```
-
-### Checklist
-
-Before submitting:
-- [ ] Tests pass locally
-- [ ] Linting passes
-- [ ] Acceptance criteria met
-- [ ] Documentation updated
-- [ ] No secrets or `.env` files committed
-- [ ] Branch name follows convention
-- [ ] PR title is descriptive
+4. **Review:** Request review from at least one peer. Address all feedback before merge.
 
 ---
 
@@ -313,146 +280,48 @@ Before submitting:
 
 ### JavaScript/TypeScript
 
-- Use `const` by default, `let` if needed, avoid `var`
-- Use arrow functions for callbacks
-- Use template literals for string interpolation
-- Use async/await over promises
-- Add JSDoc comments for public functions
+- Use **ES6+** syntax (const/let, arrow functions, template literals)
+- Follow **ESLint** rules (run `npm run lint` to check)
+- Use **meaningful variable names** (avoid `x`, `y`, `tmp`)
+- Add **JSDoc comments** for functions:
+  ```javascript
+  /**
+   * Applies a quantum gate to a qubit.
+   * @param {Array} state - The quantum state vector
+   * @param {number} qubit - The target qubit index
+   * @param {Array} gate - The gate matrix
+   * @returns {Array} The new state vector
+   */
+  function applyGate(state, qubit, gate) {
+    // ...
+  }
+  ```
 
-Example:
-```javascript
-/**
- * Apply a quantum gate to a qubit.
- * @param {Array} state - Qubit state vector
- * @param {string} gate - Gate name (e.g., 'X', 'H')
- * @returns {Array} New state after gate application
- */
-const applyGate = async (state, gate) => {
-  const result = await simulator.apply(state, gate);
-  return result;
-};
-```
+### Tests
 
-### Python
-
-- Follow PEP 8 style guide
-- Use type hints for function signatures
-- Use docstrings for modules and functions
-- Use f-strings for formatting
-
-### Testing
-
-- Write tests for all new functionality
-- Aim for 80%+ code coverage
-- Use descriptive test names
-- Test both happy path and error cases
-
-Example:
-```javascript
-describe('Toffoli Gate', () => {
-  it('should apply correctly to three qubits', () => {
-    const state = [1, 0, 0, 0, 0, 0, 0, 0];
-    const result = applyToffoli(state, 0, 1, 2);
-    expect(result).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
+- Write tests for all new functions and API endpoints
+- Use **descriptive test names**:
+  ```javascript
+  test('should apply Hadamard gate to qubit 0', () => {
+    // ...
   });
+  ```
+- Aim for **>80% code coverage** on new code
 
-  it('should throw on invalid qubit indices', () => {
-    expect(() => applyToffoli([1, 0], 0, 1, 5)).toThrow();
-  });
-});
-```
+### Commits
 
-### Documentation
-
-- Add comments for complex logic
-- Update README.md if adding features
-- Add inline examples for public APIs
-- Link to relevant ADRs or issues
-
----
-
-## Running Tests
-
-### Backend
-
-```bash
-cd backend
-
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm test -- --watch
-
-# Run tests with coverage
-npm test -- --coverage
-
-# Run specific test file
-npm test -- gates.test.js
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm test -- --watch
-
-# Run tests with coverage
-npm test -- --coverage
-```
-
-### Linting
-
-```bash
-# Backend
-cd backend
-npm run lint           # Check for issues
-npm run lint:fix       # Auto-fix issues
-
-# Frontend
-cd frontend
-npm run lint           # Check for issues
-npm run lint:fix       # Auto-fix issues
-```
+- Keep commits **small and focused** (one feature per commit)
+- Use **clear commit messages**:
+  - ✅ `feat: add Toffoli gate implementation`
+  - ❌ `fix stuff` or `update code`
 
 ---
 
 ## Questions and Help
 
-### Getting Help
+- **Questions about a task?** Comment on the task in `TASKS.md` or open a GitHub issue.
+- **Need help setting up?** Check `README.md` or ask in the project discussions.
+- **Found a bug?** Open an issue with a clear description and steps to reproduce.
+- **Have a feature idea?** Open an issue to discuss before implementing.
 
-1. **Check existing issues** — Your question may already be answered
-2. **Read the docs** — See README.md, ARCHITECTURE.md, and FRONTEND.md
-3. **Ask in PR comments** — Tag reviewers with specific questions
-4. **Open an issue** — For bugs or feature requests
-5. **Contact the operator** — For policy or process questions
-
-### Reporting Bugs
-
-Include:
-- Steps to reproduce
-- Expected behavior
-- Actual behavior
-- Environment (Node version, OS, etc.)
-- Screenshots or logs if applicable
-
-### Suggesting Features
-
-Include:
-- Use case or problem statement
-- Proposed solution
-- Alternatives considered
-- Potential impact on existing code
-
----
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the same license as the project (MIT).
-
-Thank you for contributing to quantumanic! 🚀
+Thank you for contributing!
