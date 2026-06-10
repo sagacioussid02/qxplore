@@ -1,207 +1,257 @@
 /**
  * Quantum Circuit Simulator
  *
- * This module provides a statevector-based quantum circuit simulator.
- * It is used by the Express routing layer (backend/src/api/routes.js) to execute
- * quantum circuits when the Python engine is unavailable or as a fallback.
+ * This module implements the quantum simulation engine for the Express.js routing layer.
+ * It is a prerequisite for the /api/circuit/run endpoint's error handling and response validation.
  *
- * Supported gates: X, H, Z, Y, S, T, CNOT, SWAP, Toffoli
- * Measurement: Collapse statevector and sample outcomes.
+ * The simulator executes quantum circuits by:
+ * 1. Parsing gate definitions (X, H, Z, Y, S, T, CNOT, SWAP, Toffoli)
+ * 2. Building the unitary matrix for the circuit
+ * 3. Applying the circuit to an initial quantum state
+ * 4. Computing measurement probabilities and statevector output
+ *
+ * Error handling: This module throws JavaScript errors on invalid input or computation failure.
+ * The routing layer (routes.js) catches these errors and returns appropriate HTTP status codes.
  */
 
 const math = require('mathjs');
 
 /**
- * Initialize a statevector for n qubits (all in |0⟩ state).
- * @param {number} numQubits
- * @returns {Array} Complex vector of length 2^numQubits
+ * Single-qubit gate definitions as unitary matrices.
  */
-function initializeStatevector(numQubits) {
-  const size = Math.pow(2, numQubits);
-  const sv = new Array(size).fill(0);
-  sv[0] = 1; // |00...0⟩
-  return sv;
-}
+const SINGLE_QUBIT_GATES = {
+  X: [
+    [0, 1],
+    [1, 0],
+  ],
+  H: [
+    [1 / Math.sqrt(2), 1 / Math.sqrt(2)],
+    [1 / Math.sqrt(2), -1 / Math.sqrt(2)],
+  ],
+  Z: [
+    [1, 0],
+    [0, -1],
+  ],
+  Y: [
+    [0, math.complex(0, -1)],
+    [math.complex(0, 1), 0],
+  ],
+  S: [
+    [1, 0],
+    [0, math.complex(0, 1)],
+  ],
+  T: [
+    [1, 0],
+    [0, math.exp(math.complex(0, Math.PI / 4))],
+  ],
+};
 
 /**
- * Apply a single-qubit gate to the statevector.
- * @param {Array} statevector
- * @param {string} gate - Gate name (X, H, Z, Y, S, T)
- * @param {number} target - Target qubit index
- * @param {number} numQubits - Total number of qubits
- * @returns {Array} Updated statevector
+ * Pauli matrices for multi-qubit gate construction.
  */
-function applySingleQubitGate(statevector, gate, target, numQubits) {
-  const size = statevector.length;
-  const newSv = new Array(size).fill(0);
+const PAULI_I = [
+  [1, 0],
+  [0, 1],
+];
 
-  // Define gate matrices
-  const gates = {
-    X: [[0, 1], [1, 0]],
-    H: [[1 / Math.sqrt(2), 1 / Math.sqrt(2)], [1 / Math.sqrt(2), -1 / Math.sqrt(2)]],
-    Z: [[1, 0], [0, -1]],
-    Y: [[0, math.complex(0, -1)], [math.complex(0, 1), 0]],
-    S: [[1, 0], [0, math.complex(0, 1)]],
-    T: [[1, 0], [0, math.exp(math.complex(0, Math.PI / 4))]]
-  };
+const PAULI_X = SINGLE_QUBIT_GATES.X;
 
-  const matrix = gates[gate];
-  if (!matrix) throw new Error(`Unknown gate: ${gate}`);
+/**
+ * Build a full unitary matrix for a single-qubit gate applied to a specific qubit.
+ * @param {string} gateName - Name of the gate (e.g., 'H', 'X')
+ * @param {number} targetQubit - Index of the target qubit
+ * @param {number} numQubits - Total number of qubits in the circuit
+ * @returns {Array} Full unitary matrix
+ */
+function buildSingleQubitGate(gateName, targetQubit, numQubits) {
+  const gateMatrix = SINGLE_QUBIT_GATES[gateName];
+  if (!gateMatrix) {
+    throw new Error(`Unknown gate: ${gateName}`);
+  }
 
-  // Apply gate: iterate over all basis states
-  for (let i = 0; i < size; i++) {
-    const bit = (i >> target) & 1;
-    const j = i ^ (1 << target); // Flip target bit
-
-    const m00 = matrix[0][0];
-    const m01 = matrix[0][1];
-    const m10 = matrix[1][0];
-    const m11 = matrix[1][1];
-
-    if (bit === 0) {
-      newSv[i] = math.add(newSv[i], math.multiply(m00, statevector[i]));
-      newSv[i] = math.add(newSv[i], math.multiply(m01, statevector[j]));
+  let fullMatrix = 1;
+  for (let i = 0; i < numQubits; i++) {
+    if (i === targetQubit) {
+      fullMatrix = math.kron(fullMatrix, gateMatrix);
     } else {
-      newSv[i] = math.add(newSv[i], math.multiply(m10, statevector[i ^ (1 << target)]));
-      newSv[i] = math.add(newSv[i], math.multiply(m11, statevector[j]));
+      fullMatrix = math.kron(fullMatrix, PAULI_I);
     }
   }
-
-  return newSv;
+  return fullMatrix;
 }
 
 /**
- * Apply a two-qubit gate (CNOT, SWAP) to the statevector.
- * @param {Array} statevector
- * @param {string} gate - Gate name (CNOT, SWAP)
- * @param {number} control - Control qubit (for CNOT)
- * @param {number} target - Target qubit
- * @param {number} numQubits - Total number of qubits
- * @returns {Array} Updated statevector
+ * Build a CNOT gate (controlled NOT) matrix.
+ * @param {number} controlQubit - Index of the control qubit
+ * @param {number} targetQubit - Index of the target qubit
+ * @param {number} numQubits - Total number of qubits in the circuit
+ * @returns {Array} Full unitary matrix
  */
-function applyTwoQubitGate(statevector, gate, control, target, numQubits) {
-  const size = statevector.length;
-  const newSv = statevector.slice();
-
-  if (gate === 'CNOT' || gate === 'CX') {
-    // CNOT: flip target if control is 1
-    for (let i = 0; i < size; i++) {
-      const controlBit = (i >> control) & 1;
-      if (controlBit === 1) {
-        const j = i ^ (1 << target);
-        [newSv[i], newSv[j]] = [newSv[j], newSv[i]];
-      }
-    }
-  } else if (gate === 'SWAP') {
-    // SWAP: exchange target and control qubits
-    for (let i = 0; i < size; i++) {
-      const controlBit = (i >> control) & 1;
-      const targetBit = (i >> target) & 1;
-      if (controlBit !== targetBit) {
-        const j = (i ^ (1 << control)) ^ (1 << target);
-        [newSv[i], newSv[j]] = [newSv[j], newSv[i]];
-      }
-    }
-  } else {
-    throw new Error(`Unknown two-qubit gate: ${gate}`);
+function buildCNOTGate(controlQubit, targetQubit, numQubits) {
+  if (controlQubit === targetQubit) {
+    throw new Error('CNOT control and target qubits must be different');
   }
 
-  return newSv;
+  // For simplicity, construct CNOT as a full matrix
+  const dim = Math.pow(2, numQubits);
+  const cnot = math.zeros(dim, dim);
+
+  for (let i = 0; i < dim; i++) {
+    const bitString = i.toString(2).padStart(numQubits, '0');
+    const bits = bitString.split('').map(Number);
+
+    let j = i;
+    if (bits[controlQubit] === 1) {
+      // Flip the target qubit
+      bits[targetQubit] = 1 - bits[targetQubit];
+      j = parseInt(bits.join(''), 2);
+    }
+
+    cnot.set([i, j], 1);
+  }
+
+  return cnot;
 }
 
 /**
- * Compute measurement probabilities from statevector.
- * @param {Array} statevector
- * @returns {Object} Probabilities for each basis state
+ * Build a SWAP gate matrix.
+ * @param {number} qubit1 - Index of the first qubit
+ * @param {number} qubit2 - Index of the second qubit
+ * @param {number} numQubits - Total number of qubits in the circuit
+ * @returns {Array} Full unitary matrix
  */
-function computeProbabilities(statevector) {
-  const probs = {};
-  for (let i = 0; i < statevector.length; i++) {
-    const amplitude = statevector[i];
-    const prob = math.pow(math.abs(amplitude), 2);
-    if (prob > 1e-10) {
-      probs[i.toString(2).padStart(Math.log2(statevector.length), '0')] = parseFloat(prob.toFixed(6));
-    }
+function buildSWAPGate(qubit1, qubit2, numQubits) {
+  if (qubit1 === qubit2) {
+    throw new Error('SWAP qubits must be different');
   }
-  return probs;
+
+  const dim = Math.pow(2, numQubits);
+  const swap = math.zeros(dim, dim);
+
+  for (let i = 0; i < dim; i++) {
+    const bitString = i.toString(2).padStart(numQubits, '0');
+    const bits = bitString.split('').map(Number);
+
+    // Swap the two qubits
+    const temp = bits[qubit1];
+    bits[qubit1] = bits[qubit2];
+    bits[qubit2] = temp;
+
+    const j = parseInt(bits.join(''), 2);
+    swap.set([i, j], 1);
+  }
+
+  return swap;
 }
 
 /**
- * Sample measurement outcomes from probabilities.
- * @param {Object} probabilities
- * @param {number} shots
- * @returns {Object} Counts for each outcome
+ * Build a Toffoli gate (controlled-controlled-NOT) matrix.
+ * @param {number} control1 - Index of the first control qubit
+ * @param {number} control2 - Index of the second control qubit
+ * @param {number} targetQubit - Index of the target qubit
+ * @param {number} numQubits - Total number of qubits in the circuit
+ * @returns {Array} Full unitary matrix
  */
-function sampleFromProbabilities(probabilities, shots) {
+function buildToffoliGate(control1, control2, targetQubit, numQubits) {
+  if (
+    control1 === control2 ||
+    control1 === targetQubit ||
+    control2 === targetQubit
+  ) {
+    throw new Error('Toffoli qubits must all be different');
+  }
+
+  const dim = Math.pow(2, numQubits);
+  const toffoli = math.zeros(dim, dim);
+
+  for (let i = 0; i < dim; i++) {
+    const bitString = i.toString(2).padStart(numQubits, '0');
+    const bits = bitString.split('').map(Number);
+
+    let j = i;
+    if (bits[control1] === 1 && bits[control2] === 1) {
+      // Flip the target qubit
+      bits[targetQubit] = 1 - bits[targetQubit];
+      j = parseInt(bits.join(''), 2);
+    }
+
+    toffoli.set([i, j], 1);
+  }
+
+  return toffoli;
+}
+
+/**
+ * Run a quantum circuit and return measurement results.
+ * @param {Object} circuit - Circuit definition with gates and numQubits
+ * @param {number} shots - Number of measurement shots (default: 1024)
+ * @returns {Object} Result with counts and statevector
+ */
+function runCircuit(circuit, shots = 1024) {
+  if (!circuit || !circuit.gates || !circuit.numQubits) {
+    throw new Error('Invalid circuit definition');
+  }
+
+  const { gates, numQubits } = circuit;
+  const dim = Math.pow(2, numQubits);
+
+  // Initialize to |0...0⟩ state
+  const initialState = math.zeros(dim, 1);
+  initialState.set([0, 0], 1);
+
+  let state = initialState;
+
+  // Apply each gate in sequence
+  for (const gateObj of gates) {
+    const { gate, target, control, control1, control2 } = gateObj;
+
+    let gateMatrix;
+    if (gate === 'CNOT' || gate === 'CX') {
+      gateMatrix = buildCNOTGate(control, target, numQubits);
+    } else if (gate === 'SWAP') {
+      gateMatrix = buildSWAPGate(control, target, numQubits);
+    } else if (gate === 'Toffoli') {
+      gateMatrix = buildToffoliGate(control1, control2, target, numQubits);
+    } else {
+      gateMatrix = buildSingleQubitGate(gate, target, numQubits);
+    }
+
+    state = math.multiply(gateMatrix, state);
+  }
+
+  // Extract statevector
+  const statevector = state.toArray().flat();
+
+  // Compute measurement probabilities
+  const probabilities = statevector.map((amplitude) => {
+    const mag = math.abs(amplitude);
+    return mag * mag;
+  });
+
+  // Sample from the distribution
   const counts = {};
-  for (let i = 0; i < shots; i++) {
-    const rand = Math.random();
-    let cumulative = 0;
-    let outcome = Object.keys(probabilities)[Object.keys(probabilities).length - 1];
-    for (const [state, prob] of Object.entries(probabilities)) {
-      cumulative += prob;
-      if (rand < cumulative) {
-        outcome = state;
+  for (let shot = 0; shot < shots; shot++) {
+    let rand = Math.random();
+    let cumProb = 0;
+    for (let i = 0; i < probabilities.length; i++) {
+      cumProb += probabilities[i];
+      if (rand <= cumProb) {
+        const bitString = i.toString(2).padStart(numQubits, '0');
+        counts[bitString] = (counts[bitString] || 0) + 1;
         break;
       }
     }
-    counts[outcome] = (counts[outcome] || 0) + 1;
   }
-  return counts;
-}
-
-/**
- * Execute a quantum circuit.
- * @param {Array} circuit - Array of gate operations
- * @param {number} numQubits - Number of qubits
- * @param {number} shots - Number of measurement shots
- * @returns {Object} { counts, statevector, executionTime }
- */
-function executeCircuit(circuit, numQubits, shots = 1000) {
-  const startTime = Date.now();
-
-  let statevector = initializeStatevector(numQubits);
-
-  for (const op of circuit) {
-    const { gate, target, control } = op;
-
-    if (gate === 'measure') {
-      // Measurement is handled separately; skip here
-      continue;
-    }
-
-    if (control !== undefined) {
-      // Two-qubit gate
-      statevector = applyTwoQubitGate(statevector, gate, control, target, numQubits);
-    } else {
-      // Single-qubit gate
-      statevector = applySingleQubitGate(statevector, gate, target, numQubits);
-    }
-  }
-
-  // Compute measurement probabilities
-  const probabilities = computeProbabilities(statevector);
-  const counts = sampleFromProbabilities(probabilities, shots);
-
-  const executionTime = (Date.now() - startTime) / 1000;
 
   return {
     counts,
-    statevector: statevector.map(c => {
-      if (typeof c === 'object' && c.re !== undefined) {
-        return { re: parseFloat(c.re.toFixed(6)), im: parseFloat(c.im.toFixed(6)) };
-      }
-      return parseFloat(c.toFixed(6));
-    }),
-    executionTime
+    statevector: statevector.map((v) =>
+      typeof v === 'object' ? { re: v.re, im: v.im } : v
+    ),
+    shots,
   };
 }
 
 module.exports = {
-  initializeStatevector,
-  applySingleQubitGate,
-  applyTwoQubitGate,
-  computeProbabilities,
-  sampleFromProbabilities,
-  executeCircuit
+  runCircuit,
 };
