@@ -70,6 +70,81 @@ quantumanic/
 
 The purpose and deployment strategy for this backend should be documented in `frontend/backend/README.md`.
 
+## Deployment Topology
+
+The following diagram illustrates how the quantumanic services are organized and deployed:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         PRODUCTION ENVIRONMENT                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  ROOT NPM DEPENDENCIES (Shared Tooling)                      │   │
+│  │  ├─ Linting (ESLint)                                         │   │
+│  │  ├─ Testing (Jest, React Testing Library)                   │   │
+│  │  ├─ Build tooling (Vite)                                    │   │
+│  │  └─ Shared utilities                                        │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                        │
+│                              ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  FRONTEND BUILD ARTIFACT (Vite Output)                       │   │
+│  │  ├─ React 18+ TypeScript components                          │   │
+│  │  ├─ Quantum circuit UI builder                               │   │
+│  │  ├─ Static assets (HTML, CSS, JS bundles)                   │   │
+│  │  └─ Served by Express.js static middleware                  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                        │
+│                              ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)             │   │
+│  │  ├─ HTTP server on port 3000 (configurable)                 │   │
+│  │  ├─ Rate limiting middleware (100 req/15min general)         │   │
+│  │  ├─ Circuit execution rate limit (10 req/15min)             │   │
+│  │  ├─ Input validation and security controls                  │   │
+│  │  ├─ Routes:                                                  │   │
+│  │  │  ├─ POST /api/circuit/run → Python engine                │   │
+│  │  │  ├─ GET /health → Service health check                   │   │
+│  │  │  └─ Static files → Frontend build artifact               │   │
+│  │  └─ Error handling and response formatting                  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                        │
+│                              │ HTTP/JSON                              │
+│                              │ (Request validation)                   │
+│                              ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  PYTHON SERVICE BOUNDARY (Quantum Simulation Engine)         │   │
+│  │  ├─ Quantum circuit simulator (mathjs-based)                 │   │
+│  │  ├─ Gate implementations (X, H, Z, Y, S, T)                 │   │
+│  │  ├─ Multi-qubit gate support (CNOT, SWAP, Toffoli)          │   │
+│  │  ├─ Measurement and probability calculations                │   │
+│  │  └─ Response formatting (JSON output)                       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              │                                        │
+│                              │ JSON Response                          │
+│                              │ (Circuit results)                      │
+│                              ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  FRONTEND CLIENT (Browser)                                   │   │
+│  │  ├─ Displays circuit results                                 │   │
+│  │  ├─ Renders probability distributions                        │   │
+│  │  └─ Provides circuit builder UI                              │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Service Communication Flow
+
+1. **Frontend Build** → Root npm dependencies compile TypeScript and bundle React components via Vite
+2. **Frontend Serving** → Express.js serves the built frontend artifacts as static files
+3. **Circuit Execution** → Frontend sends `POST /api/circuit/run` to Express.js with circuit definition
+4. **Request Validation** → Express.js validates input, applies rate limiting, and forwards to Python engine
+5. **Simulation** → Python engine executes the quantum circuit and calculates measurement probabilities
+6. **Response** → Python engine returns JSON results; Express.js formats and returns to frontend
+7. **Display** → Frontend renders results in the UI
+
 ## Deployment
 
 ### Development
@@ -87,11 +162,22 @@ The API will be available at `http://localhost:3000`.
 
 ### Production
 
-Deploy the `backend/` service to your cloud platform. Ensure:
+Deploy the `backend/` service to your cloud platform. The deployment process:
+
+1. **Build frontend artifacts** — Compile TypeScript and bundle React components
+2. **Install backend dependencies** — Resolve npm packages for Express.js service
+3. **Start Express.js service** — Listen on configured port (default 3000)
+4. **Serve frontend** — Express.js static middleware serves built frontend to clients
+5. **Route API requests** — Express.js forwards `/api/circuit/run` requests to Python engine
+6. **Execute simulations** — Python engine processes quantum circuits
+7. **Return results** — Express.js formats and returns JSON responses to frontend
+
+Ensure:
 - Environment variables are properly configured (see `backend/.env.example`)
 - Rate limiting is enabled
 - Health checks are configured
 - Logs are collected and monitored
+- Python service is accessible to Express.js (local or remote)
 
 ## Security
 
@@ -111,37 +197,13 @@ Both `backend/requirements.txt` and `frontend/backend/requirements.txt` should b
 ## Development Workflow
 
 1. Create a feature branch: `minions/<role>/<short-summary>`
-2. Make changes to the appropriate service
-3. Run tests: `npm test` (backend) or `pytest` (if applicable)
-4. Open a pull request targeting `main`
-5. Address code review feedback
-6. Merge after approval and CI passes
-
-## Testing
-
-### Backend Tests
-
-```bash
-cd backend
-npm test
-```
-
-Tests cover:
-- Quantum gate operations
-- Circuit simulation
-- Rate limiting
-- API endpoints
-
-## Future Considerations
-
-1. **Dual-Backend Consolidation** — Clarify the purpose of `frontend/backend/` and consolidate if it is legacy or unused.
-2. **Multi-Qubit Gates** — Extend the simulator to support CNOT and SWAP gates (out of scope for Sprint 0).
-3. **Performance Optimization** — Profile and optimize the quantum simulator for larger circuits.
-4. **Monitoring and Observability** — Add structured logging and metrics collection.
+2. Make changes and test locally
+3. Submit a pull request for peer review
+4. After peer approval and CI passes, operator reviews and merges
+5. Changes are deployed via `deploy.yml`
 
 ## References
 
+- [ADR 0001: Dual-Backend Architecture](docs/adr/0001-dual-backend-architecture.md) — Decision rationale for backend structure
 - [README.md](README.md) — Project overview and quick start
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guidelines
-- [ADR 0001: Dual-Backend Architecture](docs/adr/0001-dual-backend-architecture.md) — Architectural decision record
-- [backend/README.md](backend/README.md) — Primary backend documentation
