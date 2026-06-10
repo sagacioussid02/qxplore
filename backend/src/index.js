@@ -1,6 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const validateContractMiddleware = require('./middleware/validateContract');
+const routes = require('./api/routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
