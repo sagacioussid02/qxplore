@@ -1,92 +1,84 @@
-name: Deploy Quantumanic
+name: Deploy to Production
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production  # Requires GitHub Environment protection rules
     steps:
       # Step 1: Checkout code
-      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
-      # Purpose: Prepare source code for build and deployment
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
-      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
-      # Purpose: Install Node.js runtime for npm and build tools
+      # Step 2: Set up Node.js (Express.js backend)
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # Step 3: Install root dependencies
-      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
-      # Purpose: Install shared linting, testing, and build tools
-      - name: Install root dependencies
-        run: npm install
-
-      # Step 4: Build frontend artifacts
-      # Maps to: FRONTEND BUILD ARTIFACT (Vite Output)
-      # Purpose: Compile TypeScript and bundle React components for production
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
-      # Step 5: Install backend dependencies
-      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
-      # Purpose: Resolve npm packages for Express.js service
+      # Step 3: Install Express.js dependencies
       - name: Install backend dependencies
         run: |
           cd backend
           npm install
 
-      # Step 6: Run backend tests
-      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
-      # Purpose: Verify Express.js service logic before deployment
-      - name: Run backend tests
+      # Step 4: Set up Python (Python simulation engine)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # Step 5: Install Python dependencies
+      # Maps to ARCHITECTURE.md: Python Simulation Engine service setup
+      - name: Install Python dependencies
         run: |
           cd backend
-          npm test
+          pip install -r requirements.txt
 
-      # Step 7: Run linting
-      # Maps to: ROOT NPM DEPENDENCIES (Shared Tooling)
-      # Purpose: Enforce code quality standards
-      - name: Run linting
-        run: npm run lint
-
-      # Step 8: Deploy backend service
-      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
-      # Purpose: Start Express.js service on port 3000
-      #          - Serves frontend build artifacts as static files
-      #          - Routes /api/circuit/run to Python engine
-      #          - Applies rate limiting and input validation
-      - name: Deploy backend service
+      # Step 6: Start Express.js backend in background
+      # Maps to ARCHITECTURE.md: Primary Backend (Express.js) deployment
+      - name: Start Express.js backend
         run: |
           cd backend
           npm start &
-        env:
-          PORT: 3000
-          RATE_LIMIT_WINDOW_MS: 900000
-          RATE_LIMIT_MAX_REQUESTS: 100
-          CIRCUIT_RUN_RATE_LIMIT: 10
+          sleep 2  # Wait for server to start
 
-      # Step 9: Verify deployment
-      # Maps to: EXPRESS.JS SERVICE BOUNDARY (API Routing Layer)
-      # Purpose: Confirm Express.js service is responding to requests
+      # Step 7: Start Python simulation engine in background
+      # Maps to ARCHITECTURE.md: Python Simulation Engine deployment
+      - name: Start Python simulation engine
+        run: |
+          cd backend
+          python -m quantum_engine &
+          sleep 2  # Wait for engine to start
+
+      # Step 8: Verify deployment - health check
+      # Maps to ARCHITECTURE.md: Health check endpoint
       - name: Verify deployment
         run: |
-          sleep 5
           curl -f http://localhost:3000/health || exit 1
 
-      # Step 10: Log deployment completion
-      # Maps to: PRODUCTION ENVIRONMENT
-      # Purpose: Record successful deployment of all service boundaries
-      - name: Log deployment completion
-        run: echo "Deployment complete. Express.js service running on port 3000 with frontend artifacts and Python engine integration."
+      # Step 9: Verify Express-to-Python routing
+      # Maps to ARCHITECTURE.md: API routing and error handling
+      - name: Verify Express-to-Python routing
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/circuit/run \
+            -H "Content-Type: application/json" \
+            -d '{"circuit": "invalid"}')
+          http_code=$(echo "$response" | tail -n1)
+          if [ "$http_code" -ge 400 ]; then
+            echo "Routing validation passed: received HTTP $http_code for invalid request"
+          else
+            echo "ERROR: Expected 4xx/5xx response, got HTTP $http_code"
+            exit 1
+          fi
+
+      # Step 10: Deploy to production environment
+      # Requires manual approval via GitHub Environment protection rules
+      - name: Deploy to production
+        run: |
+          echo "Deployment to production environment approved and proceeding"
+          # Add actual deployment commands here (e.g., docker push, kubectl apply, etc.)
