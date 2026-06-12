@@ -1,0 +1,112 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install
+
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          # NOTE: PE-2 audit task (sprint plan) will consolidate duplicate requirements.txt files.
+          # This path (backend/requirements.txt) is the authoritative source for production deployment.
+          # See ARCHITECTURE.md for details on the known duplicate-file bug and consolidation timeline.
+          pip install -r requirements.txt
+
+      - name: Start Express.js service
+        run: |
+          cd backend
+          npm start > express.log 2>&1 &
+          echo $! > express.pid
+          sleep 3
+
+      - name: Capture Express startup logs
+        if: always()
+        run: |
+          if [ -f backend/express.log ]; then
+            echo "=== Express.js startup logs ==="
+            cat backend/express.log
+          fi
+
+      - name: Start Python simulation engine
+        run: |
+          cd backend
+          python -m simulation_engine > python.log 2>&1 &
+          echo $! > python.pid
+          sleep 3
+
+      - name: Capture Python startup logs
+        if: always()
+        run: |
+          if [ -f backend/python.log ]; then
+            echo "=== Python service startup logs ==="
+            cat backend/python.log
+          fi
+
+      - name: Verify Express health endpoint
+        run: |
+          curl -f http://localhost:3000/health || exit 1
+
+      - name: Verify Express-to-Python routing contract (circuit execution)
+        run: |
+          # Test that Express-to-Python routing returns proper HTTP error codes, not silent 200 with empty body.
+          # This validates the fix for the sprint plan bug: "Fix silent Express-to-Python routing failures returning 200 with empty or malformed payload".
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/circuit/run \
+            -H "Content-Type: application/json" \
+            -d '{"circuit": "invalid_circuit_data"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          # Verify we get a 4xx/5xx error, not 200 with empty body
+          if [ "$HTTP_CODE" = "200" ] && [ -z "$BODY" ]; then
+            echo "ERROR: Silent routing failure detected (200 with empty body)"
+            exit 1
+          fi
+          
+          if [ "$HTTP_CODE" -lt 400 ]; then
+            echo "ERROR: Expected 4xx/5xx error for malformed request, got $HTTP_CODE"
+            exit 1
+          fi
+          
+          echo "✓ Express-to-Python routing contract validated (HTTP $HTTP_CODE)"
+
+      - name: Verify Python service is reachable
+        run: |
+          # Confirm Python service responds to a valid circuit request
+          curl -f -X POST http://localhost:3000/api/circuit/run \
+            -H "Content-Type: application/json" \
+            -d '{"gates": ["H"], "qubits": 1}' || exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f backend/express.pid ]; then
+            kill $(cat backend/express.pid) || true
+          fi
+          if [ -f backend/python.pid ]; then
+            kill $(cat backend/python.pid) || true
+          fi

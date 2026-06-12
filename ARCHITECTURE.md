@@ -5,14 +5,14 @@
 Quantumanic is a quantum computing simulator and API service. The project consists of:
 
 1. **Frontend** — Web-based user interface (JavaScript/Node.js)
-2. **Backend** — Quantum circuit API service (Express.js + mathjs)
+2. **Backend** — Quantum circuit API service (Express.js + Python simulation engine)
 
 ## Directory Structure
 
 ```
 quantumanic/
 ├── backend/                    # Primary API service
-│   ├── requirements.txt        # Python dependencies (if applicable)
+│   ├── requirements.txt        # Python dependencies (AUTHORITATIVE PATH — see PE-2 audit note below)
 │   ├── src/
 │   │   ├── index.js           # Express app setup
 │   │   ├── api/
@@ -25,7 +25,7 @@ quantumanic/
 │   └── README.md
 ├── frontend/                   # Frontend application
 │   ├── backend/               # Secondary backend (see ADR 0001)
-│   │   └── requirements.txt   # Python dependencies
+│   │   └── requirements.txt   # Python dependencies (DUPLICATE — see PE-2 audit note below)
 │   ├── src/
 │   ├── package.json
 │   └── README.md
@@ -42,13 +42,14 @@ quantumanic/
 
 ### Primary Backend (`backend/`)
 
-**Technology:** Express.js (Node.js) + mathjs
+**Technology:** Express.js (Node.js) + Python simulation engine (numpy/scipy)
 
 **Responsibilities:**
 - Quantum circuit simulation
 - RESTful API for circuit execution
 - Rate limiting and security controls
 - Input validation
+- Express-to-Python routing layer
 
 **Key Endpoints:**
 - `POST /api/circuit/run` — Execute a quantum circuit
@@ -70,6 +71,8 @@ quantumanic/
 
 The purpose and deployment strategy for this backend should be documented in `frontend/backend/README.md`.
 
+**Note on duplicate requirements.txt:** A known active bug (PE-2 in sprint plan) exists where `backend/requirements.txt` and `frontend/backend/requirements.txt` can diverge, causing security patches applied to one file to not ship via the other. The sprint plan tasks `cloud_devops` with auditing which file is authoritative and consolidating before the next deployment. Until PE-2 is resolved, deploy.yml targets `backend/requirements.txt` as the authoritative path.
+
 ## Deployment
 
 ### Development
@@ -78,6 +81,7 @@ The purpose and deployment strategy for this backend should be documented in `fr
 # Install dependencies
 cd backend
 npm install
+pip install -r requirements.txt
 
 # Start the server
 npm start
@@ -89,9 +93,11 @@ The API will be available at `http://localhost:3000`.
 
 Deploy the `backend/` service to your cloud platform. Ensure:
 - Environment variables are properly configured (see `backend/.env.example`)
+- Python dependencies are installed from `backend/requirements.txt` (authoritative path per PE-2 audit)
 - Rate limiting is enabled
 - Health checks are configured
 - Logs are collected and monitored
+- Express-to-Python routing layer returns proper HTTP error codes (4xx/5xx) on failures, not silent 200 responses
 
 ## Security
 
@@ -106,42 +112,12 @@ All circuit parameters and gate definitions are validated before execution.
 
 ### Dependency Management
 
-Both `backend/requirements.txt` and `frontend/backend/requirements.txt` should be regularly audited for security vulnerabilities. See the sprint plan for dependency audit procedures.
+Both `backend/requirements.txt` and `frontend/backend/requirements.txt` should be regularly audited for security vulnerabilities. See the sprint plan (PE-2 task) for dependency audit and consolidation procedures. Until consolidation is complete, deploy.yml targets `backend/requirements.txt` as the authoritative source.
 
 ## Development Workflow
 
 1. Create a feature branch: `minions/<role>/<short-summary>`
-2. Make changes to the appropriate service
-3. Run tests: `npm test` (backend) or `pytest` (if applicable)
-4. Open a pull request targeting `main`
-5. Address code review feedback
-6. Merge after approval and CI passes
-
-## Testing
-
-### Backend Tests
-
-```bash
-cd backend
-npm test
-```
-
-Tests cover:
-- Quantum gate operations
-- Circuit simulation
-- Rate limiting
-- API endpoints
-
-## Future Considerations
-
-1. **Dual-Backend Consolidation** — Clarify the purpose of `frontend/backend/` and consolidate if it is legacy or unused.
-2. **Multi-Qubit Gates** — Extend the simulator to support CNOT and SWAP gates (out of scope for Sprint 0).
-3. **Performance Optimization** — Profile and optimize the quantum simulator for larger circuits.
-4. **Monitoring and Observability** — Add structured logging and metrics collection.
-
-## References
-
-- [README.md](README.md) — Project overview and quick start
-- [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guidelines
-- [ADR 0001: Dual-Backend Architecture](docs/adr/0001-dual-backend-architecture.md) — Architectural decision record
-- [backend/README.md](backend/README.md) — Primary backend documentation
+2. Make changes and test locally
+3. Push to the branch and open a PR targeting `main`
+4. Address peer review feedback
+5. Merge after approval and CI passes
