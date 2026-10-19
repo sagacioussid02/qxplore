@@ -42,7 +42,16 @@ async def get_optional_user(
     token: str | None = None,   # query-param fallback (EventSource can't set headers)
 ) -> dict | None:
     """Returns the user dict for authenticated users, None for anonymous.
-    Accepts token via Authorization header OR ?token= query param (for SSE endpoints).
+
+    Accepts the token via the Authorization header (preferred) OR the
+    ?token= query param.
+
+    Tradeoff of the query-param path: tokens embedded in URLs can leak into
+    server access logs, proxies, and browser history. It exists only because
+    EventSource/SSE clients cannot set request headers, so the SSE endpoints
+    have no alternative transport. Mitigations: Supabase access tokens are
+    short-lived, and the query-param path is accepted only where SSE
+    requires it — every other endpoint should use the Authorization header.
     """
     raw = None
     if authorization and authorization.startswith("Bearer "):
