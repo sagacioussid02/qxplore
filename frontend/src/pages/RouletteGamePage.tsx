@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../hooks/useAuth';
 import { quantumApi } from '../api/quantumApi';
 import { useCreditStore } from '../store/creditStore';
 import { useAgentStore } from '../store/agentStore';
@@ -97,6 +98,7 @@ export default function RouletteGamePage() {
   const { credits, deductCredits, addCredits } = useCreditStore();
   const { clearGameMaster, appendGameMaster, setGameMasterStreaming,
           clearTutor, appendTutor, setTutorStreaming } = useAgentStore();
+  const { accessToken } = useAuth();
 
   const spin = useCallback(async () => {
     if (!deductCredits(betAmount)) return;
@@ -104,19 +106,24 @@ export default function RouletteGamePage() {
     clearGameMaster();
     clearTutor();
 
+    // Agent streams require auth (they deduct credits server-side).
+    const streamToken = accessToken ?? null;
+
     const gmEvent: GameMasterEvent = {
       event_type: 'spin_start',
       details: { bet: betType, amount: betAmount },
       drama_level: 'medium',
     };
-    setGameMasterStreaming(true);
-    const gmEs = new EventSource(agentApi.gameMasterStreamUrl(gmEvent));
-    gmEs.onmessage = (e) => {
-      const d = JSON.parse(e.data);
-      if (d.done) { gmEs.close(); setGameMasterStreaming(false); return; }
-      appendGameMaster(d.chunk);
-    };
-    gmEs.onerror = () => { gmEs.close(); setGameMasterStreaming(false); };
+    if (streamToken) {
+      setGameMasterStreaming(true);
+      const gmEs = new EventSource(agentApi.gameMasterStreamUrl(gmEvent, streamToken));
+      gmEs.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.done) { gmEs.close(); setGameMasterStreaming(false); return; }
+        appendGameMaster(d.chunk);
+      };
+      gmEs.onerror = () => { gmEs.close(); setGameMasterStreaming(false); };
+    }
 
     const quantum = await quantumApi.spinRoulette();
     setSpinResult(quantum.result);
@@ -131,36 +138,38 @@ export default function RouletteGamePage() {
     const payout = BET_TYPES.find(b => b.id === betType)?.payout ?? 2;
     if (won) addCredits(betAmount * payout);
 
-    // Post-spin agents
-    clearGameMaster();
-    const gmEvent2: GameMasterEvent = {
-      event_type: 'spin_result',
-      details: { outcome: quantum.outcome_label, color: quantum.color, won, payout: won ? betAmount * payout : 0 },
-      drama_level: 'high',
-    };
-    setGameMasterStreaming(true);
-    const gmEs2 = new EventSource(agentApi.gameMasterStreamUrl(gmEvent2));
-    gmEs2.onmessage = (e) => {
-      const d = JSON.parse(e.data);
-      if (d.done) { gmEs2.close(); setGameMasterStreaming(false); return; }
-      appendGameMaster(d.chunk);
-    };
-    gmEs2.onerror = () => { gmEs2.close(); setGameMasterStreaming(false); };
+    // Post-spin agents (require auth — they deduct credits server-side)
+    if (streamToken) {
+      clearGameMaster();
+      const gmEvent2: GameMasterEvent = {
+        event_type: 'spin_result',
+        details: { outcome: quantum.outcome_label, color: quantum.color, won, payout: won ? betAmount * payout : 0 },
+        drama_level: 'high',
+      };
+      setGameMasterStreaming(true);
+      const gmEs2 = new EventSource(agentApi.gameMasterStreamUrl(gmEvent2, streamToken));
+      gmEs2.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.done) { gmEs2.close(); setGameMasterStreaming(false); return; }
+        appendGameMaster(d.chunk);
+      };
+      gmEs2.onerror = () => { gmEs2.close(); setGameMasterStreaming(false); };
 
-    const tutorCtx: TutorContext = {
-      event_type: 'roulette_spin',
-      game_state: { last_outcome_label: quantum.outcome_label, last_color: quantum.color },
-      quantum_result: { bitstring: quantum.bitstring, n_qubits: quantum.n_qubits },
-    };
-    setTutorStreaming(true);
-    const tEs = new EventSource(agentApi.tutorStreamUrl(tutorCtx));
-    tEs.onmessage = (e) => {
-      const d = JSON.parse(e.data);
-      if (d.done) { tEs.close(); setTutorStreaming(false); return; }
-      appendTutor(d.chunk);
-    };
-    tEs.onerror = () => { tEs.close(); setTutorStreaming(false); };
-  }, [betType, betAmount, deductCredits, addCredits]);
+      const tutorCtx: TutorContext = {
+        event_type: 'roulette_spin',
+        game_state: { last_outcome_label: quantum.outcome_label, last_color: quantum.color },
+        quantum_result: { bitstring: quantum.bitstring, n_qubits: quantum.n_qubits },
+      };
+      setTutorStreaming(true);
+      const tEs = new EventSource(agentApi.tutorStreamUrl(tutorCtx, streamToken));
+      tEs.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.done) { tEs.close(); setTutorStreaming(false); return; }
+        appendTutor(d.chunk);
+      };
+      tEs.onerror = () => { tEs.close(); setTutorStreaming(false); };
+    }
+  }, [betType, betAmount, deductCredits, addCredits, accessToken]);
 
   const reset = () => {
     setPhase('idle');
