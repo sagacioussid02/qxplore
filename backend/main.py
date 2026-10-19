@@ -3,7 +3,10 @@ import logging
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from .core.config import get_settings
+from .core.rate_limit import limiter
 from .routers import quantum, games, agents, stripe_router, rsa, circuit_ttt, challenges, benchmark
 
 logging.basicConfig(
@@ -26,10 +29,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*", "text/event-stream", "Cache-Control", "X-Accel-Buffering"],
-    expose_headers=["*"],
+    # Tightened 2026-10-18: the frontend only issues GET/POST/DELETE (axios +
+    # EventSource) and sends Authorization/Content-Type/Accept headers.
+    # Previously allow_methods/allow_headers/expose_headers were ["*"].
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Accel-Buffering"],
+    expose_headers=[],
 )
+
+# Rate limiting (slowapi). Limits are declared per-endpoint via
+# @limiter.limit(...) — see routers/agents.py for the LLM endpoints.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
