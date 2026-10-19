@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAgentStore } from '../../store/agentStore';
+import { useAuth } from '../../hooks/useAuth';
 import { agentApi } from '../../api/agentApi';
 
 export function ConceptChat() {
   const [input, setInput] = useState('');
   const [sessionId] = useState(() => Math.random().toString(36).slice(2));
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { accessToken } = useAuth();
   const {
     conceptHistory,
     isConceptStreaming,
@@ -20,13 +22,15 @@ export function ConceptChat() {
 
   const send = async () => {
     if (!input.trim() || isConceptStreaming) return;
+    // The concept-QA stream requires auth (it deducts credits server-side).
+    if (!accessToken) return;
     const message = input.trim();
     setInput('');
 
     pushConceptMessage({ role: 'user', content: message });
     setConceptStreaming(true);
 
-    const url = agentApi.conceptQAStreamUrl(sessionId, message, conceptHistory);
+    const url = agentApi.conceptQAStreamUrl(sessionId, message, conceptHistory, accessToken);
     const es = new EventSource(url);
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);

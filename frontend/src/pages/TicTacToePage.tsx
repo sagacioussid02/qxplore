@@ -150,6 +150,8 @@ export default function TicTacToePage() {
   const prevPhaseRef = useRef<string | null>(null);
 
   const triggerAgents = useCallback((eventType: string, details: Record<string, unknown>) => {
+    // Agent streams require auth (they deduct credits server-side).
+    if (!accessToken) return;
     clearGameMaster();
 
     const gmEvent: GameMasterEvent = {
@@ -158,7 +160,7 @@ export default function TicTacToePage() {
       drama_level: eventType === 'ttt_win' ? 'high' : 'medium',
     };
     setGameMasterStreaming(true);
-    const gmEs = new EventSource(agentApi.gameMasterStreamUrl(gmEvent));
+    const gmEs = new EventSource(agentApi.gameMasterStreamUrl(gmEvent, accessToken));
     gmEs.onmessage = (e) => {
       const d = JSON.parse(e.data);
       if (d.done) { gmEs.close(); setGameMasterStreaming(false); return; }
@@ -174,7 +176,7 @@ export default function TicTacToePage() {
         player_action: details.description as string,
       };
       setTutorStreaming(true);
-      const tEs = new EventSource(agentApi.tutorStreamUrl(tutorCtx));
+      const tEs = new EventSource(agentApi.tutorStreamUrl(tutorCtx, accessToken));
       tEs.onmessage = (e) => {
         const d = JSON.parse(e.data);
         if (d.done) { tEs.close(); setTutorStreaming(false); return; }
@@ -182,7 +184,7 @@ export default function TicTacToePage() {
       };
       tEs.onerror = () => { tEs.close(); setTutorStreaming(false); };
     }
-  }, [game]);
+  }, [game, accessToken]);
 
   useEffect(() => {
     if (!game) return;

@@ -8,6 +8,7 @@ import { ProbabilityBar } from '../components/quantum/ProbabilityBar';
 import { TutorPanel } from '../components/agents/TutorPanel';
 import { GameMasterBanner } from '../components/agents/GameMasterBanner';
 import { useAgentStore } from '../store/agentStore';
+import { useAuth } from '../hooks/useAuth';
 import { agentApi } from '../api/agentApi';
 import type { TutorContext, GameMasterEvent } from '../types/agents';
 
@@ -16,8 +17,11 @@ const BLOCH_ZERO = { theta: 0, phi: 0, x: 0, y: 0, z: 1 };
 export default function CoinGamePage() {
   const { phase, result, betAmount, credits, flip, reset } = useCoinGame();
   const { clearTutor, clearGameMaster, appendTutor, setTutorStreaming, appendGameMaster, setGameMasterStreaming } = useAgentStore();
+  const { accessToken } = useAuth();
   const triggerAgents = useCallback(() => {
     if (!result) return;
+    // Agent streams require auth (they deduct credits server-side).
+    if (!accessToken) return;
     clearTutor();
     clearGameMaster();
 
@@ -35,7 +39,7 @@ export default function CoinGamePage() {
 
     // Stream tutor
     setTutorStreaming(true);
-    const tUrl = agentApi.tutorStreamUrl(tutorCtx);
+    const tUrl = agentApi.tutorStreamUrl(tutorCtx, accessToken);
     const tEs = new EventSource(tUrl);
     tEs.onmessage = (e) => {
       const d = JSON.parse(e.data);
@@ -46,7 +50,7 @@ export default function CoinGamePage() {
 
     // Stream game master
     setGameMasterStreaming(true);
-    const gmUrl = agentApi.gameMasterStreamUrl(gmEvent);
+    const gmUrl = agentApi.gameMasterStreamUrl(gmEvent, accessToken);
     const gmEs = new EventSource(gmUrl);
     gmEs.onmessage = (e) => {
       const d = JSON.parse(e.data);
@@ -54,7 +58,7 @@ export default function CoinGamePage() {
       appendGameMaster(d.chunk);
     };
     gmEs.onerror = () => { gmEs.close(); setGameMasterStreaming(false); };
-  }, [result]);
+  }, [result, accessToken]);
 
   useEffect(() => {
     if (phase === 'revealing') {
