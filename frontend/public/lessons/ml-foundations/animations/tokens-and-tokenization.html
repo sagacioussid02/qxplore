@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Tokenization Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #b3541e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #e08a4e;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 560px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 36px 28px 30px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        min-height: 22px;
+        margin: 0 0 28px;
+        transition: opacity 0.35s ease;
+      }
+      .caption.swap { opacity: 0; }
+      .caption .step {
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ---- token row ---- */
+      .tokens {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0;
+        row-gap: 10px;
+        font-size: clamp(19px, 5.4vw, 26px);
+        font-weight: 600;
+        line-height: 1.25;
+        transition: gap 0.7s cubic-bezier(0.34, 1.3, 0.5, 1);
+      }
+      .tokens.split { gap: 7px; }
+
+      .tok {
+        --c: #888;
+        --c-ink: #fff;
+        perspective: 500px;
+        border-radius: 7px;
+        display: block;
+      }
+      .tok .flip {
+        position: relative;
+        display: grid;
+        transform-style: preserve-3d;
+        padding: 3px 1px;
+        border-radius: 7px;
+        background: transparent;
+        transition:
+          transform 0.55s cubic-bezier(0.4, 0.1, 0.3, 1),
+          background-color 0.7s ease,
+          padding 0.7s cubic-bezier(0.34, 1.3, 0.5, 1);
+      }
+      .tokens.split .tok .flip {
+        background: var(--c);
+        padding: 3px 9px;
+      }
+      .tokens.ids .tok .flip { transform: rotateX(180deg); }
+
+      .face {
+        grid-area: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        white-space: pre;
+      }
+      .face.back {
+        transform: rotateX(180deg);
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 0.92em;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .tokens.split .face { color: var(--c-ink); }
+
+      /* per-token palette — warm, varied, readable in both modes */
+      .tok:nth-child(1) { --c: #c4502e; }
+      .tok:nth-child(2) { --c: #d98a1f; }
+      .tok:nth-child(3) { --c: #3e7d4e; }
+      .tok:nth-child(4) { --c: #2e6f8e; }
+      .tok:nth-child(5) { --c: #7a4a8c; }
+      .tok:nth-child(6) { --c: #b03a5b; }
+      .tok:nth-child(7) { --c: #5d6d2f; }
+
+      .note {
+        margin: 30px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        min-height: 20px;
+        transition: opacity 0.35s ease;
+      }
+      .note.swap { opacity: 0; }
+
+      /* Reduced motion: rest in the “tokens + IDs” state, no looping */
+      @media (prefers-reduced-motion: reduce) {
+        .tokens { gap: 7px; }
+        .tok .flip { transition: none; background: var(--c); padding: 3px 9px; }
+        .face { color: var(--c-ink); }
+        .face.back {
+          position: static;
+          transform: none;
+          font-size: 0.62em;
+          opacity: 0.9;
+        }
+        .tok .flip { display: flex; flex-direction: column; align-items: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: a sentence splitting into tokens, then turning into token ID numbers">
+      <p class="caption" id="caption"><span class="step">1 / 3</span> &nbsp;Plain text</p>
+
+      <div class="tokens" id="tokens" aria-hidden="true"></div>
+
+      <p class="note" id="note">A model never sees raw text — it reads tokens.</p>
+    </main>
+
+    <script>
+      // Illustrative subword split, the way a tokenizer would chunk this sentence.
+      var PIECES = [
+        { text: "Token",      id: "35698" },
+        { text: "ization",    id: "2065"  },
+        { text: " breaks",    id: "6512"  },
+        { text: " text",      id: "2420"  },
+        { text: " into",      id: "818"   },
+        { text: " pieces",    id: "11008" },
+        { text: ".",          id: "13"    }
+      ];
+
+      var row = document.getElementById("tokens");
+      PIECES.forEach(function (p, i) {
+        var tok = document.createElement("span");
+        tok.className = "tok";
+        tok.style.transitionDelay = (i * 40) + "ms";
+        var flip = document.createElement("span");
+        flip.className = "flip";
+        flip.style.transitionDelay = (i * 45) + "ms";
+        var front = document.createElement("span");
+        front.className = "face front";
+        front.textContent = p.text;
+        var back = document.createElement("span");
+        back.className = "face back";
+        back.textContent = p.id;
+        flip.appendChild(front);
+        flip.appendChild(back);
+        tok.appendChild(flip);
+        row.appendChild(tok);
+      });
+
+      var caption = document.getElementById("caption");
+      var note = document.getElementById("note");
+      var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function setText(el, html) {
+        el.classList.add("swap");
+        setTimeout(function () {
+          el.innerHTML = html;
+          el.classList.remove("swap");
+        }, 360);
+      }
+
+      if (reduced) {
+        caption.innerHTML = '<span class="step">·</span> &nbsp;Text → tokens → token IDs';
+        note.textContent = "Each colored piece is a token; the number is its ID in the model's vocabulary.";
+      } else {
+        var STEPS = [
+          { at: 0,    run: function () {
+              row.classList.remove("split", "ids");
+              setText(caption, '<span class="step">1 / 3</span> &nbsp;Plain text');
+              setText(note, "A model never sees raw text — it reads tokens.");
+          }},
+          { at: 1600, run: function () {
+              row.classList.add("split");
+              setText(caption, '<span class="step">2 / 3</span> &nbsp;Split into tokens');
+              setText(note, "A tokenizer chops text into pieces — sometimes whole words, sometimes parts of words.");
+          }},
+          { at: 4200, run: function () {
+              row.classList.add("ids");
+              setText(caption, '<span class="step">3 / 3</span> &nbsp;Tokens become numbers');
+              setText(note, "Each token maps to an ID — a number the model can actually work with.");
+          }},
+          { at: 7600, run: function () {
+              row.classList.remove("ids");
+          }}
+        ];
+        var CYCLE = 9200;
+
+        function playCycle() {
+          STEPS.forEach(function (s) { setTimeout(s.run, s.at); });
+        }
+        playCycle();
+        setInterval(playCycle, CYCLE);
+      }
+    </script>
+  </body>
+</html>

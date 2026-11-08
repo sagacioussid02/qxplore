@@ -13,6 +13,8 @@ import ChallengePage from './pages/ChallengePage';
 import BenchmarkPage from './pages/BenchmarkPage';
 import BenchmarkRunPage from './pages/BenchmarkRunPage';
 
+import MLFoundationsPage from './pages/MLFoundationsPage';
+
 function App() {
   return (
     <BrowserRouter>
@@ -30,6 +32,10 @@ function App() {
           <Route path="/prep/:slug" element={<ChallengePage />} />
           <Route path="/benchmark" element={<BenchmarkPage />} />
           <Route path="/benchmark/run/:id" element={<BenchmarkRunPage />} />
+
+          <Route path="/learn/ml-foundations" element={<MLFoundationsPage />} />
+
+          <Route path="/learn/ml-foundations/:slug" element={<MLFoundationsPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>
