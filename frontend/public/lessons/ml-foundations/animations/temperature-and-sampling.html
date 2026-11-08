@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Temperature and Sampling — How an LLM Picks Its Next Word</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2f3f1;
+    --surface:#ffffff;
+    --surface-2:#eef0ed;
+    --ink:#191d1a;
+    --muted:#5c665e;
+    --faint:#8a948c;
+    --line:#dde1dc;
+    --track:#e7eae6;
+    --accent:#e4572e;
+    --accent-ink:#ffffff;
+    --accent-soft:#fdeee8;
+    --chip-border:#d5dad4;
+    --shadow:0 10px 30px rgba(25,29,26,.08);
+    --c-lyon:#1f7a6d;
+    --c-berlin:#4a6fa5;
+    --c-madrid:#b07d1e;
+    --c-rome:#7a7f3a;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121413;
+      --surface:#1c1f1d;
+      --surface-2:#242826;
+      --ink:#f0f1ee;
+      --muted:#a7b0a8;
+      --faint:#7e8880;
+      --line:#2e332f;
+      --track:#2a2e2b;
+      --accent:#ff6b3d;
+      --accent-ink:#1c1008;
+      --accent-soft:#332016;
+      --chip-border:#3a403b;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --c-lyon:#3ec2ae;
+      --c-berlin:#7ea6dd;
+      --c-madrid:#e0aa3e;
+      --c-rome:#b3ba6b;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:660px;margin:0 auto;padding:28px 18px 44px}
+
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--accent);
+  }
+  .kicker::before{content:"";width:22px;height:3px;border-radius:2px;background:var(--accent)}
+  h1{font-size:clamp(30px,7vw,42px);line-height:1.08;font-weight:800;margin:10px 0 10px;letter-spacing:-.01em}
+  .lede{font-size:16.5px;color:var(--muted);margin:0 0 22px;max-width:56ch}
+  .lede strong{color:var(--ink)}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .card-label{
+    font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 12px;
+  }
+
+  /* Prompt */
+  .prompt{
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:clamp(17px,4.6vw,21px);font-weight:600;
+    background:var(--surface-2);
+    border:1px dashed var(--chip-border);
+    border-radius:12px;
+    padding:16px 18px;
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  }
+  .blank{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:92px;padding:3px 12px;border-radius:8px;
+    background:var(--accent);color:var(--accent-ink);
+    font-family:"IBM Plex Mono", monospace;font-weight:600;
+    transition:background .3s;
+  }
+  .blank.empty{background:transparent;color:var(--faint);border:2px dashed var(--faint);padding:1px 12px}
+  .prompt-note{font-size:13.5px;color:var(--muted);margin:10px 2px 0}
+
+  /* Bars */
+  .bars{display:flex;flex-direction:column;gap:13px;margin-top:4px}
+  .bar-row{display:grid;grid-template-columns:64px 1fr 58px;align-items:center;gap:12px}
+  .token{font-family:"IBM Plex Mono", monospace;font-weight:600;font-size:15px}
+  .token.top{color:var(--accent)}
+  .track{height:26px;background:var(--track);border-radius:7px;overflow:hidden}
+  .fill{
+    height:100%;border-radius:7px;width:0%;
+    transition:width .65s cubic-bezier(.22,1,.36,1);
+  }
+  .fill.paris{background:var(--accent)}
+  .fill.lyon{background:var(--c-lyon)}
+  .fill.berlin{background:var(--c-berlin)}
+  .fill.madrid{background:var(--c-madrid)}
+  .fill.rome{background:var(--c-rome)}
+  .pct{font-family:"IBM Plex Mono", monospace;font-size:14.5px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+  .bar-row.flash .track{outline:2px solid var(--accent);outline-offset:2px}
+  .bars-note{font-size:13.5px;color:var(--muted);margin:14px 2px 0}
+
+  /* Temperature */
+  .temp-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .temp-value{font-family:"IBM Plex Mono", monospace;font-size:34px;font-weight:600;line-height:1}
+  .temp-value small{font-size:15px;color:var(--muted);font-weight:500}
+  .temp-mood{font-size:15px;font-weight:700;color:var(--accent);text-align:right}
+  .temp-desc{font-size:14.5px;color:var(--muted);margin:8px 0 4px;min-height:44px}
+  input[type=range]{
+    width:100%;margin:14px 0 2px;accent-color:var(--accent);
+    height:32px;cursor:pointer;
+  }
+  .ticks{display:flex;justify-content:space-between;font-family:"IBM Plex Mono", monospace;font-size:13px;color:var(--muted);padding:0 2px}
+  .ticks button{
+    background:none;border:none;font:inherit;color:inherit;cursor:pointer;padding:4px 6px;border-radius:6px;
+  }
+  .ticks button.active{color:var(--accent);font-weight:700;background:var(--accent-soft)}
+  .ticks button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .scale-ends{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-top:8px}
+
+  /* Sampling */
+  .sample-btn{
+    appearance:none;border:none;cursor:pointer;
+    width:100%;padding:15px 20px;border-radius:12px;
+    background:var(--accent);color:var(--accent-ink);
+    font-family:inherit;font-size:17px;font-weight:700;
+    transition:transform .12s ease, opacity .2s;
+  }
+  .sample-btn:active{transform:scale(.985)}
+  .sample-btn:disabled{opacity:.55;cursor:wait}
+  .sample-btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;min-height:38px}
+  .chip{
+    font-family:"IBM Plex Mono", monospace;font-size:14.5px;font-weight:600;
+    padding:7px 13px;border-radius:999px;
+    border:1.5px solid var(--chip-border);background:var(--surface-2);color:var(--ink);
+    animation:pop .35s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  .chip.paris{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .chip.lyon{border-color:var(--c-lyon);color:var(--c-lyon)}
+  .chip.berlin{border-color:var(--c-berlin);color:var(--c-berlin)}
+  .chip.madrid{border-color:var(--c-madrid);color:var(--c-madrid)}
+  .chip.rome{border-color:var(--c-rome);color:var(--c-rome)}
+  @keyframes pop{from{opacity:0;transform:scale(.6) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+  .chips-empty{font-size:14.5px;color:var(--faint);align-self:center}
+  .tally{font-size:15px;margin:14px 2px 0;min-height:24px}
+  .tally strong{color:var(--accent)}
+
+  .caption{
+    font-size:17px;line-height:1.55;
+    background:var(--accent-soft);
+    border-radius:14px;padding:18px 20px;margin:4px 0 16px;
+  }
+  .caption strong{color:var(--accent)}
+
+  .spectrum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .spec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 15px}
+  .spec h3{margin:0 0 5px;font-size:14.5px}
+  .spec h3 span{font-family:"IBM Plex Mono", monospace;color:var(--accent);font-weight:600}
+  .spec p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.45}
+  @media (max-width:520px){
+    .spectrum{grid-template-columns:1fr}
+    .card{padding:17px}
+    .bar-row{grid-template-columns:56px 1fr 52px;gap:9px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .fill{transition:none}
+    .chip{animation:none}
+    .sample-btn{transition:none}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <span class="kicker">Daily ML · Level 1 · Foundations</span>
+  <h1>Temperature &amp; Sampling</h1>
+  <p class="lede">An LLM doesn’t “know” the next word — it <strong>bets on it</strong>. It scores every possible next token, then rolls a weighted dice to pick one. Temperature controls how wild that dice roll gets.</p>
+
+  <!-- Prompt -->
+  <section class="card" aria-label="The prompt">
+    <p class="card-label">1 · The prompt</p>
+    <div class="prompt">
+      <span>The capital of France is</span>
+      <span class="blank empty" id="blank">?</span>
+    </div>
+    <p class="prompt-note">The model has read this sentence and must choose the very next token. Five candidates are in the running:</p>
+  </section>
+
+  <!-- Probabilities -->
+  <section class="card" aria-label="Next-token probabilities">
+    <p class="card-label">2 · The model’s bets (next-token probabilities)</p>
+    <div class="bars" id="bars"></div>
+    <p class="bars-note">These are the model’s raw scores at temperature 1.0. Paris is the clear favourite — but the others aren’t zero, so they <em>can</em> be picked. Watch the bars as you move the temperature below.</p>
+  </section>
+
+  <!-- Temperature -->
+  <section class="card" aria-label="Temperature control">
+    <p class="card-label">3 · Turn the temperature</p>
+    <div class="temp-head">
+      <div class="temp-value"><span id="tempVal">1.0</span> <small>temperature</small></div>
+      <div class="temp-mood" id="tempMood">The original recipe</div>
+    </div>
+    <p class="temp-desc" id="tempDesc">The bars above show the model’s probabilities exactly as calculated. Nothing is sharpened or flattened.</p>
+    <input type="range" id="slider" min="0" max="4" step="1" value="2" aria-label="Temperature" aria-valuetext="1.0">
+    <div class="ticks" id="ticks" role="group" aria-label="Temperature presets"></div>
+    <div class="scale-ends"><span>← Cold · predictable</span><span>Hot · surprising →</span></div>
+  </section>
+
+  <!-- Sampling -->
+  <section class="card" aria-label="Sampling">
+    <p class="card-label">4 · Now let it pick</p>
+    <button class="sample-btn" id="sampleBtn" type="button">🎲 Sample 10 times</button>
+    <div class="chips" id="chips" aria-live="polite"><span class="chips-empty">Your 10 picks will land here…</span></div>
+    <p class="tally" id="tally"></p>
+  </section>
+
+  <p class="caption"><strong>Temperature = how much the model spreads its bets</strong> before picking the next token. Low temperature concentrates everything on the favourite; high temperature spreads the bets out, so long shots start winning.</p>
+
+  <div class="spectrum">
+    <div class="spec">
+      <h3>Cold <span>T ≈ 0.2</span></h3>
+      <p>Plays it safe. Nearly every pick is the top answer — great for facts and code, dull for stories.</p>
+    </div>
+    <div class="spec">
+      <h3>Original <span>T = 1.0</span></h3>
+      <p>The model’s probabilities, untouched. The favourite usually wins, but surprises happen.</p>
+    </div>
+    <div class="spec">
+      <h3>Hot <span>T ≈ 2.0</span></h3>
+      <p>Bets spread almost evenly. Creative and unpredictable — and sometimes just wrong (Berlin is not in France!).</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  // Base probabilities at T = 1.0 (the model's raw output)
+  var TOKENS = [
+    { name: "Paris",  base: 0.62, cls: "paris"  },
+    { name: "Lyon",   base: 0.15, cls: "lyon"   },
+    { name: "Berlin", base: 0.10, cls: "berlin" },
+    { name: "Madrid", base: 0.07, cls: "madrid" },
+    { name: "Rome",   base: 0.06, cls: "rome"   }
+  ];
+
+  var TEMPS = [0.2, 0.7, 1.0, 1.5, 2.0];
+  var MOODS = [
+    { mood: "Freezing — plays it safe",   desc: "The favourite's lead is massively amplified. Paris takes almost the entire bar — the model will say \"Paris\" virtually every single time." },
+    { mood: "Cool — mostly safe",         desc: "Paris pulls further ahead, but Lyon and friends still steal a pick now and then. Focused, with a little variety." },
+    { mood: "The original recipe",        desc: "The bars above show the model's probabilities exactly as calculated. Nothing is sharpened or flattened." },
+    { mood: "Warm — bets spread out",     desc: "The favourite's lead shrinks and the long shots grow. Sample now and you'll see Lyon, Berlin and Madrid showing up regularly." },
+    { mood: "Hot — anything can win",     desc: "The bets are spread almost evenly across all five. Even Rome — a 6% outsider at T = 1.0 — now wins nearly 1 time in 6." }
+  ];
+
+  var currentTemp = 1.0;
+  var currentProbs = [];
+
+  var barsEl   = document.getElementById("bars");
+  var slider   = document.getElementById("slider");
+  var ticksEl  = document.getElementById("ticks");
+  var tempVal  = document.getElementById("tempVal");
+  var tempMood = document.getElementById("tempMood");
+  var tempDesc = document.getElementById("tempDesc");
+  var chipsEl  = document.getElementById("chips");
+  var tallyEl  = document.getElementById("tally");
+  var blankEl  = document.getElementById("blank");
+  var btn      = document.getElementById("sampleBtn");
+  var barsNote = document.querySelector(".bars-note");
+
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // --- Build bars ---
+  var rows = TOKENS.map(function(t, i){
+    var row = document.createElement("div");
+    row.className = "bar-row";
+    row.innerHTML =
+      '<span class="token' + (i === 0 ? " top" : "") + '">' + t.name + '</span>' +
+      '<div class="track"><div class="fill ' + t.cls + '"></div></div>' +
+      '<span class="pct">–</span>';
+    barsEl.appendChild(row);
+    return { row: row, fill: row.querySelector(".fill"), pct: row.querySelector(".pct") };
+  });
+
+  // --- Build tick buttons ---
+  var tickBtns = TEMPS.map(function(t, i){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = t.toFixed(1);
+    b.setAttribute("aria-label", "Set temperature to " + t.toFixed(1));
+    b.addEventListener("click", function(){ slider.value = i; applyTemp(i, true); });
+    ticksEl.appendChild(b);
+    return b;
+  });
+
+  function computeProbs(T){
+    var scaled = TOKENS.map(function(t){ return Math.pow(t.base, 1 / T); });
+    var sum = scaled.reduce(function(a, b){ return a + b; }, 0);
+    return scaled.map(function(v){ return v / sum; });
+  }
+
+  function fmt(p){
+    var pct = p * 100;
+    if (pct >= 9.95) return Math.round(pct) + "%";
+    if (pct < 0.05)  return "<0.1%";
+    return pct.toFixed(1) + "%";
+  }
+
+  function applyTemp(idx, announce){
+    currentTemp = TEMPS[idx];
+    currentProbs = computeProbs(currentTemp);
+    tempVal.textContent = currentTemp.toFixed(1);
+    tempMood.textContent = MOODS[idx].mood;
+    tempDesc.textContent = MOODS[idx].desc;
+    slider.setAttribute("aria-valuetext", currentTemp.toFixed(1));
+    tickBtns.forEach(function(b, i){ b.classList.toggle("active", i === idx); });
+    rows.forEach(function(r, i){
+      r.fill.style.width = (currentProbs[i] * 100).toFixed(2) + "%";
+      r.pct.textContent = fmt(currentProbs[i]);
+    });
+    barsNote.innerHTML = currentTemp === 1.0
+      ? "These are the model’s raw scores at temperature 1.0. Paris is the clear favourite — but the others aren’t zero, so they <em>can</em> be picked. Watch the bars as you move the temperature below."
+      : "Now at temperature <strong>" + currentTemp.toFixed(1) + "</strong> — every probability has been re-spread from the same raw scores. Nothing about the model changed; only how widely it spreads its bets.";
+    if (announce) { /* slider/ticks already reflect the change */ }
+  }
+
+  slider.addEventListener("input", function(){ applyTemp(parseInt(slider.value, 10), false); });
+
+  // --- Sampling ---
+  function drawOne(){
+    var r = Math.random(), acc = 0;
+    for (var i = 0; i < currentProbs.length; i++){
+      acc += currentProbs[i];
+      if (r < acc) return i;
+    }
+    return currentProbs.length - 1;
+  }
+
+  var sampling = false;
+  function sample10(){
+    if (sampling) return;
+    sampling = true;
+    btn.disabled = true;
+    btn.textContent = "Sampling…";
+    chipsEl.innerHTML = "";
+    tallyEl.textContent = "";
+
+    var picks = [];
+    for (var i = 0; i < 10; i++) picks.push(drawOne());
+
+    var step = reduced ? 0 : 110;
+    picks.forEach(function(tokIdx, n){
+      setTimeout(function(){
+        var chip = document.createElement("span");
+        chip.className = "chip " + TOKENS[tokIdx].cls;
+        chip.textContent = TOKENS[tokIdx].name;
+        chip.style.animationDelay = "0ms";
+        chipsEl.appendChild(chip);
+
+        // Fill the prompt blank with the latest pick + flash its bar
+        blankEl.textContent = TOKENS[tokIdx].name;
+        blankEl.classList.remove("empty");
+        rows.forEach(function(r){ r.row.classList.remove("flash"); });
+        rows[tokIdx].row.classList.add("flash");
+
+        if (n === picks.length - 1){
+          var counts = [0,0,0,0,0];
+          picks.forEach(function(p){ counts[p]++; });
+          var paris = counts[0];
+          var parts = [];
+          TOKENS.forEach(function(t, i){ if (counts[i] > 0) parts.push(t.name + " × " + counts[i]); });
+          var verdict;
+          if (paris === 10)      verdict = " — a clean sweep. At this temperature the favourite is unbeatable.";
+          else if (paris >= 7)   verdict = " — the favourite dominates, exactly as the bars promised.";
+          else if (paris >= 4)   verdict = " — Paris still leads, but the outsiders are cashing in.";
+          else if (paris >= 1)   verdict = " — the bets are so spread out that even the favourite struggles.";
+          else                   verdict = " — not a single Paris! That’s high-temperature chaos (it can happen — each run is a fresh roll).";
+          tallyEl.innerHTML = "You got <strong>" + parts.join(", ") + "</strong>" + verdict;
+          btn.disabled = false;
+          btn.textContent = "🎲 Sample 10 times again";
+          sampling = false;
+          setTimeout(function(){ rows.forEach(function(r){ r.row.classList.remove("flash"); }); }, 900);
+        }
+      }, n * step);
+    });
+  }
+
+  btn.addEventListener("click", sample10);
+
+  // Init
+  applyTemp(2, false);
+  // A first sample shortly after load, so the idea lands without a tap
+  setTimeout(sample10, reduced ? 100 : 700);
+})();
+</script>
+</body>
+</html>

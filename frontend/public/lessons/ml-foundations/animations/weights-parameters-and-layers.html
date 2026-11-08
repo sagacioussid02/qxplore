@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Weights, Parameters, and Layers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f4f6fa;
+        --card: #ffffff;
+        --card-2: #eef1f7;
+        --ink: #182238;
+        --ink-soft: #4a5570;
+        --line: #d8deeb;
+        --pos: #0e7a5f;
+        --pos-soft: #e2f2ec;
+        --neg: #cf4426;
+        --neg-soft: #fbe9e3;
+        --accent: #b97e0c;
+        --accent-soft: #fbf0d3;
+        --btn: #182238;
+        --btn-ink: #ffffff;
+        --shadow: 0 1px 2px rgba(24, 34, 56, .06), 0 8px 24px rgba(24, 34, 56, .06);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d1120;
+          --card: #161c31;
+          --card-2: #1e2742;
+          --ink: #e9edf8;
+          --ink-soft: #a3aec9;
+          --line: #2c3757;
+          --pos: #3ec79e;
+          --pos-soft: #123128;
+          --neg: #ff7a5c;
+          --neg-soft: #3d1e14;
+          --accent: #f0b93e;
+          --accent-soft: #38300f;
+          --btn: #e9edf8;
+          --btn-ink: #141a2e;
+          --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        font-size: 16px;
+      }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 28px 18px 56px; }
+      h1, h2, h3 { font-family: "Bricolage Grotesque", -apple-system, sans-serif; line-height: 1.12; margin: 0; }
+      h1 { font-size: clamp(30px, 6vw, 44px); font-weight: 800; letter-spacing: -0.01em; }
+      h2 { font-size: clamp(22px, 4.5vw, 28px); font-weight: 700; margin-bottom: 8px; }
+      .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+      p { margin: 0 0 12px; }
+      .lede { font-size: 17.5px; color: var(--ink-soft); max-width: 62ch; margin-top: 12px; }
+      .lede strong { color: var(--ink); }
+
+      .defs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 22px 0 8px; }
+      .def { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 15px; box-shadow: var(--shadow); }
+      .def .term { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+      .def .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+      .def p { font-size: 14px; color: var(--ink-soft); margin: 6px 0 0; }
+      @media (max-width: 640px) { .defs { grid-template-columns: 1fr; } }
+
+      section { margin-top: 40px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; }
+      .card + .card { margin-top: 14px; }
+      .sub { color: var(--ink-soft); font-size: 15px; max-width: 64ch; }
+
+      /* ---------- diagram ---------- */
+      .diagram-wrap { overflow: hidden; }
+      svg.net { display: block; width: 100%; height: auto; }
+      .layer-label { font-family: "Bricolage Grotesque", sans-serif; font-size: 12.5px; font-weight: 700; fill: var(--ink-soft); letter-spacing: .04em; }
+      .node-name { font-size: 11px; font-weight: 600; fill: var(--ink-soft); text-anchor: middle; pointer-events: none; }
+      .node-val { font-family: "IBM Plex Mono", monospace; font-size: 14px; font-weight: 600; fill: var(--ink); text-anchor: middle; pointer-events: none; }
+      .wlabel { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 600; text-anchor: middle; paint-order: stroke; stroke: var(--card); stroke-width: 5px; stroke-linejoin: round; pointer-events: none; }
+      .edge { fill: none; stroke-linecap: round; transition: stroke-width .18s ease, stroke .18s ease; }
+      .node-ring { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+
+      .answer {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        background: var(--accent-soft); border: 1px solid var(--line); border-radius: 14px;
+        padding: 14px 18px; margin-top: 14px;
+      }
+      .answer .big { font-family: "Bricolage Grotesque", sans-serif; font-size: 40px; font-weight: 800; line-height: 1; }
+      .answer .what { font-size: 15px; color: var(--ink-soft); }
+      .answer .what strong { color: var(--ink); display: block; font-size: 16px; }
+
+      /* ---------- sliders ---------- */
+      .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+      @media (max-width: 700px) { .controls-grid { grid-template-columns: 1fr; } }
+      .group-title { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 15px; margin: 0 0 4px; }
+      .group-note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+      .srow { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px; padding: 7px 0; border-top: 1px dashed var(--line); }
+      .srow:first-of-type { border-top: none; }
+      .srow label { font-size: 14.5px; font-weight: 550; }
+      .srow .val { font-family: "IBM Plex Mono", monospace; font-size: 14px; font-weight: 600; min-width: 52px; text-align: right; }
+      .srow input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 2px 0 0; accent-color: var(--ink); height: 28px; }
+      .val.pos { color: var(--pos); } .val.neg { color: var(--neg); }
+
+      .input-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 26px; }
+      @media (max-width: 560px) { .input-sliders { grid-template-columns: 1fr; } }
+      .input-sliders .srow { border-top: none; padding-top: 2px; }
+      .input-sliders input[type="range"] { accent-color: var(--accent); }
+
+      .swatch { display: inline-block; width: 22px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+
+      /* ---------- training ---------- */
+      .train-head { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+      .loss-box { margin-left: auto; text-align: right; }
+      .loss-box .num { font-family: "Bricolage Grotesque", sans-serif; font-size: 38px; font-weight: 800; line-height: 1; }
+      .loss-box .cap { font-size: 12.5px; color: var(--ink-soft); }
+      .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+      button {
+        font: inherit; font-weight: 650; cursor: pointer; border-radius: 999px;
+        padding: 11px 22px; border: 1px solid transparent;
+      }
+      button.primary { background: var(--btn); color: var(--btn-ink); font-size: 16.5px; padding: 13px 28px; }
+      button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+      button:disabled { opacity: .45; cursor: default; }
+      button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+      .round-note { font-size: 14px; color: var(--ink-soft); margin-top: 10px; min-height: 21px; }
+      .round-note .mono { color: var(--ink); font-weight: 600; }
+      #lossChart { width: 100%; height: 92px; display: block; margin-top: 8px; }
+      .chart-cap { font-size: 12.5px; color: var(--ink-soft); display: flex; justify-content: space-between; }
+
+      .data-list { margin-top: 6px; }
+      .drow { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 14px; align-items: center; padding: 10px 0; border-top: 1px dashed var(--line); }
+      .drow:first-child { border-top: none; }
+      .drow .cond { font-size: 14.5px; }
+      .drow .cond .mono { font-size: 13px; color: var(--ink-soft); }
+      .drow .target { font-weight: 650; font-size: 14.5px; white-space: nowrap; }
+      .drow .pred { font-family: "IBM Plex Mono", monospace; font-size: 14px; font-weight: 600; text-align: right; white-space: nowrap; }
+      .drow .pred small { display: block; font-family: inherit; font-weight: 500; font-size: 12px; }
+      .ok { color: var(--pos); } .off { color: var(--neg); }
+      .meter { height: 6px; border-radius: 3px; background: var(--card-2); overflow: hidden; margin-top: 5px; max-width: 260px; }
+      .meter i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .15s ease; }
+
+      /* ---------- scale ---------- */
+      .scale-row { margin-top: 18px; }
+      .scale-row .name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 16.5px; }
+      .scale-row .count { font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+      .scale-row .detail { font-size: 14px; color: var(--ink-soft); margin-top: 2px; }
+      .bar-track { height: 20px; background: var(--card-2); border-radius: 6px; margin-top: 7px; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: 6px; }
+      .dots { display: flex; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+      .dots i { width: 15px; height: 15px; border-radius: 50%; background: var(--pos); display: block; }
+      .fact { background: var(--card-2); border-radius: 14px; padding: 14px 16px; font-size: 15px; margin-top: 20px; }
+      .fact strong { font-family: "Bricolage Grotesque", sans-serif; }
+
+      .recap { border-left: none; }
+      .recap ul { margin: 8px 0 0; padding-left: 20px; }
+      .recap li { margin: 7px 0; }
+      footer { margin-top: 34px; font-size: 13.5px; color: var(--ink-soft); }
+      @media (prefers-reduced-motion: reduce) {
+        .edge, .meter i { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Weights, parameters &amp; layers — the knobs inside a neural network</h1>
+        <p class="lede">
+          Every AI model, from a toy like the one below to ChatGPT, is mostly just a huge pile of
+          <strong>numbers</strong> and a fixed recipe for combining them. This page lets you turn those
+          numbers yourself, then watch a computer turn them for you. That turning <em>is</em> training.
+        </p>
+        <div class="defs">
+          <div class="def">
+            <div class="term"><span class="dot" style="background:var(--accent)"></span>Layer</div>
+            <p>One row of the little calculator-circles (called <em>neurons</em>). Information flows left to right, one layer at a time.</p>
+          </div>
+          <div class="def">
+            <div class="term"><span class="dot" style="background:var(--pos)"></span>Weight</div>
+            <p>A number written on a connecting line. It says how much that connection matters: a big positive weight amplifies the signal, a negative one flips it, zero ignores it.</p>
+          </div>
+          <div class="def">
+            <div class="term"><span class="dot" style="background:var(--neg)"></span>Parameter</div>
+            <p>Any number the model is allowed to adjust — every weight, plus one extra per neuron called a <em>bias</em> (a built-in nudge that neuron adds on its own). When people say a model has “8 billion parameters,” they mean 8 billion of these numbers.</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ THE NETWORK ============ -->
+      <section aria-labelledby="net-h">
+        <h2 id="net-h">1 · Meet a tiny weather brain</h2>
+        <p class="sub">
+          This little network guesses the chance of rain from two inputs: humidity and cloud cover.
+          It has <strong>3 layers</strong> and exactly <strong>9 parameters</strong> — 6 weights on the lines,
+          and 3 biases hiding inside the middle and output circles. Move the two yellow sliders and the
+          answer changes instantly, because the answer is <em>nothing but arithmetic</em> on those 9 numbers.
+        </p>
+
+        <div class="card diagram-wrap" style="margin-top:14px">
+          <svg class="net" viewBox="0 0 380 216" role="img" aria-label="Diagram of a small neural network: two input circles on the left, two middle circles, one output circle on the right, with a number on every connecting line.">
+            <text class="layer-label" x="62" y="18" text-anchor="middle">INPUT LAYER</text>
+            <text class="layer-label" x="190" y="18" text-anchor="middle">MIDDLE LAYER</text>
+            <text class="layer-label" x="316" y="18" text-anchor="middle">OUTPUT</text>
+
+            <!-- edges (drawn first, nodes on top) -->
+            <g id="edges"></g>
+            <g id="wlabels"></g>
+
+            <!-- input nodes -->
+            <g>
+              <circle class="node-ring" cx="62" cy="66" r="27"></circle>
+              <text class="node-name" x="62" y="60">Humidity</text>
+              <text class="node-val" id="nv-x1" x="62" y="80">85%</text>
+            </g>
+            <g>
+              <circle class="node-ring" cx="62" cy="168" r="27"></circle>
+              <text class="node-name" x="62" y="162">Clouds</text>
+              <text class="node-val" id="nv-x2" x="62" y="182">70%</text>
+            </g>
+            <!-- hidden nodes -->
+            <g>
+              <circle class="node-ring" id="ring-h1" cx="190" cy="66" r="27"></circle>
+              <text class="node-name" x="190" y="60">Middle A</text>
+              <text class="node-val" id="nv-h1" x="190" y="80">0.00</text>
+            </g>
+            <g>
+              <circle class="node-ring" id="ring-h2" cx="190" cy="168" r="27"></circle>
+              <text class="node-name" x="190" y="162">Middle B</text>
+              <text class="node-val" id="nv-h2" x="190" y="182">0.00</text>
+            </g>
+            <!-- output node -->
+            <g>
+              <circle class="node-ring" id="ring-out" cx="316" cy="117" r="31"></circle>
+              <text class="node-name" x="316" y="110">Rain?</text>
+              <text class="node-val" id="nv-out" x="316" y="131">0%</text>
+            </g>
+          </svg>
+
+          <div class="input-sliders">
+            <div class="srow">
+              <label for="in-x1">Humidity</label>
+              <span class="val mono" id="val-x1">85%</span>
+              <input type="range" id="in-x1" min="0" max="100" step="1" value="85" />
+            </div>
+            <div class="srow">
+              <label for="in-x2">Cloud cover</label>
+              <span class="val mono" id="val-x2">70%</span>
+              <input type="range" id="in-x2" min="0" max="100" step="1" value="70" />
+            </div>
+          </div>
+
+          <div class="answer" role="status">
+            <div class="big mono" id="answer-pct">–</div>
+            <div class="what">
+              <strong id="answer-word">Chance of rain</strong>
+              <span id="answer-note">Computed live from the 9 numbers below — no rules, no lookup table.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:18px; margin-bottom:4px;">Turn the knobs yourself</h3>
+          <p class="sub" style="margin-bottom:6px;">
+            Every slider is one parameter, and the same number sits on the matching line above.
+            <span class="swatch" style="background:var(--pos)"></span>green = the connection pushes the signal up,
+            <span class="swatch" style="background:var(--neg)"></span>red = it pushes down or flips it.
+            Thicker line = stronger say. Drag a few and watch the rain chance — and the middle circles — react.
+          </p>
+          <div class="controls-grid" id="param-groups" style="margin-top:10px"></div>
+        </div>
+      </section>
+
+      <!-- ============ TRAINING ============ -->
+      <section aria-labelledby="train-h">
+        <h2 id="train-h">2 · Training = turning the knobs automatically</h2>
+        <p class="sub">
+          Nobody hand-picks good weights. Instead you show the model examples with known answers and measure
+          <strong>loss</strong> — a single score for “how wrong are you, on average?” (0 = perfect).
+          Then a simple rule nudges every knob a tiny step in whichever direction makes the loss smaller,
+          and repeats. Try it: the weights below start out scrambled, so the model is confidently wrong.
+        </p>
+
+        <div class="card">
+          <div class="train-head">
+            <div>
+              <h3 style="font-size:18px;">Six days of weather the model must learn from</h3>
+              <p class="sub" style="margin:4px 0 0;">Each row: the day’s conditions, what really happened, and what the model currently predicts for that day.</p>
+            </div>
+            <div class="loss-box">
+              <div class="num mono" id="loss-num">–</div>
+              <div class="cap">LOSS · lower is better · 0 is perfect</div>
+            </div>
+          </div>
+
+          <div class="data-list" id="data-list"></div>
+
+          <svg id="lossChart" viewBox="0 0 600 92" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="0" y1="90" x2="600" y2="90" stroke="var(--line)" stroke-width="1.5"></line>
+            <polyline id="lossLine" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" points=""></polyline>
+          </svg>
+          <div class="chart-cap"><span>Loss during training</span><span id="chart-right"></span></div>
+
+          <div class="btn-row">
+            <button class="primary" id="btn-train">Train it</button>
+            <button class="ghost" id="btn-reset">Reset the knobs</button>
+          </div>
+          <p class="round-note" id="round-note">One <em>training round</em> = the model looks at all 6 days once and nudges all 9 knobs a tiny bit.</p>
+        </div>
+      </section>
+
+      <!-- ============ SCALE ============ -->
+      <section aria-labelledby="scale-h">
+        <h2 id="scale-h">3 · Now scale that up… a lot</h2>
+        <p class="sub">
+          Real models are the exact same idea — multiply, add, pass it on — just with vastly more knobs
+          and many more layers stacked between input and output. Nothing new appears; only the count explodes.
+        </p>
+
+        <div class="card">
+          <div class="scale-row">
+            <div><span class="name">The weather brain on this page</span> · <span class="count">9 parameters</span></div>
+            <div class="dots" id="demo-dots" aria-hidden="true"></div>
+            <div class="detail">3 layers. You have personally turned every one of its knobs.</div>
+          </div>
+
+          <div class="scale-row">
+            <div><span class="name">Llama 3 8B</span> (Meta, 2024) · <span class="count">8,000,000,000 parameters</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:88%; background:var(--pos)"></div></div>
+            <div class="detail">32 layers. About <strong>890 million</strong> of these little weather brains’ worth of knobs.</div>
+          </div>
+
+          <div class="scale-row">
+            <div><span class="name">GPT-3</span> (OpenAI, 2020) · <span class="count">175,000,000,000 parameters</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:100%; background:var(--neg)"></div></div>
+            <div class="detail">96 layers. About <strong>19 billion</strong> weather brains’ worth of knobs.</div>
+          </div>
+
+          <p style="font-size:13px; color:var(--ink-soft); margin-top:14px;">
+            The bars are drawn on a <em>log scale</em> (each equal step = 10× more), because on an honest
+            straight scale the 9-parameter bar would be far thinner than a single pixel — the GPT-3 bar
+            would need to stretch roughly 19 billion times wider.
+          </p>
+
+          <div class="fact">
+            <strong>A way to feel the numbers:</strong> if you read one parameter aloud per second,
+            this demo’s 9 would take <span class="mono">9 seconds</span>. Llama 3 8B’s would take about
+            <span class="mono">254 years</span> of non-stop reading. GPT-3’s would take about
+            <span class="mono">5,500 years</span> — longer than recorded history. Nobody sets these numbers
+            by hand; that is exactly why training — the automatic knob-turning you just ran — has to exist.
+          </div>
+        </div>
+
+        <div class="card recap">
+          <h3 style="font-size:18px;">The whole idea, in three lines</h3>
+          <ul>
+            <li><strong>Layers</strong> are rows of simple calculators; each one re-mixes what the row before it produced.</li>
+            <li><strong>Weights</strong> (plus biases) are the numbers doing the mixing — together they’re the model’s <strong>parameters</strong>, and they are all the model ever “knows.”</li>
+            <li><strong>Training</strong> is just turning those numbers, a nudge at a time, until the loss on example answers gets small. Scale is the only difference between 9 parameters and 175 billion.</li>
+          </ul>
+        </div>
+      </section>
+
+      <footer>
+        Built as a hands-on companion to a Level 1 machine-learning lesson. The network, the training,
+        and the loss curve above are all real arithmetic running in your browser — nothing is faked or pre-recorded.
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+        var $ = function (id) { return document.getElementById(id); };
+        var tanh = Math.tanh;
+        function sig(x) { return 1 / (1 + Math.exp(-x)); }
+        function fmt(v) { return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2); }
+        function fmtPlain(v) { return (v < 0 ? "−" : "") + Math.abs(v).toFixed(2); }
+
+        /* ---------- parameters ---------- */
+        // key, label, group, diagram endpoints (for edge + label)
+        var PARAMS = [
+          { key: "ah", label: "Humidity → Middle A", group: 0, from: [89, 66],  to: [163, 66],  lx: 126, ly: 56 },
+          { key: "ac", label: "Clouds → Middle A",   group: 0, from: [80, 145], to: [172, 89],  lx: 108, ly: 128 },
+          { key: "ch", label: "Humidity → Middle B", group: 0, from: [80, 89],  to: [172, 145], lx: 108, ly: 100 },
+          { key: "cc", label: "Clouds → Middle B",   group: 0, from: [89, 168], to: [163, 168], lx: 126, ly: 158 },
+          { key: "oa", label: "Middle A → Rain?",     group: 1, from: [217, 66], to: [288, 100], lx: 252, ly: 72 },
+          { key: "ob", label: "Middle B → Rain?",     group: 1, from: [217, 168], to: [288, 134], lx: 252, ly: 160 },
+          { key: "ba", label: "Middle A’s bias",      group: 2 },
+          { key: "bb", label: "Middle B’s bias",      group: 2 },
+          { key: "bo", label: "Output’s bias",        group: 2 }
+        ];
+        var START = { ah: 0.8, ac: -0.5, ch: -1.2, cc: 0.9, ba: 0.3, bb: -0.4, oa: 1.1, ob: -0.7, bo: 0.2 };
+        var GROUPS = [
+          { title: "Weights into the middle layer", note: "How much each input counts for each middle circle." },
+          { title: "Weights into the answer", note: "How much each middle circle counts toward the final rain chance." },
+          { title: "Biases", note: "Each circle’s built-in nudge — added no matter what the inputs are. Still parameters: training adjusts them too." }
+        ];
+        var P = {};
+        for (var k in START) P[k] = START[k];
+
+        /* ---------- dataset ---------- */
+        var DATA = [
+          { x1: 0.90, x2: 0.80, y: 1 },
+          { x1: 0.80, x2: 0.90, y: 1 },
+          { x1: 0.20, x2: 0.10, y: 0 },
+          { x1: 0.10, x2: 0.30, y: 0 },
+          { x1: 0.60, x2: 0.70, y: 1 },
+          { x1: 0.40, x2: 0.20, y: 0 }
+        ];
+
+        function forward(x1, x2) {
+          var h1 = tanh(P.ah * x1 + P.ac * x2 + P.ba);
+          var h2 = tanh(P.ch * x1 + P.cc * x2 + P.bb);
+          var o = sig(P.oa * h1 + P.ob * h2 + P.bo);
+          return { h1: h1, h2: h2, o: o };
+        }
+        function loss() {
+          var s = 0;
+          for (var i = 0; i < DATA.length; i++) {
+            var d = forward(DATA[i].x1, DATA[i].x2).o - DATA[i].y;
+            s += d * d;
+          }
+          return s / DATA.length;
+        }
+
+        /* ---------- build diagram edges + labels ---------- */
+        var NS = "http://www.w3.org/2000/svg";
+        var edgesG = $("edges"), labelsG = $("wlabels");
+        var edgeEls = {}, labelEls = {};
+        PARAMS.forEach(function (pm) {
+          if (!pm.from) return;
+          var line = document.createElementNS(NS, "line");
+          line.setAttribute("x1", pm.from[0]); line.setAttribute("y1", pm.from[1]);
+          line.setAttribute("x2", pm.to[0]); line.setAttribute("y2", pm.to[1]);
+          line.setAttribute("class", "edge");
+          edgesG.appendChild(line);
+          edgeEls[pm.key] = line;
+          var t = document.createElementNS(NS, "text");
+          t.setAttribute("x", pm.lx); t.setAttribute("y", pm.ly);
+          t.setAttribute("class", "wlabel");
+          labelsG.appendChild(t);
+          labelEls[pm.key] = t;
+        });
+
+        /* ---------- build sliders ---------- */
+        var groupsEl = $("param-groups");
+        var sliderEls = {}, valEls = {};
+        GROUPS.forEach(function (g, gi) {
+          var box = document.createElement("div");
+          var h = document.createElement("p"); h.className = "group-title"; h.textContent = g.title;
+          var n = document.createElement("p"); n.className = "group-note"; n.textContent = g.note;
+          box.appendChild(h); box.appendChild(n);
+          PARAMS.forEach(function (pm) {
+            if (pm.group !== gi) return;
+            var row = document.createElement("div"); row.className = "srow";
+            var lab = document.createElement("label"); lab.htmlFor = "sl-" + pm.key; lab.textContent = pm.label;
+            var val = document.createElement("span"); val.className = "val mono"; val.id = "val-" + pm.key;
+            var inp = document.createElement("input");
+            inp.type = "range"; inp.id = "sl-" + pm.key;
+            inp.min = "-5"; inp.max = "5"; inp.step = "0.05"; inp.value = P[pm.key];
+            inp.setAttribute("aria-label", pm.label + " (a parameter of the model)");
+            inp.addEventListener("input", function () {
+              P[pm.key] = parseFloat(inp.value);
+              stopTrainingNote();
+              render();
+            });
+            row.appendChild(lab); row.appendChild(val); row.appendChild(inp);
+            box.appendChild(row);
+            sliderEls[pm.key] = inp; valEls[pm.key] = val;
+          });
+          groupsEl.appendChild(box);
+        });
+
+        /* ---------- dataset rows ---------- */
+        var dataEl = $("data-list");
+        var predEls = [];
+        DATA.forEach(function (d, i) {
+          var row = document.createElement("div"); row.className = "drow";
+          var cond = document.createElement("div"); cond.className = "cond";
+          cond.innerHTML = "Day " + (i + 1) + " &nbsp;<span class='mono'>humidity " + Math.round(d.x1 * 100) + "% · clouds " + Math.round(d.x2 * 100) + "%</span>" +
+            "<div class='meter'><i id='meter-" + i + "'></i></div>";
+          var tgt = document.createElement("div"); tgt.className = "target";
+          tgt.textContent = d.y ? "It rained" : "No rain";
+          var pred = document.createElement("div"); pred.className = "pred"; pred.id = "pred-" + i;
+          row.appendChild(cond); row.appendChild(tgt); row.appendChild(pred);
+          dataEl.appendChild(row);
+          predEls.push(pred);
+        });
+
+        /* ---------- demo dots ---------- */
+        var dotsEl = $("demo-dots");
+        for (var di = 0; di < 9; di++) dotsEl.appendChild(document.createElement("i"));
+
+        /* ---------- render ---------- */
+        var x1 = 0.85, x2 = 0.70;
+        function signColor(v) { return v >= 0 ? "var(--pos)" : "var(--neg)"; }
+
+        function render() {
+          var f = forward(x1, x2);
+          $("nv-x1").textContent = Math.round(x1 * 100) + "%";
+          $("nv-x2").textContent = Math.round(x2 * 100) + "%";
+          $("nv-h1").textContent = fmtPlain(f.h1);
+          $("nv-h2").textContent = fmtPlain(f.h2);
+          $("nv-out").textContent = Math.round(f.o * 100) + "%";
+          $("ring-h1").style.fill = f.h1 >= 0 ? "var(--pos-soft)" : "var(--neg-soft)";
+          $("ring-h2").style.fill = f.h2 >= 0 ? "var(--pos-soft)" : "var(--neg-soft)";
+          $("ring-out").style.fill = "var(--accent-soft)";
+
+          PARAMS.forEach(function (pm) {
+            var v = P[pm.key];
+            if (edgeEls[pm.key]) {
+              var e = edgeEls[pm.key];
+              e.setAttribute("stroke", v >= 0 ? "#0e7a5f" : "#cf4426");
+              e.style.stroke = signColor(v);
+              e.setAttribute("stroke-width", (0.8 + Math.abs(v) * 1.5).toFixed(2));
+              e.setAttribute("opacity", (0.35 + Math.min(Math.abs(v) / 5, 1) * 0.65).toFixed(2));
+              var t = labelEls[pm.key];
+              t.textContent = fmt(v);
+              t.style.fill = signColor(v);
+            }
+            if (sliderEls[pm.key]) {
+              if (document.activeElement !== sliderEls[pm.key]) sliderEls[pm.key].value = v;
+              var ve = valEls[pm.key];
+              ve.textContent = fmt(v);
+              ve.className = "val mono " + (v >= 0 ? "pos" : "neg");
+            }
+          });
+
+          var pct = Math.round(f.o * 100);
+          $("answer-pct").textContent = pct + "%";
+          $("answer-word").textContent =
+            pct >= 75 ? "Very likely rain — take an umbrella" :
+            pct >= 55 ? "Probably rain" :
+            pct >= 45 ? "Coin flip — the model is unsure" :
+            pct >= 25 ? "Probably dry" : "Very likely dry";
+
+          var L = loss();
+          $("loss-num").textContent = L.toFixed(3);
+          DATA.forEach(function (d, i) {
+            var p = forward(d.x1, d.x2).o;
+            var good = Math.abs(p - d.y) < 0.5;
+            var el = predEls[i];
+            el.innerHTML = Math.round(p * 100) + "% rain<small class='" + (good ? "ok" : "off") + "'>" +
+              (good ? "✓ close to what happened" : "✗ wrong side") + "</small>";
+            el.className = "pred " + (good ? "ok" : "off");
+            var m = $("meter-" + i);
+            if (m) m.style.width = Math.round(p * 100) + "%";
+          });
+          return L;
+        }
+
+        /* ---------- input sliders ---------- */
+        $("in-x1").addEventListener("input", function () {
+          x1 = parseFloat(this.value) / 100;
+          $("val-x1").textContent = this.value + "%";
+          render();
+        });
+        $("in-x2").addEventListener("input", function () {
+          x2 = parseFloat(this.value) / 100;
+          $("val-x2").textContent = this.value + "%";
+          render();
+        });
+
+        /* ---------- training ---------- */
+        var LR = 4, TOTAL = 160, EPOCHS_PER_FRAME = 4;
+        var training = false, epoch = 0, history = [];
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        function trainStep() {
+          var g = { ah: 0, ac: 0, ch: 0, cc: 0, ba: 0, bb: 0, oa: 0, ob: 0, bo: 0 };
+          DATA.forEach(function (d) {
+            var f = forward(d.x1, d.x2);
+            var dO = 2 * (f.o - d.y) * f.o * (1 - f.o) / DATA.length;
+            var dH1 = dO * P.oa * (1 - f.h1 * f.h1);
+            var dH2 = dO * P.ob * (1 - f.h2 * f.h2);
+            g.oa += dO * f.h1; g.ob += dO * f.h2; g.bo += dO;
+            g.ah += dH1 * d.x1; g.ac += dH1 * d.x2; g.ba += dH1;
+            g.ch += dH2 * d.x1; g.cc += dH2 * d.x2; g.bb += dH2;
+          });
+          for (var key in g) P[key] = Math.max(-5, Math.min(5, P[key] - LR * g[key]));
+        }
+
+        function drawChart() {
+          if (history.length < 2) { $("lossLine").setAttribute("points", ""); return; }
+          var maxL = Math.max.apply(null, history.concat([0.05]));
+          var pts = history.map(function (v, i) {
+            var px = (i / (TOTAL - 1)) * 596 + 2;
+            var py = 88 - (v / maxL) * 82;
+            return px.toFixed(1) + "," + py.toFixed(1);
+          }).join(" ");
+          $("lossLine").setAttribute("points", pts);
+        }
+
+        function setTrainingUI(on) {
+          $("btn-train").disabled = on;
+          $("btn-reset").disabled = on;
+          for (var key in sliderEls) sliderEls[key].disabled = on;
+        }
+        function stopTrainingNote() {
+          if (!training) epoch = 0;
+        }
+
+        function runTraining() {
+          if (training) return;
+          training = true; epoch = 0; history = [loss()];
+          setTrainingUI(true);
+          drawChart();
+          $("chart-right").textContent = "";
+          var note = $("round-note");
+          function frame() {
+            var n = reduceMotion ? TOTAL : EPOCHS_PER_FRAME;
+            for (var i = 0; i < n && epoch < TOTAL; i++) { trainStep(); epoch++; history.push(loss()); }
+            var L = render();
+            drawChart();
+            note.innerHTML = "Training round <span class='mono'>" + epoch + " / " + TOTAL + "</span> — every knob just moved a tiny step toward a smaller loss. Current loss: <span class='mono'>" + L.toFixed(3) + "</span>";
+            if (epoch < TOTAL) {
+              requestAnimationFrame(frame);
+            } else {
+              training = false;
+              setTrainingUI(false);
+              $("chart-right").textContent = "started at " + history[0].toFixed(3);
+              note.innerHTML = "<strong>Done.</strong> Loss fell from <span class='mono'>" + history[0].toFixed(3) + "</span> to <span class='mono'>" + L.toFixed(3) + "</span> — " +
+                "the model now matches all 6 days. Nobody chose these final numbers; 160 rounds of tiny nudges found them. Now drag the yellow sliders and try weather the model has never seen.";
+            }
+          }
+          requestAnimationFrame(frame);
+        }
+
+        $("btn-train").addEventListener("click", runTraining);
+        $("btn-reset").addEventListener("click", function () {
+          for (var key in START) P[key] = START[key];
+          epoch = 0; history = [];
+          drawChart();
+          $("chart-right").textContent = "";
+          $("round-note").innerHTML = "One <em>training round</em> = the model looks at all 6 days once and nudges all 9 knobs a tiny bit.";
+          render();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

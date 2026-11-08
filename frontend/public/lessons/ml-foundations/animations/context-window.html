@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Context Window Animation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #eef2f5;
+        --surface: #ffffff;
+        --surface-2: #e3eaf0;
+        --ink: #16222e;
+        --ink-soft: #43586a;
+        --line: #c3d0da;
+        --accent: #c85a10;
+        --accent-soft: #fbe9d9;
+        --accent-ink: #8a3d05;
+        --new: #0e7a5f;
+        --new-soft: #d9f0e8;
+        --ghost: #8fa3b3;
+        --frame: #16222e;
+        --shadow: 0 10px 30px rgba(22, 34, 46, 0.1);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0c141b;
+          --surface: #14202b;
+          --surface-2: #1b2b3a;
+          --ink: #e9f0f5;
+          --ink-soft: #a7bccb;
+          --line: #2c4152;
+          --accent: #f08a3c;
+          --accent-soft: #3d2712;
+          --accent-ink: #ffb37a;
+          --new: #3ecfa8;
+          --new-soft: #123a30;
+          --ghost: #5f7688;
+          --frame: #d7e4ee;
+          --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; overflow-x: clip; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 28px 18px 48px;
+      }
+      h1 {
+        font-size: clamp(30px, 5.4vw, 44px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.08;
+        margin: 0 0 10px;
+      }
+      .lede {
+        font-size: clamp(15px, 2.4vw, 17.5px);
+        color: var(--ink-soft);
+        max-width: 62ch;
+        margin: 0 0 24px;
+      }
+      .lede strong { color: var(--ink); }
+
+      /* ---------- stage ---------- */
+      .stage {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 18px 18px 14px;
+      }
+      .meter-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 22px;
+        margin-bottom: 10px;
+      }
+      .meter-label {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .meter-count {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .meter-count .cap { color: var(--ink-soft); font-weight: 400; }
+      .meter-stats {
+        margin-left: auto;
+        display: flex;
+        gap: 18px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12.5px;
+        color: var(--ink-soft);
+      }
+      .meter-stats b { color: var(--ink); font-weight: 600; }
+      .bar {
+        height: 10px;
+        border-radius: 99px;
+        background: var(--surface-2);
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+      .bar-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 99px;
+        background: var(--new);
+        transition: width 0.45s ease, background 0.45s ease;
+      }
+      .bar-fill.full { background: var(--accent); }
+
+      .lane-labels {
+        display: flex;
+        justify-content: space-between;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 11.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 6px;
+      }
+      .lane-labels .out { color: var(--accent-ink); }
+      .lane-labels .in { color: var(--new); }
+
+      .track-wrap { position: relative; }
+      .track {
+        position: relative;
+        height: 86px;
+        border: 2.5px solid var(--frame);
+        border-radius: 10px;
+        background:
+          repeating-linear-gradient(
+            to right,
+            transparent 0,
+            transparent calc(100% / var(--cap, 14) - 1px),
+            var(--line) calc(100% / var(--cap, 14) - 1px),
+            var(--line) calc(100% / var(--cap, 14))
+          );
+        overflow: visible;
+      }
+      .track::after {
+        content: "THE WINDOW — FIXED SIZE";
+        position: absolute;
+        left: 10px;
+        bottom: 5px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.14em;
+        color: var(--ink-soft);
+        opacity: 0.75;
+        pointer-events: none;
+      }
+      .chip {
+        position: absolute;
+        top: 14px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 2px;
+        border-radius: 7px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12.5px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        transition: left 0.5s cubic-bezier(0.45, 0, 0.25, 1), top 0.5s ease, opacity 0.45s ease,
+          background 0.3s ease, border-color 0.3s ease;
+        will-change: left;
+      }
+      .chip.newest {
+        background: var(--new-soft);
+        border-color: var(--new);
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .chip.next-out {
+        border-color: var(--accent);
+        border-style: dashed;
+      }
+      .chip.key {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 600;
+      }
+      .chip.leaving {
+        transition: left 0.55s ease-in, top 0.55s ease-in, opacity 0.55s ease-in;
+      }
+
+      .forgotten {
+        margin-top: 16px;
+        border: 1.5px dashed var(--line);
+        border-radius: 10px;
+        padding: 10px 12px 12px;
+        min-height: 64px;
+      }
+      .forgotten h3 {
+        margin: 0 0 8px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .ghost-row { display: flex; flex-wrap: wrap; gap: 6px; }
+      .ghost {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 11.5px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        color: var(--ghost);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+        opacity: 0.85;
+        animation: ghost-in 0.4s ease;
+      }
+      .ghost.key {
+        color: var(--accent-ink);
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        font-weight: 600;
+        opacity: 1;
+      }
+      .ghost-empty {
+        font-size: 13px;
+        color: var(--ink-soft);
+        font-style: italic;
+      }
+      @keyframes ghost-in {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 0.85; transform: translateY(0); }
+      }
+
+      .caption {
+        margin: 16px 2px 4px;
+        font-size: clamp(15px, 2.4vw, 17px);
+        font-weight: 500;
+        min-height: 2.6em;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .caption .dot {
+        flex: none;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--new);
+        margin-top: 8px;
+      }
+      .caption.hot .dot { background: var(--accent); }
+      .caption strong { color: var(--accent-ink); }
+
+      /* ---------- controls ---------- */
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 18px;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: var(--ink);
+        color: var(--bg);
+        border: none;
+        border-radius: 9px;
+        padding: 10px 20px;
+        font-size: 15px;
+        font-weight: 700;
+        min-width: 118px;
+      }
+      .btn-primary:active { transform: translateY(1px); }
+      .btn-ghost {
+        background: transparent;
+        color: var(--ink);
+        border: 1.5px solid var(--line);
+        border-radius: 9px;
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .speed {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      .speed .seg {
+        display: flex;
+        border: 1.5px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .speed .seg button {
+        background: transparent;
+        border: none;
+        color: var(--ink-soft);
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12.5px;
+        padding: 7px 11px;
+      }
+      .speed .seg button[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--bg);
+        font-weight: 600;
+      }
+      button:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+
+      /* ---------- notes ---------- */
+      .notes {
+        margin-top: 30px;
+        display: grid;
+        gap: 0;
+        border-top: 1px solid var(--line);
+      }
+      .note {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 12px;
+        padding: 15px 2px;
+        border-bottom: 1px solid var(--line);
+      }
+      .note .n {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--accent-ink);
+        padding-top: 1px;
+      }
+      .note h2 { font-size: 16.5px; margin: 0 0 3px; font-weight: 700; }
+      .note p { margin: 0; color: var(--ink-soft); font-size: 14.5px; max-width: 64ch; }
+      .fineprint {
+        margin-top: 18px;
+        font-size: 13px;
+        color: var(--ink-soft);
+        max-width: 68ch;
+      }
+      .fineprint code {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12px;
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+
+      @media (max-width: 560px) {
+        .wrap { padding: 20px 12px 40px; }
+        .stage { padding: 14px 12px 12px; }
+        .chip { font-size: 10.5px; height: 36px; top: 12px; }
+        .track { height: 76px; }
+        .meter-stats { margin-left: 0; }
+        .speed { margin-left: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .chip, .bar-fill { transition-duration: 0.01s; }
+        .ghost { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>The context window</h1>
+      <p class="lede">
+        A language model can only “see” a limited number of <strong>tokens</strong> at once — that
+        limit is its context window. Watch what happens when a conversation runs longer than the
+        window: it fills up, then starts <strong>sliding</strong>, and the oldest tokens fall out
+        the back.
+      </p>
+
+      <section class="stage" aria-label="Animated diagram of a context window">
+        <div class="meter-row">
+          <span class="meter-label">Token budget — in window</span>
+          <span class="meter-count"><span id="inWindow">0</span> <span class="cap">/ <span id="capLabel">14</span> tokens</span></span>
+          <div class="meter-stats">
+            <span>seen so far <b id="seenCount">0</b></span>
+            <span>forgotten <b id="forgottenCount">0</b></span>
+          </div>
+        </div>
+        <div class="bar" role="progressbar" aria-label="Window fill" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="barWrap">
+          <div class="bar-fill" id="barFill"></div>
+        </div>
+
+        <div class="lane-labels">
+          <span class="out">← drops out &amp; is forgotten</span>
+          <span class="in">new tokens stream in →</span>
+        </div>
+        <div class="track-wrap">
+          <div class="track" id="track"></div>
+        </div>
+
+        <div class="forgotten">
+          <h3>Forgotten — outside the window, invisible to the model</h3>
+          <div class="ghost-row" id="ghostRow">
+            <span class="ghost-empty" id="ghostEmpty">Nothing has fallen out yet.</span>
+          </div>
+        </div>
+
+        <p class="caption" id="caption" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="captionText">Tokens stream in one at a time, and the model reads them into its window.</span>
+        </p>
+      </section>
+
+      <div class="controls">
+        <button class="btn-primary" id="playBtn" type="button">Pause</button>
+        <button class="btn-ghost" id="restartBtn" type="button">Restart</button>
+        <div class="speed">
+          <span>SPEED</span>
+          <div class="seg" role="group" aria-label="Playback speed">
+            <button type="button" data-speed="0.5" aria-pressed="false">0.5×</button>
+            <button type="button" data-speed="1" aria-pressed="true">1×</button>
+            <button type="button" data-speed="2" aria-pressed="false">2×</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <span class="n">01</span>
+          <div>
+            <h2>The budget is fixed</h2>
+            <p>
+              The window holds a set number of tokens and never grows. Everything the model knows
+              about your conversation has to fit inside it — your messages, its replies, and any
+              instructions all share the same budget.
+            </p>
+          </div>
+        </div>
+        <div class="note">
+          <span class="n">02</span>
+          <div>
+            <h2>Newest in, oldest out</h2>
+            <p>
+              Once the window is full, it slides forward: each new token pushes the oldest one
+              out. In the animation, the fact stated at the very start — the secret word — is
+              pushed out long before the question about it arrives.
+            </p>
+          </div>
+        </div>
+        <div class="note">
+          <span class="n">03</span>
+          <div>
+            <h2>Outside the window = forgotten</h2>
+            <p>
+              A token that falls out isn’t stored somewhere else — as far as the model is
+              concerned, it was never said. That’s why very long chats can “forget” things
+              mentioned near the beginning.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p class="fineprint">
+        Shown small on purpose: this window holds only a handful of tokens so you can watch it
+        slide. Real context windows hold from about 8,000 to over 1,000,000 tokens — but the rule
+        is identical. One simplification: here each token is a whole word; real tokenizers split
+        text into sub-word pieces, so a word like <code>unforgettable</code> might be three tokens.
+      </p>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // The stream: a fact is planted early ("mango."), then a long story
+        // pushes it out of the window before the question about it arrives.
+        var STREAM = [
+          "Listen", "well:", "the", "secret", "word", "is", "mango.",
+          "Now", "a", "long", "story", "—", "a", "sailor", "crossed",
+          "the", "wide", "ocean", "under", "bright", "stars,", "singing",
+          "old", "songs", "while", "waves", "rolled", "past", "his",
+          "wooden", "boat", "toward", "a", "green", "island", "where",
+          "parrots", "argued", "in", "palm", "trees", "all", "day.",
+          "Later", "he", "traded", "tales", "with", "crew,", "mended",
+          "sails,", "counted", "clouds,", "and", "watched", "harbor",
+          "bells", "ring", "at", "dusk.", "Years", "later,", "someone",
+          "asked:", "what", "was", "the", "secret", "word?"
+        ];
+        var KEY_INDEX = 6; // "mango."
+
+        var track = document.getElementById("track");
+        var barFill = document.getElementById("barFill");
+        var barWrap = document.getElementById("barWrap");
+        var inWindowEl = document.getElementById("inWindow");
+        var capLabel = document.getElementById("capLabel");
+        var seenEl = document.getElementById("seenCount");
+        var forgottenEl = document.getElementById("forgottenCount");
+        var ghostRow = document.getElementById("ghostRow");
+        var ghostEmpty = document.getElementById("ghostEmpty");
+        var captionEl = document.getElementById("caption");
+        var captionText = document.getElementById("captionText");
+        var playBtn = document.getElementById("playBtn");
+        var restartBtn = document.getElementById("restartBtn");
+
+        var capacity = 14;
+        var chips = []; // {el, text, streamIndex}
+        var nextIndex = 0;
+        var seen = 0;
+        var forgotten = 0;
+        var playing = false;
+        var speed = 1;
+        var timer = null;
+        var endPauseTicks = 0;
+        var keyDropped = false;
+
+        function computeCapacity() {
+          var w = track.clientWidth || window.innerWidth;
+          if (w < 520) return 7;
+          if (w < 760) return 11;
+          return 14;
+        }
+
+        function slotWidth() {
+          return track.clientWidth / capacity;
+        }
+
+        function slotLeft(i) {
+          return i * slotWidth() + 3;
+        }
+
+        function chipWidth() {
+          return slotWidth() - 6;
+        }
+
+        function fitChip(c) {
+          // Shrink long words just enough to fit their slot (mono advance ≈ 0.6em).
+          var base = slotWidth() >= 48 ? 12.5 : 11;
+          var avail = chipWidth() - 7;
+          var fs = Math.min(base, avail / (0.6 * Math.max(1, c.text.length)));
+          c.el.style.fontSize = Math.max(8.5, fs).toFixed(1) + "px";
+        }
+
+        function layout(animateNewest) {
+          for (var i = 0; i < chips.length; i++) {
+            var c = chips[i];
+            c.el.style.left = slotLeft(i) + "px";
+            c.el.style.width = chipWidth() + "px";
+            fitChip(c);
+            c.el.classList.toggle("newest", i === chips.length - 1 && animateNewest);
+            c.el.classList.toggle("next-out", chips.length === capacity && i === 0);
+          }
+        }
+
+        function setCaption(html, hot) {
+          captionText.innerHTML = html;
+          captionEl.classList.toggle("hot", !!hot);
+        }
+
+        function updateMeter() {
+          inWindowEl.textContent = chips.length;
+          capLabel.textContent = capacity;
+          seenEl.textContent = seen;
+          forgottenEl.textContent = forgotten;
+          var pct = Math.round((chips.length / capacity) * 100);
+          barFill.style.width = pct + "%";
+          barFill.classList.toggle("full", chips.length >= capacity);
+          barWrap.setAttribute("aria-valuenow", pct);
+          barWrap.setAttribute("aria-valuemax", 100);
+          track.style.setProperty("--cap", capacity);
+        }
+
+        function addGhost(text, isKey) {
+          if (ghostEmpty) {
+            ghostEmpty.remove();
+            ghostEmpty = null;
+          }
+          var g = document.createElement("span");
+          g.className = "ghost" + (isKey ? " key" : "");
+          g.textContent = text;
+          ghostRow.appendChild(g);
+          // Keep only the most recent ghosts visible.
+          while (ghostRow.children.length > 14) {
+            ghostRow.removeChild(ghostRow.firstChild);
+          }
+        }
+
+        function dropOldest() {
+          var old = chips.shift();
+          if (!old) return;
+          forgotten++;
+          var isKey = old.streamIndex === KEY_INDEX;
+          if (isKey) keyDropped = true;
+          old.el.classList.add("leaving");
+          old.el.classList.remove("newest", "next-out");
+          old.el.style.left = "-90px";
+          old.el.style.top = "58px";
+          old.el.style.opacity = "0";
+          (function (el) {
+            setTimeout(function () {
+              if (el.parentNode) el.parentNode.removeChild(el);
+            }, 600);
+          })(old.el);
+          addGhost(old.text, isKey);
+        }
+
+        function tick() {
+          if (endPauseTicks > 0) {
+            endPauseTicks--;
+            if (endPauseTicks === 0) reset();
+            return;
+          }
+          if (nextIndex >= STREAM.length) {
+            setCaption(
+              "The question arrives — but <strong>“mango.”</strong> fell out of the window long ago. " +
+                "The model can’t answer from what it can no longer see. That’s how long chats forget.",
+              true
+            );
+            endPauseTicks = 6;
+            return;
+          }
+
+          var wasFull = chips.length >= capacity;
+          var droppingKey = wasFull && chips.length > 0 && chips[0].streamIndex === KEY_INDEX;
+
+          if (wasFull) dropOldest();
+
+          var text = STREAM[nextIndex];
+          var el = document.createElement("span");
+          el.className = "chip" + (nextIndex === KEY_INDEX ? " key" : "");
+          el.textContent = text;
+          el.style.left = track.clientWidth + 24 + "px";
+          el.style.width = chipWidth() + "px";
+          el.style.opacity = "0";
+          track.appendChild(el);
+          chips.push({ el: el, text: text, streamIndex: nextIndex });
+          nextIndex++;
+          seen++;
+
+          // Force reflow so the entrance transition runs.
+          void el.offsetWidth;
+          el.style.opacity = "1";
+          layout(true);
+          updateMeter();
+
+          if (droppingKey) {
+            setCaption(
+              "There goes <strong>“mango.”</strong> — the secret word just fell out of the window. " +
+                "From here on, the model cannot see it.",
+              true
+            );
+          } else if (!wasFull && chips.length < capacity) {
+            setCaption("Tokens stream in one at a time, and the model reads them into its window.");
+          } else if (!wasFull && chips.length >= capacity) {
+            setCaption(
+              "The window is now <strong>full</strong> — every token of the budget is in use. " +
+                "It cannot grow, so from here it has to slide."
+            );
+          } else if (nextIndex === STREAM.length) {
+            setCaption("The whole story has streamed through. Only the last " + capacity + " tokens remain in view.");
+          } else {
+            setCaption("Full — so the window slides: each new token in pushes the oldest token out.");
+          }
+        }
+
+        function schedule() {
+          clearInterval(timer);
+          if (playing) {
+            timer = setInterval(tick, Math.round(720 / speed));
+          }
+        }
+
+        function setPlaying(p) {
+          playing = p;
+          playBtn.textContent = playing ? "Pause" : "Play";
+          schedule();
+        }
+
+        function reset() {
+          for (var i = 0; i < chips.length; i++) {
+            if (chips[i].el.parentNode) chips[i].el.parentNode.removeChild(chips[i].el);
+          }
+          chips = [];
+          nextIndex = 0;
+          seen = 0;
+          forgotten = 0;
+          endPauseTicks = 0;
+          keyDropped = false;
+          ghostRow.innerHTML = "";
+          ghostEmpty = document.createElement("span");
+          ghostEmpty.className = "ghost-empty";
+          ghostEmpty.textContent = "Nothing has fallen out yet.";
+          ghostRow.appendChild(ghostEmpty);
+          capacity = computeCapacity();
+          updateMeter();
+          setCaption("Tokens stream in one at a time, and the model reads them into its window.");
+        }
+
+        playBtn.addEventListener("click", function () {
+          setPlaying(!playing);
+        });
+        restartBtn.addEventListener("click", function () {
+          reset();
+          setPlaying(true);
+        });
+
+        var segBtns = document.querySelectorAll(".speed .seg button");
+        segBtns.forEach(function (b) {
+          b.addEventListener("click", function () {
+            segBtns.forEach(function (x) {
+              x.setAttribute("aria-pressed", "false");
+            });
+            b.setAttribute("aria-pressed", "true");
+            speed = parseFloat(b.getAttribute("data-speed"));
+            schedule();
+          });
+        });
+
+        var resizeTimer = null;
+        window.addEventListener("resize", function () {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function () {
+            var newCap = computeCapacity();
+            if (newCap !== capacity) {
+              capacity = newCap;
+              while (chips.length > capacity) {
+                var extra = chips.shift();
+                if (extra.el.parentNode) extra.el.parentNode.removeChild(extra.el);
+                forgotten++;
+              }
+            }
+            layout(false);
+            updateMeter();
+          }, 150);
+        });
+
+        // Init
+        capacity = computeCapacity();
+        updateMeter();
+        layout(false);
+
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduced) {
+          // Start paused; the reader presses Play. Pre-fill a few tokens so
+          // the scene isn't empty.
+          for (var k = 0; k < 5; k++) tick();
+          setPlaying(false);
+        } else {
+          setPlaying(true);
+        }
+      })();
+    </script>
+  </body>
+</html>

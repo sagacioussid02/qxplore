@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Embeddings — Words as Meaning-Vectors</title>
+    <style>
+      :root {
+        --bg: #fbfbfa;
+        --panel: #ffffff;
+        --panel-edge: #e3e4e0;
+        --ink: #1b1e23;
+        --muted: #5b636e;
+        --faint: #eceee9;
+        --btn-bg: #1b1e23;
+        --btn-ink: #ffffff;
+        --royalty: #96690a;
+        --animals: #15704c;
+        --food: #b23c20;
+        --actions: #1e5c99;
+        --people: #59636e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121417;
+          --panel: #1a1d21;
+          --panel-edge: #2e3238;
+          --ink: #eceff2;
+          --muted: #9aa3ad;
+          --faint: #23262b;
+          --btn-bg: #eceff2;
+          --btn-ink: #14161a;
+          --royalty: #e0b64a;
+          --animals: #45c48d;
+          --food: #ef8266;
+          --actions: #63a5e6;
+          --people: #a9b3be;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 28px 18px 48px;
+      }
+      h1 {
+        font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(24px, 5.4vw, 34px);
+        line-height: 1.2;
+        margin: 0 0 10px;
+        letter-spacing: -0.01em;
+      }
+      .lede { font-size: 16.5px; color: var(--ink); margin: 0 0 6px; max-width: 62ch; }
+      .lede strong { font-weight: 650; }
+      .sub { font-size: 14.5px; color: var(--muted); margin: 0 0 20px; max-width: 62ch; }
+
+      /* ---------- legend ---------- */
+      .legend {
+        display: flex; flex-wrap: wrap; gap: 8px;
+        margin: 0 0 14px;
+      }
+      .legend button {
+        appearance: none;
+        font: inherit; font-size: 13.5px; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 6px 12px 6px 10px;
+        border-radius: 999px;
+        border: 1.5px solid var(--panel-edge);
+        background: var(--panel);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .legend button .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+      .legend button[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+      .legend .hint { font-size: 12.5px; color: var(--muted); align-self: center; margin-left: 2px; }
+
+      /* ---------- map ---------- */
+      .map-wrap {
+        background: var(--panel);
+        border: 1px solid var(--panel-edge);
+        border-radius: 14px;
+        padding: 6px;
+      }
+      svg.map { display: block; width: 100%; height: auto; max-width: 540px; margin: 0 auto; }
+      .blob { opacity: 0; transition: opacity 1s ease; }
+      .map-ready .blob { opacity: 1; }
+      .cluster-label {
+        font-size: 11.5px; font-weight: 700; letter-spacing: 0.14em;
+        fill: var(--muted); opacity: 0; transition: opacity 1s ease .3s;
+      }
+      .map-ready .cluster-label { opacity: 1; }
+      .grid-dot { fill: var(--muted); opacity: 0.14; }
+
+      .word { cursor: pointer; outline: none; }
+      .word .pill {
+        fill: var(--panel);
+        stroke: var(--c);
+        stroke-width: 1.6;
+      }
+      .word .wdot { fill: var(--c); }
+      .word text {
+        font-size: 15px; font-weight: 600;
+        fill: var(--ink);
+        text-anchor: middle;
+        dominant-baseline: central;
+        pointer-events: none;
+        user-select: none;
+      }
+      .word .halo {
+        fill: none; stroke: var(--c); stroke-width: 2;
+        opacity: 0; transition: opacity .25s ease;
+      }
+      .word.is-selected .pill { fill: var(--c); }
+      .word.is-selected text { fill: #fff; }
+      @media (prefers-color-scheme: dark) {
+        .word.is-selected text { fill: #14161a; }
+      }
+      .word.is-selected .wdot { fill: #fff; }
+      @media (prefers-color-scheme: dark) { .word.is-selected .wdot { fill: #14161a; } }
+      .word.is-selected .halo, .word.is-neighbor .halo { opacity: 1; }
+      .word.is-neighbor .pill { stroke-width: 3; }
+      .word.is-dim { opacity: 0.28; }
+      .word:focus-visible .halo { opacity: 1; }
+
+      .link-line { stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 4 4; opacity: 0.75; }
+      .link-score {
+        font-size: 11.5px; font-weight: 700; fill: var(--ink);
+        text-anchor: middle; dominant-baseline: central;
+        paint-order: stroke; stroke: var(--panel); stroke-width: 4px;
+      }
+      .demo-arrow { stroke: var(--ink); stroke-width: 2.6; fill: none; }
+      #arrowHead path { fill: var(--ink); }
+      .demo-arrow.ghost-arrow { stroke-dasharray: 6 5; opacity: 0.9; }
+      .parallelogram { stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 3 5; fill: none; opacity: 0; transition: opacity .6s ease; }
+      .parallelogram.show { opacity: 0.65; }
+      #ghostPill { pointer-events: none; }
+      #ghostPill .pill { fill: var(--panel); stroke: var(--royalty); stroke-width: 2; stroke-dasharray: 5 4; }
+      #ghostPill text { font-size: 15px; font-weight: 600; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+      .pulse-ring { fill: none; stroke: var(--royalty); stroke-width: 2.5; opacity: 0; }
+      .pulse-ring.go { animation: pulse 1s ease-out 2; }
+      @keyframes pulse {
+        0% { opacity: 0.9; transform: scale(0.7); }
+        100% { opacity: 0; transform: scale(1.9); }
+      }
+
+      /* ---------- info panel ---------- */
+      .info {
+        margin-top: 14px;
+        background: var(--panel);
+        border: 1px solid var(--panel-edge);
+        border-radius: 14px;
+        padding: 16px 18px;
+        min-height: 118px;
+      }
+      .info .placeholder { color: var(--muted); font-size: 15px; margin: 4px 0; }
+      .sel-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin-bottom: 2px; }
+      .sel-word { font-family: Georgia, serif; font-size: 26px; font-weight: 600; line-height: 1.1; }
+      .sel-vec { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .sel-vec code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--ink); }
+      .tag {
+        font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--c); border: 1.5px solid var(--c); border-radius: 999px; padding: 2px 9px;
+      }
+      .sel-sub { font-size: 13.5px; color: var(--muted); margin: 6px 0 10px; }
+      .nbr { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+      .nbr .n-name { font-weight: 650; font-size: 15.5px; width: 86px; flex: none; }
+      .nbr .bar-track { flex: 1; height: 8px; border-radius: 99px; background: var(--faint); overflow: hidden; }
+      .nbr .bar { height: 100%; border-radius: 99px; background: var(--c); width: 0; transition: width .6s cubic-bezier(.22,1,.36,1); }
+      .nbr .n-score { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; width: 42px; text-align: right; flex: none; }
+
+      /* ---------- demo ---------- */
+      .demo {
+        margin-top: 26px;
+        background: var(--panel);
+        border: 1px solid var(--panel-edge);
+        border-radius: 14px;
+        padding: 18px;
+      }
+      .demo h2 {
+        font-family: Georgia, "Iowan Old Style", serif;
+        font-size: 21px; font-weight: 600; margin: 0 0 6px;
+      }
+      .demo p { font-size: 15px; color: var(--muted); margin: 0 0 14px; max-width: 60ch; }
+      .equation {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+        font-family: Georgia, serif; font-size: clamp(20px, 5.6vw, 27px);
+        margin: 4px 0 12px;
+      }
+      .equation .tok {
+        padding: 2px 10px; border-radius: 8px;
+        border: 1.5px solid transparent;
+        transition: background .3s, border-color .3s, opacity .3s;
+        opacity: 0.45;
+      }
+      .equation .tok.lit { opacity: 1; border-color: var(--panel-edge); background: var(--faint); }
+      .equation .tok.answer { opacity: 1; border-color: var(--royalty); color: var(--royalty); font-weight: 700; }
+      .equation .op { opacity: 0.6; }
+      .demo-caption { font-size: 15px; min-height: 46px; margin: 0 0 14px; color: var(--ink); }
+      .demo-caption:empty::before { content: "Press play and watch the arrows on the map above."; color: var(--muted); }
+      .btn {
+        appearance: none; font: inherit; font-weight: 650; font-size: 15.5px;
+        background: var(--btn-bg); color: var(--btn-ink);
+        border: none; border-radius: 10px;
+        padding: 12px 20px; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 9px;
+      }
+      .btn:disabled { opacity: 0.45; cursor: default; }
+      .btn .tri {
+        width: 0; height: 0; flex: none;
+        border-left: 10px solid currentColor;
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+      }
+      .foot {
+        margin-top: 22px; font-size: 13.5px; color: var(--muted); max-width: 64ch;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pulse-ring.go { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Words that mean similar things live close together</h1>
+      <p class="lede">
+        An <strong>embedding</strong> turns every word into a list of numbers — a
+        <strong>vector</strong>. A model learns those numbers from how words are actually used,
+        so words that show up in similar contexts end up with similar vectors.
+      </p>
+      <p class="sub">
+        Flattened onto a 2D map, that means <em>neighbors = similar meaning</em>.
+        The words below fly into their neighborhoods — tap any word to meet its closest neighbors.
+      </p>
+
+      <div class="legend" id="legend" role="group" aria-label="Filter by word family"></div>
+
+      <div class="map-wrap">
+        <svg class="map" id="map" viewBox="0 0 400 540" role="img"
+             aria-label="A 2D map of words. Royalty words cluster top left, animals top right, food bottom left, action words bottom right, with man and woman between royalty and food.">
+          <defs>
+            <marker id="arrowHead" viewBox="0 0 10 10" refX="8.5" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"></path>
+            </marker>
+          </defs>
+          <g id="gridLayer"></g>
+          <g id="blobLayer"></g>
+          <g id="labelLayer"></g>
+          <g id="linkLayer"></g>
+          <g id="wordLayer"></g>
+          <g id="demoLayer"></g>
+        </svg>
+      </div>
+
+      <section class="info" id="info" aria-live="polite">
+        <p class="placeholder">
+          <strong>Tap a word</strong> — its three nearest neighbors light up, with a similarity
+          score for each. On this map the score comes from distance (closer = higher); real models
+          compare the <em>angle</em> between vectors instead.
+        </p>
+      </section>
+
+      <section class="demo">
+        <h2>Word arithmetic: directions carry meaning</h2>
+        <p>
+          Because relationships become directions in the vector, you can do sums with words.
+          The classic example:
+        </p>
+        <div class="equation" id="equation" aria-label="king minus man plus woman approximately equals queen">
+          <span class="tok" data-tok="king">king</span>
+          <span class="op">−</span>
+          <span class="tok" data-tok="man">man</span>
+          <span class="op">+</span>
+          <span class="tok" data-tok="woman">woman</span>
+          <span class="op">≈</span>
+          <span class="tok" data-tok="queen">queen</span>
+        </div>
+        <p class="demo-caption" id="demoCaption"></p>
+        <button class="btn" id="demoBtn" type="button">
+          <span class="tri" aria-hidden="true"></span><span id="demoBtnLabel">Play the demo</span>
+        </button>
+      </section>
+
+      <p class="foot">
+        A toy sketch: this map gives every word just 2 numbers so you can see it. Real embeddings
+        (Word2Vec, and the ones inside today's language models) use hundreds or thousands of
+        numbers per word — same idea, far richer neighborhoods.
+      </p>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+        var SVGNS = "http://www.w3.org/2000/svg";
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        var CLUSTERS = {
+          royalty: { label: "Royalty", colorVar: "var(--royalty)", cx: 104, cy: 108, rx: 98, ry: 88, labelX: 16, labelY: 26, anchor: "start" },
+          animals: { label: "Animals", colorVar: "var(--animals)", cx: 296, cy: 108, rx: 98, ry: 88, labelX: 384, labelY: 26, anchor: "end" },
+          people:  { label: "People",  colorVar: "var(--people)",  cx: 76,  cy: 250, rx: 62, ry: 50, labelX: 76, labelY: 198, anchor: "middle" },
+          food:    { label: "Food",    colorVar: "var(--food)",    cx: 104, cy: 406, rx: 98, ry: 88, labelX: 16, labelY: 322, anchor: "start" },
+          actions: { label: "Actions", colorVar: "var(--actions)", cx: 296, cy: 406, rx: 98, ry: 88, labelX: 384, labelY: 322, anchor: "end" }
+        };
+
+        // x, y are positions on the 400 x 540 map.
+        // king/queen and man/woman are placed so that (woman - man) == (queen - king)
+        // exactly: the demo's arrow really does land on queen.
+        var WORDS = [
+          { w: "crown",    c: "royalty", x: 62,  y: 50 },
+          { w: "king",     c: "royalty", x: 56,  y: 102 },
+          { w: "queen",    c: "royalty", x: 59,  y: 152 },
+          { w: "prince",   c: "royalty", x: 146, y: 66 },
+          { w: "princess", c: "royalty", x: 148, y: 114 },
+          { w: "throne",   c: "royalty", x: 140, y: 168 },
+          { w: "cat",      c: "animals", x: 250, y: 56 },
+          { w: "dog",      c: "animals", x: 254, y: 106 },
+          { w: "puppy",    c: "animals", x: 250, y: 156 },
+          { w: "kitten",   c: "animals", x: 336, y: 62 },
+          { w: "lion",     c: "animals", x: 340, y: 112 },
+          { w: "horse",    c: "animals", x: 332, y: 164 },
+          { w: "man",      c: "people",  x: 76,  y: 226 },
+          { w: "woman",    c: "people",  x: 79,  y: 276 },
+          { w: "pizza",    c: "food",    x: 60,  y: 356 },
+          { w: "bread",    c: "food",    x: 146, y: 346 },
+          { w: "cheese",   c: "food",    x: 56,  y: 408 },
+          { w: "apple",    c: "food",    x: 150, y: 400 },
+          { w: "rice",     c: "food",    x: 94,  y: 460 },
+          { w: "cake",     c: "food",    x: 164, y: 456 },
+          { w: "run",      c: "actions", x: 246, y: 352 },
+          { w: "jump",     c: "actions", x: 336, y: 350 },
+          { w: "swim",     c: "actions", x: 250, y: 406 },
+          { w: "read",     c: "actions", x: 340, y: 400 },
+          { w: "write",    c: "actions", x: 254, y: 460 },
+          { w: "sing",     c: "actions", x: 340, y: 456 }
+        ];
+        var byWord = {};
+        WORDS.forEach(function (d) { byWord[d.w] = d; });
+
+        var svg = document.getElementById("map");
+        var gridLayer = document.getElementById("gridLayer");
+        var blobLayer = document.getElementById("blobLayer");
+        var labelLayer = document.getElementById("labelLayer");
+        var linkLayer = document.getElementById("linkLayer");
+        var demoLayer = document.getElementById("demoLayer");
+        var wordLayer = document.getElementById("wordLayer");
+        var info = document.getElementById("info");
+
+        function el(name, attrs) {
+          var n = document.createElementNS(SVGNS, name);
+          for (var k in attrs) n.setAttribute(k, attrs[k]);
+          return n;
+        }
+
+        /* faint dot grid — the "space" the vectors live in */
+        for (var gx = 20; gx < 400; gx += 40) {
+          for (var gy = 20; gy < 540; gy += 40) {
+            gridLayer.appendChild(el("circle", { cx: gx, cy: gy, r: 1.4, "class": "grid-dot" }));
+          }
+        }
+
+        /* cluster blobs + labels */
+        Object.keys(CLUSTERS).forEach(function (key) {
+          var cl = CLUSTERS[key];
+          var blob = el("ellipse", { cx: cl.cx, cy: cl.cy, rx: cl.rx, ry: cl.ry, "class": "blob" });
+          blob.style.fill = cl.colorVar;
+          blob.style.fillOpacity = "0.09";
+          blobLayer.appendChild(blob);
+          var t = el("text", { x: cl.labelX, y: cl.labelY, "class": "cluster-label", "text-anchor": cl.anchor });
+          t.textContent = cl.label.toUpperCase();
+          labelLayer.appendChild(t);
+        });
+
+        /* words */
+        var PILL_H = 30;
+        function pillWidth(word) { return 36 + word.length * 8.4; }
+
+        WORDS.forEach(function (d, i) {
+          var w = pillWidth(d.w);
+          var g = el("g", {
+            "class": "word", tabindex: "0", role: "button",
+            "aria-label": d.w + ", " + CLUSTERS[d.c].label + " family"
+          });
+          g.style.setProperty("--c", CLUSTERS[d.c].colorVar);
+          g.dataset.word = d.w;
+
+          var halo = el("rect", {
+            x: -w / 2 - 5, y: -PILL_H / 2 - 5, width: w + 10, height: PILL_H + 10,
+            rx: (PILL_H + 10) / 2, "class": "halo"
+          });
+          var pill = el("rect", {
+            x: -w / 2, y: -PILL_H / 2, width: w, height: PILL_H, rx: PILL_H / 2, "class": "pill"
+          });
+          var dot = el("circle", { cx: -w / 2 + 12, cy: 0, r: 3.6, "class": "wdot" });
+          var text = el("text", { x: 8, y: 1 });
+          text.textContent = d.w;
+          g.appendChild(halo); g.appendChild(pill); g.appendChild(dot); g.appendChild(text);
+
+          /* entrance: start at the word's own cluster centre, then fly out to its spot */
+          if (reduceMotion) {
+            g.setAttribute("transform", "translate(" + d.x + "," + d.y + ")");
+          } else {
+            var cl0 = CLUSTERS[d.c];
+            g.style.transform = "translate(" + cl0.cx + "px," + cl0.cy + "px) scale(0.4)";
+            g.style.opacity = "0";
+            g.style.transition = "transform 0.55s cubic-bezier(.22,1,.36,1) " + (40 + i * 22) + "ms, opacity 0.35s ease " + (40 + i * 22) + "ms";
+          }
+          wordLayer.appendChild(g);
+          d.node = g;
+        });
+
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            svg.classList.add("map-ready");
+            if (!reduceMotion) {
+              WORDS.forEach(function (d) {
+                d.node.style.transform = "translate(" + d.x + "px," + d.y + "px) scale(1)";
+                d.node.style.opacity = "1";
+              });
+              /* bake final positions into attributes so later state changes are clean */
+              setTimeout(function () {
+                WORDS.forEach(function (d) {
+                  d.node.style.transition = "none";
+                  d.node.style.transform = "";
+                  d.node.style.opacity = "";
+                  d.node.setAttribute("transform", "translate(" + d.x + "," + d.y + ")");
+                });
+              }, 40 + WORDS.length * 22 + 700);
+            }
+          });
+        });
+
+        /* ---------- similarity + selection ---------- */
+        function similarity(a, b) {
+          var dx = a.x - b.x, dy = a.y - b.y;
+          return Math.exp(-Math.sqrt(dx * dx + dy * dy) / 150);
+        }
+        function neighborsOf(d) {
+          return WORDS.filter(function (o) { return o !== d; })
+            .map(function (o) { return { d: o, s: similarity(d, o) }; })
+            .sort(function (a, b) { return b.s - a.s; })
+            .slice(0, 3);
+        }
+
+        var selected = null;
+        var activeCluster = null;
+
+        function clearLinks() { while (linkLayer.firstChild) linkLayer.removeChild(linkLayer.firstChild); }
+
+        function refreshDim() {
+          WORDS.forEach(function (d) {
+            var dim = false;
+            if (selected) {
+              var keep = d === selected || neighborsOf(selected).some(function (n) { return n.d === d; });
+              dim = !keep;
+            } else if (activeCluster) {
+              dim = d.c !== activeCluster;
+            }
+            d.node.classList.toggle("is-dim", dim);
+          });
+        }
+
+        function select(d) {
+          if (demoRunning) endDemoVisuals();
+          selected = d;
+          clearLinks();
+          WORDS.forEach(function (o) {
+            o.node.classList.remove("is-selected", "is-neighbor");
+          });
+          if (!d) {
+            info.innerHTML = '<p class="placeholder"><strong>Tap a word</strong> — its three nearest ' +
+              'neighbors light up, with a similarity score for each. On this map the score comes from ' +
+              'distance (closer = higher); real models compare the <em>angle</em> between vectors instead.</p>';
+            refreshDim();
+            return;
+          }
+          d.node.classList.add("is-selected");
+          var nbrs = neighborsOf(d);
+          nbrs.forEach(function (n) {
+            n.d.node.classList.add("is-neighbor");
+            var line = el("line", { x1: d.x, y1: d.y, x2: n.d.x, y2: n.d.y, "class": "link-line" });
+            linkLayer.appendChild(line);
+            var score = el("text", {
+              x: (d.x + n.d.x) / 2, y: (d.y + n.d.y) / 2, "class": "link-score"
+            });
+            score.textContent = n.s.toFixed(2);
+            linkLayer.appendChild(score);
+          });
+
+          var vx = (d.x / 400).toFixed(2);
+          var vy = (1 - d.y / 540).toFixed(2);
+          var html = '<div class="sel-head">' +
+            '<span class="sel-word">' + d.w + '</span>' +
+            '<span class="tag" style="--c:' + CLUSTERS[d.c].colorVar + '">' + CLUSTERS[d.c].label + '</span>' +
+            '<span class="sel-vec">toy vector: <code>[' + vx + ', ' + vy + ']</code></span></div>' +
+            '<p class="sel-sub">Its three nearest neighbors — the words the model treats as most similar:</p>';
+          nbrs.forEach(function (n) {
+            html += '<div class="nbr" style="--c:' + CLUSTERS[n.d.c].colorVar + '">' +
+              '<span class="n-name">' + n.d.w + '</span>' +
+              '<span class="bar-track"><span class="bar" data-w="' + Math.round(n.s * 100) + '"></span></span>' +
+              '<span class="n-score">' + n.s.toFixed(2) + '</span></div>';
+          });
+          info.innerHTML = html;
+          requestAnimationFrame(function () {
+            info.querySelectorAll(".bar").forEach(function (b) { b.style.width = b.dataset.w + "%"; });
+          });
+          refreshDim();
+        }
+
+        WORDS.forEach(function (d) {
+          d.node.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            select(selected === d ? null : d);
+          });
+          d.node.addEventListener("keydown", function (ev) {
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              select(selected === d ? null : d);
+            }
+          });
+        });
+        svg.addEventListener("click", function () { if (selected) select(null); });
+
+        /* ---------- legend (cluster filter) ---------- */
+        var legend = document.getElementById("legend");
+        ["royalty", "animals", "food", "actions", "people"].forEach(function (key) {
+          var cl = CLUSTERS[key];
+          var b = document.createElement("button");
+          b.type = "button";
+          b.setAttribute("aria-pressed", "false");
+          b.style.setProperty("--c", cl.colorVar);
+          b.innerHTML = '<span class="dot"></span>' + cl.label;
+          b.addEventListener("click", function () {
+            if (selected) select(null);
+            activeCluster = activeCluster === key ? null : key;
+            legend.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+            if (activeCluster) b.setAttribute("aria-pressed", "true");
+            refreshDim();
+          });
+          legend.appendChild(b);
+        });
+        var hint = document.createElement("span");
+        hint.className = "hint";
+        hint.textContent = "tap a family to spotlight it";
+        legend.appendChild(hint);
+
+        /* ---------- vector arithmetic demo ---------- */
+        var demoBtn = document.getElementById("demoBtn");
+        var demoBtnLabel = document.getElementById("demoBtnLabel");
+        var caption = document.getElementById("demoCaption");
+        var toks = {};
+        document.querySelectorAll("#equation .tok").forEach(function (t) { toks[t.dataset.tok] = t; });
+
+        var king = byWord.king, queen = byWord.queen, man = byWord.man, woman = byWord.woman;
+        var demoTimers = [];
+        var demoRunning = false;
+        var demoEls = [];
+        var ghostEl = null;
+
+        function trackDemo(node) { demoEls.push(node); return node; }
+        function later(fn, ms) { demoTimers.push(setTimeout(fn, reduceMotion ? 60 : ms)); }
+
+        function makeArrow(x1, y1, x2, y2, cls) {
+          var line = el("line", { x1: x1, y1: y1, x2: x2, y2: y2, "class": "demo-arrow " + (cls || ""), "marker-end": "url(#arrowHead)" });
+          return line;
+        }
+        function drawIn(line, dur) {
+          var len = Math.hypot(line.getAttribute("x2") - line.getAttribute("x1"), line.getAttribute("y2") - line.getAttribute("y1"));
+          line.style.strokeDasharray = String(len);
+          line.style.strokeDashoffset = String(len);
+          line.getBoundingClientRect();
+          line.style.transition = "stroke-dashoffset " + dur + "ms ease";
+          line.style.strokeDashoffset = "0";
+          setTimeout(function () { line.style.strokeDasharray = "none"; }, dur + 60);
+        }
+
+        function endDemoVisuals() {
+          demoTimers.forEach(clearTimeout); demoTimers = [];
+          demoEls.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+          demoEls = [];
+          ghostEl = null;
+          Object.keys(toks).forEach(function (k) { toks[k].classList.remove("lit", "answer"); });
+          demoRunning = false;
+          demoBtn.disabled = false;
+          demoBtnLabel.textContent = "Play the demo";
+        }
+
+        function runDemo() {
+          endDemoVisuals();
+          selected = null;
+          clearLinks();
+          WORDS.forEach(function (o) { o.node.classList.remove("is-selected", "is-neighbor", "is-dim"); });
+          info.innerHTML = '<p class="placeholder">Watch the map: the demo is playing up top.</p>';
+          demoRunning = true;
+          demoBtn.disabled = true;
+          demoBtnLabel.textContent = "Playing…";
+
+          /* geometry: arrows run just left of the pills so they don't cross the words */
+          var aManX = man.x - pillWidth("man") / 2 - 12;
+          var aKingX = king.x - pillWidth("king") / 2 - 12;
+
+          later(function () {
+            caption.textContent = "Step 1 — Look at man and woman. The arrow from man to woman is a direction in meaning-space: roughly, “more female.”";
+            toks.man.classList.add("lit"); toks.woman.classList.add("lit");
+            man.node.classList.add("is-neighbor"); woman.node.classList.add("is-neighbor");
+            var a1 = trackDemo(makeArrow(aManX, man.y, aManX + (woman.x - man.x), woman.y - 10));
+            demoLayer.appendChild(a1);
+            if (reduceMotion) { /* leave static */ } else { drawIn(a1, 800); }
+          }, 300);
+
+          later(function () {
+            caption.textContent = "Step 2 — Now take king, and move it by exactly the same arrow…";
+            toks.king.classList.add("lit");
+            king.node.classList.add("is-neighbor");
+            man.node.classList.remove("is-neighbor"); woman.node.classList.remove("is-neighbor");
+
+            /* faint parallelogram guides: king→man and woman→queen */
+            var guide = trackDemo(el("path", {
+              d: "M" + king.x + "," + king.y + " L" + man.x + "," + man.y +
+                 " M" + woman.x + "," + woman.y + " L" + queen.x + "," + queen.y,
+              "class": "parallelogram"
+            }));
+            demoLayer.appendChild(guide);
+            requestAnimationFrame(function () { guide.classList.add("show"); });
+
+            var a2 = trackDemo(makeArrow(aKingX, king.y, aKingX + (queen.x - king.x), queen.y - 10, "ghost-arrow"));
+            demoLayer.appendChild(a2);
+            if (!reduceMotion) drawIn(a2, 900);
+
+            /* ghost "king" pill slides along the arrow onto queen */
+            var gw = pillWidth("king");
+            var ghost = trackDemo(el("g", { id: "ghostPill" }));
+            ghostEl = ghost;
+            var gr = el("rect", { x: -gw / 2, y: -PILL_H / 2, width: gw, height: PILL_H, rx: PILL_H / 2, "class": "pill" });
+            var gt = el("text", { x: 0, y: 1 }); gt.textContent = "king";
+            ghost.appendChild(gr); ghost.appendChild(gt);
+            ghost.style.transform = "translate(" + king.x + "px," + king.y + "px)";
+            demoLayer.appendChild(ghost);
+            if (!reduceMotion) {
+              ghost.getBoundingClientRect();
+              ghost.style.transition = "transform 1.1s cubic-bezier(.22,1,.36,1) 500ms";
+              requestAnimationFrame(function () {
+                ghost.style.transform = "translate(" + queen.x + "px," + queen.y + "px)";
+              });
+            } else {
+              ghost.style.transform = "translate(" + queen.x + "px," + queen.y + "px)";
+            }
+          }, 2100);
+
+          later(function () {
+            caption.textContent = "Step 3 — …and you land right on queen. That is the whole trick: relationships between words become directions between vectors, so king − man + woman ≈ queen.";
+            toks.queen.classList.add("answer");
+            queen.node.classList.add("is-selected");
+            /* fade the ghost "king" away to reveal queen underneath */
+            if (ghostEl) {
+              ghostEl.style.transition = "opacity 0.7s ease";
+              ghostEl.style.opacity = "0";
+            }
+            var ring = trackDemo(el("circle", { cx: queen.x, cy: queen.y, r: 26, "class": "pulse-ring" }));
+            ring.style.transformOrigin = queen.x + "px " + queen.y + "px";
+            demoLayer.appendChild(ring);
+            requestAnimationFrame(function () { ring.classList.add("go"); });
+          }, 4300);
+
+          later(function () {
+            demoRunning = false;
+            demoBtn.disabled = false;
+            demoBtnLabel.textContent = "Replay the demo";
+            info.innerHTML = '<p class="placeholder"><strong>king − man + woman ≈ queen.</strong> ' +
+              'Tap any word on the map to explore its own nearest neighbors.</p>';
+          }, 5600);
+        }
+
+        demoBtn.addEventListener("click", runDemo);
+      })();
+    </script>
+  </body>
+</html>

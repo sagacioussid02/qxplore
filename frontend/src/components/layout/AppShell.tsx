@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { to: '/benchmark', label: 'Benchmarking', icon: '⚡', inDev: false },
   { to: '/circuit', label: 'Circuit Lab', icon: '⊕', inDev: false },
   { to: '/rsa', label: 'RSA vs Shor', icon: '🔐', inDev: false },
+  { to: '/learn/ml-foundations', label: 'ML Foundations', icon: '🧠', inDev: false },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
