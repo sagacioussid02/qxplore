@@ -14,6 +14,7 @@ import BenchmarkPage from './pages/BenchmarkPage';
 import BenchmarkRunPage from './pages/BenchmarkRunPage';
 
 import MLFoundationsPage from './pages/MLFoundationsPage';
+import QuantumComputingPage from './pages/QuantumComputingPage';
 
 function App() {
   return (
@@ -36,6 +37,10 @@ function App() {
           <Route path="/learn/ml-foundations" element={<MLFoundationsPage />} />
 
           <Route path="/learn/ml-foundations/:slug" element={<MLFoundationsPage />} />
+
+          <Route path="/learn/quantum-computing" element={<QuantumComputingPage />} />
+
+          <Route path="/learn/quantum-computing/:slug" element={<QuantumComputingPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>
