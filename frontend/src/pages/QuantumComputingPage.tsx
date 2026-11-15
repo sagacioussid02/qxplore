@@ -23,6 +23,19 @@ const LESSONS = [
         'A quantum computer only speeds up specific kinds of problems — searching unsorted data, factoring large numbers, simulating molecules. For everyday tasks like loading a web page, a classical computer is faster, cheaper, and better. Quantum computers are specialists that work alongside classical computers, not replacements for them.',
     },
   },
+  {
+    slug: 'the-qubit',
+    title: 'The Qubit',
+    intro:
+      'A bit is either 0 or 1. A qubit is richer: it can be 0, 1, or any mix of the two. The mix is written as a state vector, |ψ⟩ = α|0⟩ + β|1⟩, where the two numbers α and β are called amplitudes — they say how much of each outcome is in the mix. The amplitudes are not the probabilities themselves; their squares are. Measure the qubit and you get 0 with probability |α|² and 1 with probability |β|², and the two probabilities always add to 1. The moment you measure, the mix collapses: the qubit becomes whichever outcome you saw, and the other possibility is gone. Worked example: a qubit in the state (3/5)|0⟩ + (4/5)|1⟩ gives 0 with probability (3/5)² = 9/25 = 36% and 1 with probability (4/5)² = 16/25 = 64%.',
+    animation: '/lessons/quantum-computing/animations/the-qubit.html',
+    check: {
+      question:
+        'A qubit is in the state |ψ⟩ = (1/√2)|0⟩ + (1/√2)|1⟩. If you measure it, what is the probability of seeing 0, and what happens to the qubit right after the measurement?',
+      answer:
+        'The probability of 0 is (1/√2)² = 1/2, so 50% — and the same 50% for 1. Measuring collapses the mix: if you saw 0, the qubit is now exactly |0⟩, so measuring it again gives 0 every time. One measurement tells you the outcome, not the mix — the 50/50 only shows up if you prepare the same state and measure it many times over.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
