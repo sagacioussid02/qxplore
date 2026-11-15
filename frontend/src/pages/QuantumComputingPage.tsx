@@ -5,9 +5,10 @@ import { Link, useParams } from 'react-router-dom';
 // HTML file shipped as a static asset under
 // public/lessons/quantum-computing/animations/ and embedded below in an iframe,
 // so new lessons can be added without touching app code: drop the HTML file in
-// that folder and add one entry to LESSONS. Each lesson names its Microsoft
-// source (Learn module or Quantum Kata) and ends with one
-// check-your-understanding question.
+// that folder and add one entry to LESSONS. Each lesson ends with one
+// check-your-understanding question. Topic provenance (which Microsoft Learn
+// module or Quantum Kata each lesson is based on) lives in the track plan
+// file, not on the page: lessons stay original and generic.
 const LESSONS = [
   {
     slug: 'what-quantum-computing-is',
@@ -15,10 +16,6 @@ const LESSONS = [
     intro:
       'A classical computer stores information in bits — each one is a 0 or a 1, and it works through possibilities one at a time. A quantum computer stores information in qubits, which can hold a mix of 0 and 1 at the same time, and qubits can be linked so their states depend on each other. That lets a quantum computer explore many possibilities in a structured way at once — but only for certain kinds of problems. It is a specialist tool, not a faster laptop: it will not load web pages quicker or make your spreadsheets snappier.',
     animation: '/lessons/quantum-computing/animations/what-quantum-computing-is.html',
-    source: {
-      title: 'Introduction to quantum computing with Azure Quantum',
-      url: 'https://learn.microsoft.com/en-us/training/modules/intro-to-azure-quantum/',
-    },
     check: {
       question:
         'A friend says a quantum computer is just a super-fast laptop that will make every program run faster. What is wrong with that?',
@@ -41,8 +38,7 @@ export default function QuantumComputingPage() {
           <p className="mt-3 text-gray-300 max-w-2xl">
             Quantum computing, one small idea at a time. Each lesson is a short read plus an
             interactive animation you can poke at — no physics degree, no jargon without a
-            definition. Start at the top; each lesson builds on the ones before it. Lessons
-            follow Microsoft Learn and the Microsoft Quantum Katas, linked from each lesson.
+            definition. Start at the top; each lesson builds on the ones before it.
           </p>
         </div>
         <div className="grid gap-4">
@@ -90,17 +86,6 @@ export default function QuantumComputingPage() {
         </div>
         <h1 className="text-4xl font-mono font-bold text-quantum-cyan mt-1">{lesson.title}</h1>
         <p className="mt-3 text-gray-300 max-w-2xl">{lesson.intro}</p>
-        <p className="mt-3 text-sm text-gray-400">
-          Source: Microsoft Learn —{' '}
-          <a
-            href={lesson.source.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-quantum-cyan underline"
-          >
-            {lesson.source.title}
-          </a>
-        </p>
       </div>
       <div className="card-quantum overflow-hidden">
         <iframe
