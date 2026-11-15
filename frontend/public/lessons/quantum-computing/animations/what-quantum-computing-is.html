@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>What Quantum Computing Is — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 600px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 32px 28px 28px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 22px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+      /* ---- bit vs qubit ---- */
+      .duel {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .cell {
+        flex: 1 1 200px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px 12px 16px;
+        cursor: pointer;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        transition: border-color 0.25s ease, transform 0.15s ease;
+      }
+      .cell:hover { border-color: var(--accent); }
+      .cell:active { transform: scale(0.98); }
+      .cell h3 {
+        margin: 0 0 4px;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .cell .big {
+        font-size: clamp(34px, 9vw, 46px);
+        font-weight: 700;
+        line-height: 1.15;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .cell .sub { font-size: 13.5px; color: var(--ink-soft); margin: 6px 0 0; min-height: 38px; }
+
+      /* the qubit coin: two faces, one spinning disc */
+      .coin {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: inline-grid;
+        place-items: center;
+        background: var(--accent);
+        color: #fff;
+        font-size: 22px;
+        font-weight: 700;
+        animation: spin 2.6s linear infinite;
+        transform-style: preserve-3d;
+      }
+      @keyframes spin {
+        0% { transform: rotateY(0deg); }
+        100% { transform: rotateY(360deg); }
+      }
+      .bar {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--line);
+        overflow: hidden;
+        margin: 10px auto 0;
+        max-width: 150px;
+        display: flex;
+      }
+      .bar span { flex: 1; }
+      .bar .b0 { background: var(--accent); }
+      .bar .b1 { background: var(--good); }
+      .bar-labels {
+        display: flex;
+        justify-content: space-between;
+        max-width: 150px;
+        margin: 4px auto 0;
+        font-size: 11.5px;
+        color: var(--ink-soft);
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 14px 0 0; }
+
+      /* ---- problem cards ---- */
+      .divider {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 26px 0 18px;
+      }
+      .problems-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        text-align: left;
+      }
+      @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+      .problem {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        cursor: pointer;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        transition: border-color 0.25s ease;
+      }
+      .problem:hover { border-color: var(--accent); }
+      .problem .q { font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+      .problem .a {
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--ink-soft);
+        margin-top: 6px;
+        display: none;
+      }
+      .problem.open .a { display: block; }
+      .problem .verdict {
+        display: none;
+        margin-top: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .problem.open .verdict { display: inline-block; }
+      .problem.open.quantum .verdict { color: var(--good); }
+      .problem.open.classical .verdict { color: var(--plain); }
+      .problem.open { border-color: var(--accent); }
+
+      .note {
+        margin: 24px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        min-height: 20px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .coin { animation: none; }
+        .cell { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: a classical bit versus a qubit, and which problems quantum computing actually helps with">
+      <p class="caption"><span class="step">1 / 2</span> &nbsp;A bit vs a qubit — tap the bit to flip it</p>
+
+      <div class="duel">
+        <button class="cell" id="bitCell" type="button" aria-label="Classical bit. Tap to flip between 0 and 1.">
+          <h3>Classical bit</h3>
+          <div class="big" id="bitValue">0</div>
+          <p class="sub">One value at a time: 0 <em>or</em> 1. Tap to flip it.</p>
+        </button>
+        <div class="cell" id="qubitCell" aria-label="Qubit: a mix of 0 and 1 at the same time.">
+          <h3>Qubit</h3>
+          <div class="big"><span class="coin" aria-hidden="true">0·1</span></div>
+          <div class="bar" aria-hidden="true"><span class="b0"></span><span class="b1"></span></div>
+          <div class="bar-labels" aria-hidden="true"><span>0 — 50%</span><span>1 — 50%</span></div>
+          <p class="sub">A mix of 0 <em>and</em> 1 at once — until you measure it.</p>
+        </div>
+      </div>
+
+      <p class="hint">Link qubits together and the mixes combine — that is the raw material a quantum computer works with.</p>
+
+      <hr class="divider" />
+
+      <p class="caption"><span class="step">2 / 2</span> &nbsp;Where does quantum actually help? Tap a problem.</p>
+      <p class="problems-title">Four jobs. Which ones get a quantum speedup?</p>
+
+      <div class="grid" id="grid">
+        <button class="problem quantum" type="button">
+          <span class="q">Find one name in a giant unsorted list</span>
+          <span class="a">Grover&rsquo;s search checks in roughly &radic;N steps instead of N — a real speedup, but only a square-root one.</span>
+          <span class="verdict">✓ Quantum speedup</span>
+        </button>
+        <button class="problem quantum" type="button">
+          <span class="q">Break a 2048-bit RSA key</span>
+          <span class="a">Shor&rsquo;s algorithm could do it in hours — but no quantum computer big and reliable enough exists yet.</span>
+          <span class="verdict">✓ Quantum speedup — in theory</span>
+        </button>
+        <button class="problem quantum" type="button">
+          <span class="q">Simulate a new drug molecule</span>
+          <span class="a">Molecules are quantum systems, so a quantum computer speaks their language natively instead of approximating it.</span>
+          <span class="verdict">✓ Quantum speedup</span>
+        </button>
+        <button class="problem classical" type="button">
+          <span class="q">Load a web page faster</span>
+          <span class="a">Everyday tasks have no structure for quantum to exploit. A normal computer is faster, cheaper, and better.</span>
+          <span class="verdict">— Classical is fine</span>
+        </button>
+      </div>
+
+      <p class="note" id="note">Quantum computers are specialists, not faster laptops.</p>
+    </main>
+
+    <script>
+      // Bit: tap to flip 0 <-> 1.
+      var bit = 0;
+      var bitValue = document.getElementById("bitValue");
+      document.getElementById("bitCell").addEventListener("click", function () {
+        bit = 1 - bit;
+        bitValue.textContent = bit;
+      });
+
+      // Problem cards: tap to reveal the verdict.
+      var note = document.getElementById("note");
+      var NOTES = {
+        quantum: "A quantum speedup — but only for problems with the right structure.",
+        classical: "No quantum advantage here. Classical wins on speed, cost, and simplicity."
+      };
+      document.querySelectorAll(".problem").forEach(function (card) {
+        card.addEventListener("click", function () {
+          var wasOpen = card.classList.contains("open");
+          document.querySelectorAll(".problem").forEach(function (c) { c.classList.remove("open"); });
+          if (!wasOpen) {
+            card.classList.add("open");
+            note.textContent = card.classList.contains("quantum") ? NOTES.quantum : NOTES.classical;
+          } else {
+            note.textContent = "Quantum computers are specialists, not faster laptops.";
+          }
+        });
+      });
+
+      // Gentle auto-demo: flip the bit every few seconds so the contrast
+      // is visible even before anyone taps. Respects reduced motion.
+      var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduced) {
+        setInterval(function () {
+          bit = 1 - bit;
+          bitValue.textContent = bit;
+        }, 2600);
+      }
+    </script>
+  </body>
+</html>

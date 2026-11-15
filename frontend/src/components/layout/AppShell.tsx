@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { to: '/circuit', label: 'Circuit Lab', icon: '⊕', inDev: false },
   { to: '/rsa', label: 'RSA vs Shor', icon: '🔐', inDev: false },
   { to: '/learn/ml-foundations', label: 'ML Foundations', icon: '🧠', inDev: false },
+  { to: '/learn/quantum-computing', label: 'Quantum Computing', icon: '⚛️', inDev: false },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
