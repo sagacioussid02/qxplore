@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Your First Quantum Program — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 600px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 32px 28px 28px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 18px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+      /* ---- program listing ---- */
+      .code {
+        text-align: left;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin: 0 0 20px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 14.5px;
+        line-height: 1.9;
+      }
+      .code .line {
+        display: block;
+        padding: 0 8px;
+        margin: 0 -8px;
+        border-radius: 6px;
+        transition: background 0.2s ease;
+      }
+      .code .line.active { background: var(--accent); color: #fff; }
+      .code .line .comment { opacity: 0.65; font-size: 12.5px; }
+      .code .line.active .comment { opacity: 0.85; }
+      .code .kw { color: var(--accent); font-weight: 700; }
+      .code .line.active .kw { color: #fff; }
+
+      /* ---- state vector + bars ---- */
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(19px, 5vw, 26px);
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 0 0 6px;
+      }
+      .state .amp0 { color: var(--accent); }
+      .state .amp1 { color: var(--good); }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 18px;
+        line-height: 1.5;
+      }
+
+      .bars { margin-top: 4px; text-align: left; }
+      .bar-row { margin-bottom: 12px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.3s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.5; }
+
+      .divider {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 26px 0 18px;
+      }
+
+      /* ---- controls + outcome ---- */
+      .measure-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .btn {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 14.5px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 11px 18px;
+        cursor: pointer;
+        transition: transform 0.15s ease, opacity 0.2s ease;
+      }
+      .btn:hover { opacity: 0.9; }
+      .btn:active { transform: scale(0.98); }
+      .btn:disabled { opacity: 0.5; cursor: default; }
+      .btn.ghost {
+        background: transparent;
+        color: var(--accent);
+      }
+      .result {
+        margin: 18px auto 0;
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        border: 2px solid var(--line);
+        display: grid;
+        place-items: center;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 40px;
+        font-weight: 700;
+        color: var(--ink-soft);
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+      .result.show0 { border-color: var(--accent); color: var(--accent); }
+      .result.show1 { border-color: var(--good); color: var(--good); }
+      .result.flash { animation: pop 0.3s ease; }
+      @keyframes pop {
+        0% { transform: scale(1.25); }
+        100% { transform: scale(1); }
+      }
+      .status {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        min-height: 40px;
+      }
+      .status b { color: var(--ink); }
+
+      /* ---- byte builder ---- */
+      .byte-slots {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        margin: 4px 0 10px;
+      }
+      .slot {
+        width: 40px;
+        height: 48px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--ink-soft);
+      }
+      .slot.filled0 { border-color: var(--accent); color: var(--accent); }
+      .slot.filled1 { border-color: var(--good); color: var(--good); }
+      .byte-value {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 15px;
+        color: var(--ink);
+        margin: 0;
+        min-height: 22px;
+      }
+      .byte-value .dim { color: var(--ink-soft); }
+
+      .note {
+        margin: 24px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        min-height: 20px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .result.flash { animation: none; }
+        .bar-fill { transition: none; }
+        .btn { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: run a three-line quantum program that produces one random bit, then build a random byte from eight runs">
+      <p class="caption"><span class="step">1 / 2</span> &nbsp;Run the program — three steps, one random bit</p>
+
+      <pre class="code" aria-label="The program: allocate a qubit, apply Hadamard, measure it"><span class="line" id="line1"><span class="kw">use</span> q = Qubit();  <span class="comment">// a fresh qubit, starting at |0⟩</span></span><span class="line" id="line2">H(q);             <span class="comment">// Hadamard: a 50/50 mix of |0⟩ and |1⟩</span></span><span class="line" id="line3"><span class="kw">return</span> M(q);     <span class="comment">// measure: collapses to 0 or 1, fifty-fifty</span></span></pre>
+
+      <p class="state" id="stateLine" aria-live="polite">q = |0&rang;</p>
+      <p class="state-sub" id="stateSub">No qubit yet — press "Run the program" to allocate one.</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 0</span><span class="pct" id="pct0">—</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 1</span><span class="pct" id="pct1">—</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 0%"></div></div>
+        </div>
+      </div>
+
+      <p class="hint">A classical random-number generator follows a formula from a starting
+        seed, so its "random" numbers are really a fixed sequence in disguise. This program
+        has no seed and no formula — the randomness comes from measuring a superposition.</p>
+
+      <hr class="divider" />
+
+      <div class="measure-row">
+        <button class="btn" id="runOnce" type="button">Run the program</button>
+        <button class="btn ghost" id="buildByte" type="button">Build a random byte (8 runs)</button>
+        <button class="btn ghost" id="resetAll" type="button">Reset</button>
+      </div>
+
+      <div class="result" id="result" aria-live="polite">?</div>
+      <p class="status" id="status">Each run is a fresh coin flip: the qubit is allocated, mixed,
+        and measured from scratch every time.</p>
+
+      <hr class="divider" />
+
+      <p class="caption"><span class="step">2 / 2</span> &nbsp;Eight runs make a byte</p>
+
+      <div class="byte-slots" id="byteSlots" aria-label="The eight bits of the random byte">
+        <span class="slot">·</span><span class="slot">·</span><span class="slot">·</span><span class="slot">·</span><span class="slot">·</span><span class="slot">·</span><span class="slot">·</span><span class="slot">·</span>
+      </div>
+      <p class="byte-value" id="byteValue"><span class="dim">Press "Build a random byte" to run the program eight times.</span></p>
+
+      <p class="note">Worked example: eight runs might give 1 0 1 1 0 0 1 0 — the byte
+        10110010, which is 178 in decimal. Run it again and you get a different byte.</p>
+    </main>
+
+    <script>
+      var line1 = document.getElementById("line1");
+      var line2 = document.getElementById("line2");
+      var line3 = document.getElementById("line3");
+      var stateLine = document.getElementById("stateLine");
+      var stateSub = document.getElementById("stateSub");
+      var pct0 = document.getElementById("pct0");
+      var pct1 = document.getElementById("pct1");
+      var bar0 = document.getElementById("bar0");
+      var bar1 = document.getElementById("bar1");
+      var result = document.getElementById("result");
+      var status = document.getElementById("status");
+      var byteSlots = document.getElementById("byteSlots");
+      var byteValue = document.getElementById("byteValue");
+      var runOnceBtn = document.getElementById("runOnce");
+      var buildByteBtn = document.getElementById("buildByte");
+      var resetBtn = document.getElementById("resetAll");
+
+      var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var STEP_MS = reducedMotion ? 0 : 650;
+      var running = false;
+      var byteBits = [];
+
+      function clearActive() {
+        line1.classList.remove("active");
+        line2.classList.remove("active");
+        line3.classList.remove("active");
+      }
+
+      function setBars(p0) {
+        pct0.textContent = Math.round(p0 * 100) + "%";
+        pct1.textContent = Math.round((1 - p0) * 100) + "%";
+        bar0.style.width = (p0 * 100) + "%";
+        bar1.style.width = ((1 - p0) * 100) + "%";
+      }
+
+      function showBit(value) {
+        result.textContent = value;
+        result.classList.remove("show0", "show1", "flash");
+        // Force reflow so the pop animation replays on every run.
+        void result.offsetWidth;
+        result.classList.add(value === 0 ? "show0" : "show1", "flash");
+      }
+
+      function stepAllocate(done) {
+        clearActive();
+        line1.classList.add("active");
+        stateLine.innerHTML = "q = |0&rang;";
+        stateSub.textContent = "Step 1 — a fresh qubit, allocated at |0⟩. It is certain: measuring now would always give 0.";
+        setBars(1);
+        result.textContent = "?";
+        result.classList.remove("show0", "show1", "flash");
+        setTimeout(done, STEP_MS);
+      }
+
+      function stepHadamard(done) {
+        clearActive();
+        line2.classList.add("active");
+        stateLine.innerHTML = "q = (1/&radic;2)|0&rang; + (1/&radic;2)|1&rang;";
+        stateSub.textContent = "Step 2 — the Hadamard gate mixes the qubit into an even 50/50 superposition of |0⟩ and |1⟩.";
+        setBars(0.5);
+        setTimeout(done, STEP_MS);
+      }
+
+      function stepMeasure() {
+        clearActive();
+        line3.classList.add("active");
+        var value = Math.random() < 0.5 ? 0 : 1;
+        stateLine.innerHTML = "q = |" + value + "&rang;";
+        stateSub.textContent = "Step 3 — measuring collapses the mix. The qubit is now exactly |" + value + "⟩, and that is the bit the program returns.";
+        setBars(value === 0 ? 1 : 0);
+        showBit(value);
+        status.innerHTML = "The program returned <b>" + value + "</b>. Run it again and you get a fresh coin flip — the mix is rebuilt from scratch every run.";
+        running = false;
+        runOnceBtn.disabled = false;
+        buildByteBtn.disabled = false;
+        return value;
+      }
+
+      function runProgram(onDone) {
+        if (running) { return; }
+        running = true;
+        runOnceBtn.disabled = true;
+        buildByteBtn.disabled = true;
+        stepAllocate(function () {
+          stepHadamard(function () {
+            var value = stepMeasure();
+            if (onDone) { onDone(value); }
+          });
+        });
+      }
+
+      function renderByte() {
+        var slots = byteSlots.children;
+        for (var i = 0; i < 8; i++) {
+          var slot = slots[i];
+          slot.classList.remove("filled0", "filled1");
+          if (i < byteBits.length) {
+            slot.textContent = byteBits[i];
+            slot.classList.add(byteBits[i] === 0 ? "filled0" : "filled1");
+          } else {
+            slot.textContent = "·";
+          }
+        }
+        if (byteBits.length === 0) {
+          byteValue.innerHTML = "<span class=\"dim\">Press \"Build a random byte\" to run the program eight times.</span>";
+        } else if (byteBits.length < 8) {
+          byteValue.innerHTML = "<span class=\"dim\">" + byteBits.join("") + " — " + byteBits.length + " of 8 bits…</span>";
+        } else {
+          var bin = byteBits.join("");
+          var dec = parseInt(bin, 2);
+          byteValue.innerHTML = "Byte <b>" + bin + "</b> = <b>" + dec + "</b> in decimal.";
+        }
+      }
+
+      runOnceBtn.addEventListener("click", function () {
+        runProgram();
+      });
+
+      buildByteBtn.addEventListener("click", function () {
+        if (running) { return; }
+        byteBits = [];
+        renderByte();
+        status.innerHTML = "Running the program eight times — each run is a fresh coin flip…";
+        var i = 0;
+        (function nextRun() {
+          if (i >= 8) { return; }
+          runProgram(function (value) {
+            byteBits.push(value);
+            renderByte();
+            i++;
+            nextRun();
+          });
+        })();
+      });
+
+      resetBtn.addEventListener("click", function () {
+        if (running) { return; }
+        clearActive();
+        byteBits = [];
+        stateLine.innerHTML = "q = |0&rang;";
+        stateSub.textContent = "No qubit yet — press \"Run the program\" to allocate one.";
+        pct0.textContent = "—";
+        pct1.textContent = "—";
+        bar0.style.width = "0%";
+        bar1.style.width = "0%";
+        result.textContent = "?";
+        result.classList.remove("show0", "show1", "flash");
+        status.textContent = "Each run is a fresh coin flip: the qubit is allocated, mixed, and measured from scratch every time.";
+        renderByte();
+      });
+
+      renderByte();
+    </script>
+  </body>
+</html>

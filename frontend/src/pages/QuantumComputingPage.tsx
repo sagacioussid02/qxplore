@@ -36,6 +36,19 @@ const LESSONS = [
         'The probability of 0 is (1/√2)² = 1/2, so 50% — and the same 50% for 1. Measuring collapses the mix: if you saw 0, the qubit is now exactly |0⟩, so measuring it again gives 0 every time. One measurement tells you the outcome, not the mix — the 50/50 only shows up if you prepare the same state and measure it many times over.',
     },
   },
+  {
+    slug: 'first-quantum-program',
+    title: 'Your First Quantum Program: A Quantum Random Number Generator',
+    intro:
+      'A quantum program is a short list of steps run on qubits: start with a fresh qubit, apply gates to shape it, then measure to read an answer out. The classic first program is a quantum coin flip — one random bit, in three lines (shown here in Q#, the example language used through this track): "use q = Qubit();" borrows a fresh qubit, which always starts in |0⟩; "H(q);" applies a Hadamard gate, mixing it into an even 50/50 superposition of |0⟩ and |1⟩; "return M(q);" measures it, collapsing the mix to a 0 or a 1, fifty-fifty. Worked example: run the program once and you might get 1. Run it eight times and you might get 1 0 1 1 0 0 1 0 — read as a byte, 10110010, which is 178 in decimal. Run it again and you get a different byte. A classical random-number generator follows a formula from a starting seed, so its numbers are really a fixed sequence in disguise; here there is no seed and no formula — the randomness comes from measuring a superposition, fresh on every run.',
+    animation: '/lessons/quantum-computing/animations/first-quantum-program.html',
+    check: {
+      question:
+        'What happens if you leave out the H(q) line — the Hadamard step — and run the program? What do you get every time, and why?',
+      answer:
+        'You get 0 every single time. A fresh qubit always starts in |0⟩, and measuring it without changing it just reads that 0 back. The Hadamard is what creates the 50/50 mix — without it there is no randomness at all. The randomness comes from measuring a superposition, not from the measurement itself: measure a qubit that is already certain and you learn nothing new.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
