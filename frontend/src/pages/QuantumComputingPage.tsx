@@ -49,6 +49,19 @@ const LESSONS = [
         'You get 0 every single time. A fresh qubit always starts in |0⟩, and measuring it without changing it just reads that 0 back. The Hadamard is what creates the 50/50 mix — without it there is no randomness at all. The randomness comes from measuring a superposition, not from the measurement itself: measure a qubit that is already certain and you learn nothing new.',
     },
   },
+  {
+    slug: 'dirac-notation-bloch-sphere',
+    title: 'Dirac Notation and the Bloch Sphere',
+    intro:
+      'Dirac notation is the shorthand for writing qubit states. A state is written as a ket, |ψ⟩ — the angle brackets are just a container for the label inside. Flip a ket around and you get its mirror image, a bra, ⟨ψ|. Put a bra and a ket together and you get a bracket, ⟨φ|ψ⟩, which measures how much two states agree: 1 means identical, 0 means completely different — orthogonal. A measurement probability is a bracket in disguise: the chance of seeing 0 is |⟨0|ψ⟩|², the overlap of your state with |0⟩, squared. The Bloch sphere is the picture that goes with the notation: every possible single-qubit state is one point on a sphere. The north pole is |0⟩, the south pole is |1⟩, and every other point is a mix. Two angles pin the point down: θ, measured down from the north pole, sets the probabilities — P(0) = cos²(θ/2), P(1) = sin²(θ/2); and φ, the angle around the equator, is the phase — it changes nothing about the measurement probabilities, but it is a real part of the state, and gates can feel it. Worked example: the state (1/√2)|0⟩ + (1/√2)|1⟩ sits on the equator at θ = 90°, φ = 0° — the point called |+⟩. Its mirror image across the sphere, (1/√2)|0⟩ − (1/√2)|1⟩, sits opposite at φ = 180° — the point called |−⟩. Both measure 50/50, and ⟨+|−⟩ = 0: they are as different as two qubit states can be, even though a plain measurement cannot tell them apart.',
+    animation: '/lessons/quantum-computing/animations/dirac-notation-bloch-sphere.html',
+    check: {
+      question:
+        'A qubit sits at θ = 120°, φ = 0° on the Bloch sphere. What is the probability of measuring 0, and is the state closer to |0⟩ or to |1⟩?',
+      answer:
+        'P(0) = cos²(θ/2) = cos²(60°) = (1/2)² = 25%, so P(1) = 75% — the state is closer to the south pole, |1⟩. Any point below the equator (θ > 90°) makes 1 more likely than 0. The φ = 0° only says which side of the sphere the point is on; it does not change the probabilities.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
