@@ -62,6 +62,19 @@ const LESSONS = [
         'P(0) = cos²(θ/2) = cos²(60°) = (1/2)² = 25%, so P(1) = 75% — the state is closer to the south pole, |1⟩. Any point below the equator (θ > 90°) makes 1 more likely than 0. The φ = 0° only says which side of the sphere the point is on; it does not change the probabilities.',
     },
   },
+  {
+    slug: 'superposition-hands-on',
+    title: 'Superposition, Hands-On',
+    intro:
+      'The Hadamard gate, H, is the mixer: it turns a certain qubit into an even 50/50 mix. H|0⟩ = |+⟩ = (|0⟩ + |1⟩)/√2 and H|1⟩ = |−⟩ = (|0⟩ − |1⟩)/√2 — both measure 50/50, but the minus sign in |−⟩ is a real difference: a plain measurement cannot see it, but the next gate can. The most useful fact about H is that applying it twice cancels it out: H² is the identity, so H|+⟩ = |0⟩ and H|−⟩ = |1⟩. Superposition is a reversible turn you can undo, not randomness being injected. And before you measure anything, you can ask a simulator to print the whole state vector — every amplitude, minus sign included — which is how you check a circuit: the printout shows the mix itself, while one measurement only ever shows a single outcome. Worked example: start in |0⟩, apply H once, and you have |+⟩ — measure 100 times and you land near 50 zeros and 50 ones. Apply H a second time and the mix undoes itself: you are back at |0⟩, and every measurement gives 0. The same happens from |1⟩: H gives |−⟩, and a second H returns |1⟩.',
+    animation: '/lessons/quantum-computing/animations/superposition-hands-on.html',
+    check: {
+      question:
+        'A qubit starts in |1⟩. You apply H twice, then measure. What do you get — and what would you have got if you had measured after just one H?',
+      answer:
+        'After two H gates you are back at |1⟩, so you measure 1 every single time: H|1⟩ = |−⟩, and H|−⟩ = |1⟩, because the second Hadamard undoes the first. If you had measured after just one H, you would be in |−⟩ — an even 50/50 mix — so you would see about half 0s and half 1s over many runs. The two-H result is the proof: superposition is a reversible rotation, not randomness.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {

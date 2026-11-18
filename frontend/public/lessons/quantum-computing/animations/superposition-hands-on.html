@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Superposition, Hands-On — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      /* Circuit wire: a horizontal line with gate boxes sitting on it. */
+      .circuit {
+        position: relative;
+        margin: 18px 0 6px;
+        padding: 10px 0;
+        text-align: left;
+        min-height: 64px;
+      }
+      .circuit .wire {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 2px;
+        background: var(--ink-soft);
+        opacity: 0.5;
+        transform: translateY(-50%);
+      }
+      .circuit .gates {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .gate {
+        width: 44px;
+        height: 44px;
+        border: 2px solid var(--accent);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--accent);
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 19px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .gate.start {
+        border-color: var(--ink-soft);
+        color: var(--ink);
+        font-size: 16px;
+      }
+      .gate.measure {
+        border-color: var(--good);
+        color: var(--good);
+        font-size: 15px;
+      }
+      .circuit .count {
+        font-size: 13px;
+        color: var(--ink-soft);
+        margin-left: auto;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(16px, 4.4vw, 21px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state .amp0 { color: var(--accent); }
+      .state .amp1 { color: var(--good); }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+      .state-sub .phase-plus { color: var(--accent); font-weight: 700; }
+      .state-sub .phase-minus { color: var(--good); font-weight: 700; }
+
+      /* State inspector: what a simulator prints when you ask to see the state. */
+      .inspector {
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin: 0 0 16px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 13.5px;
+        line-height: 1.8;
+        color: var(--ink-soft);
+      }
+      .inspector .head {
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+      }
+      .inspector b { color: var(--ink); }
+      .inspector .amp0 { color: var(--accent); }
+      .inspector .amp1 { color: var(--good); }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+      .tally .last {
+        display: block;
+        margin-top: 4px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .tally .last.zero { color: var(--accent); }
+      .tally .last.one { color: var(--good); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: build a circuit with Hadamard gates and watch the superposition form, then measure it">
+      <p class="caption"><span class="step">1 / 3</span> &nbsp;Build a circuit with the Hadamard gate</p>
+      <p class="sub">The Hadamard gate <b>H</b> is the mixer: it turns a certain qubit into
+        an even 50/50 mix. H|0&rang; = <b>|+&rang;</b>, H|1&rang; = <b>|&minus;&rang;</b> —
+        both measure 50/50, but the minus sign in |&minus;&rang; is a real difference
+        the next gate can feel. Pick a starting state, then apply H as many times
+        as you like.</p>
+
+      <div class="controls" role="group" aria-label="Starting state">
+        <button class="chip active" type="button" data-start="0">Start in |0&rang;</button>
+        <button class="chip" type="button" data-start="1">Start in |1&rang;</button>
+      </div>
+
+      <div class="circuit" aria-label="Circuit diagram">
+        <div class="wire"></div>
+        <div class="gates" id="gates"></div>
+      </div>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="applyH">Apply H</button>
+        <button class="chip ghost" type="button" id="resetCircuit">Reset circuit</button>
+      </div>
+
+      <div class="controls" role="group" aria-label="Worked examples">
+        <button class="chip ghost" type="button" id="preset00">Try it: H, H from |0&rang;</button>
+        <button class="chip ghost" type="button" id="preset11">Try it: H, H from |1&rang;</button>
+      </div>
+
+      <p class="caption"><span class="step">2 / 3</span> &nbsp;Inspect the state — what the simulator sees</p>
+      <p class="sub">Before you measure, you can ask a simulator to print the whole state
+        vector — every amplitude, including the minus sign a measurement would hide.
+        That is how you check a circuit: the printout shows the mix itself, not just
+        one outcome.</p>
+
+      <p class="state" id="stateLine" aria-live="polite">|&psi;&rang; = 1.00|0&rang; + 0.00|1&rang;</p>
+      <p class="state-sub" id="stateName">Certain: this state <i>is</i> |0&rang;</p>
+
+      <div class="inspector" id="inspector">
+        <div class="head">STATE VECTOR (as printed by a simulator)</div>
+        <div>|0&rang; : <b class="amp0">1.00</b></div>
+        <div>|1&rang; : <b class="amp1">0.00</b></div>
+      </div>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 0 — P(0) = |amplitude of |0&rang;|&sup2;</span><span class="pct" id="pct0">100%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 100%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 1 — P(1) = |amplitude of |1&rang;|&sup2;</span><span class="pct" id="pct1">0%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 0%"></div></div>
+        </div>
+      </div>
+
+      <p class="caption"><span class="step">3 / 3</span> &nbsp;Measure it — many times</p>
+      <p class="sub">One measurement gives one outcome, not the mix. To see the 50/50, you
+        have to prepare the same state and measure it over and over. Each click below
+        re-prepares your circuit from scratch, then measures once.</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measureOnce">Measure once</button>
+        <button class="chip go" type="button" id="measure100">Measure 100 times</button>
+        <button class="chip ghost" type="button" id="resetTally">Reset tally</button>
+      </div>
+
+      <p class="tally" id="tallyLine">No measurements yet — build a circuit, then measure it.</p>
+
+      <p class="hint">Worked example: start in <b>|0&rang;</b> and apply H once — you get
+        <b>|+&rang;</b>, a 50/50 mix, and measuring 100 times lands near 50 zeros and
+        50 ones. Apply H <b>again</b> and the mix undoes itself: you are back at
+        <b>|0&rang;</b>, and every measurement gives 0. Two Hadamards cancel — a
+        superposition is a reversible turn, not noise. The same happens from
+        <b>|1&rang;</b>: H gives |&minus;&rang;, and a second H returns |1&rang;.</p>
+    </main>
+
+    <script>
+      var SQRT1_2 = 1 / Math.sqrt(2);
+
+      var start = 0;      // starting state: 0 or 1
+      var hCount = 0;     // number of H gates applied
+      var tally = { zero: 0, one: 0, last: null };
+
+      var gatesEl = document.getElementById("gates");
+      var stateLine = document.getElementById("stateLine");
+      var stateName = document.getElementById("stateName");
+      var inspector = document.getElementById("inspector");
+      var pct0 = document.getElementById("pct0");
+      var pct1 = document.getElementById("pct1");
+      var bar0 = document.getElementById("bar0");
+      var bar1 = document.getElementById("bar1");
+      var tallyLine = document.getElementById("tallyLine");
+      var startButtons = document.querySelectorAll("[data-start]");
+
+      // Current amplitudes (a for |0>, b for |1>) from the circuit.
+      function amplitudes() {
+        if (hCount % 2 === 0) {
+          return { a: start === 0 ? 1 : 0, b: start === 1 ? 1 : 0 };
+        }
+        return { a: SQRT1_2, b: start === 0 ? SQRT1_2 : -SQRT1_2 };
+      }
+
+      function stateLabel() {
+        if (hCount % 2 === 0) {
+          return start === 0 ? "|0\u27e9" : "|1\u27e9";
+        }
+        return start === 0 ? "|+\u27e9" : "|\u2212\u27e9";
+      }
+
+      function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+      function fmtSigned(n) {
+        if (n < 0) { return "\u2212" + fmt(-n); }
+        return fmt(n);
+      }
+
+      function renderCircuit() {
+        var html = "<span class=\"gate start\">|" + start + "\u27e9</span>";
+        for (var i = 0; i < hCount; i++) {
+          html += "<span class=\"gate\">H</span>";
+        }
+        html += "<span class=\"count\">" + hCount + " H gate" + (hCount === 1 ? "" : "s") + "</span>";
+        gatesEl.innerHTML = html;
+      }
+
+      function renderState() {
+        var amps = amplitudes();
+        var p0 = amps.a * amps.a;
+        var p1 = amps.b * amps.b;
+
+        stateLine.innerHTML = "|&psi;&rang; = <span class=\"amp0\">" + fmt(amps.a) +
+          "</span>|0&rang; + <span class=\"amp1\">(" + fmtSigned(amps.b) +
+          ")</span>|1&rang;";
+
+        var label = stateLabel();
+        var nameText;
+        if (hCount % 2 === 0) {
+          nameText = "Certain: this state <i>is</i> " + label;
+        } else if (start === 0) {
+          nameText = "Even 50/50 mix — this state is <b>|+&rang;</b>, <span class=\"phase-plus\">+ phase</span>";
+        } else {
+          nameText = "Even 50/50 mix — this state is <b>|\u2212&rang;</b>, <span class=\"phase-minus\">\u2212 phase</span>: same probabilities as |+&rang;, different state";
+        }
+        stateName.innerHTML = nameText;
+
+        inspector.innerHTML =
+          "<div class=\"head\">STATE VECTOR (as printed by a simulator)</div>" +
+          "<div>|0&rang; : <b class=\"amp0\">" + fmt(amps.a) + "</b></div>" +
+          "<div>|1&rang; : <b class=\"amp1\">" + fmtSigned(amps.b) + "</b></div>" +
+          "<div>name: <b>" + label + "</b> &nbsp;&middot;&nbsp; H gates applied: <b>" + hCount + "</b></div>";
+
+        pct0.textContent = Math.round(p0 * 100) + "%";
+        pct1.textContent = Math.round(p1 * 100) + "%";
+        bar0.style.width = (p0 * 100) + "%";
+        bar1.style.width = (p1 * 100) + "%";
+      }
+
+      function renderTally() {
+        var total = tally.zero + tally.one;
+        if (total === 0) {
+          tallyLine.textContent = "No measurements yet — build a circuit, then measure it.";
+          return;
+        }
+        var lastHtml = "";
+        if (tally.last !== null) {
+          lastHtml = "<span class=\"last " + (tally.last === 0 ? "zero" : "one") +
+            "\">Last measurement: " + tally.last + "</span>";
+        }
+        var expected = "Expected from the state: " +
+          Math.round(amplitudes().a * amplitudes().a * 100) + "% zeros, " +
+          Math.round(amplitudes().b * amplitudes().b * 100) + "% ones.";
+        tallyLine.innerHTML =
+          "Measured <b>" + total + "</b> time" + (total === 1 ? "" : "s") +
+          ": <b>" + tally.zero + "</b> zeros, <b>" + tally.one + "</b> ones" +
+          " (" + Math.round(tally.zero / total * 100) + "% / " +
+          Math.round(tally.one / total * 100) + "%)<br />" + expected + lastHtml;
+      }
+
+      function render() {
+        renderCircuit();
+        renderState();
+        renderTally();
+      }
+
+      function setStart(s) {
+        start = s;
+        hCount = 0;
+        tally = { zero: 0, one: 0, last: null };
+        startButtons.forEach(function (btn) {
+          btn.classList.toggle("active", parseInt(btn.dataset.start, 10) === s);
+        });
+        render();
+      }
+
+      function measureOnce() {
+        var amps = amplitudes();
+        var p0 = amps.a * amps.a;
+        var outcome = Math.random() < p0 ? 0 : 1;
+        if (outcome === 0) { tally.zero++; } else { tally.one++; }
+        tally.last = outcome;
+        renderTally();
+      }
+
+      startButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setStart(parseInt(btn.dataset.start, 10));
+        });
+      });
+
+      document.getElementById("applyH").addEventListener("click", function () {
+        hCount++;
+        tally = { zero: 0, one: 0, last: null };
+        render();
+      });
+
+      document.getElementById("resetCircuit").addEventListener("click", function () {
+        hCount = 0;
+        tally = { zero: 0, one: 0, last: null };
+        render();
+      });
+
+      document.getElementById("preset00").addEventListener("click", function () {
+        setStart(0);
+        hCount = 2;
+        render();
+      });
+
+      document.getElementById("preset11").addEventListener("click", function () {
+        setStart(1);
+        hCount = 2;
+        render();
+      });
+
+      document.getElementById("measureOnce").addEventListener("click", measureOnce);
+
+      document.getElementById("measure100").addEventListener("click", function () {
+        for (var i = 0; i < 100; i++) { measureOnce(); }
+      });
+
+      document.getElementById("resetTally").addEventListener("click", function () {
+        tally = { zero: 0, one: 0, last: null };
+        renderTally();
+      });
+
+      render();
+    </script>
+  </body>
+</html>
