@@ -75,6 +75,19 @@ const LESSONS = [
         'After two H gates you are back at |1⟩, so you measure 1 every single time: H|1⟩ = |−⟩, and H|−⟩ = |1⟩, because the second Hadamard undoes the first. If you had measured after just one H, you would be in |−⟩ — an even 50/50 mix — so you would see about half 0s and half 1s over many runs. The two-H result is the proof: superposition is a reversible rotation, not randomness.',
     },
   },
+  {
+    slug: 'single-qubit-gates',
+    title: 'Single-Qubit Gates',
+    intro:
+      'A gate is a move you can make to a qubit — a rotation of its state on the Bloch sphere. Every gate is reversible: each one has an inverse that undoes it, and no gate ever changes the total probability, which always stays 1. There are only a few single-qubit gates you need to know by name. X is the bit-flip: it swaps |0⟩ and |1⟩, like a classical NOT. Z is the phase-flip: it leaves |0⟩ alone and flips the sign of |1⟩, so Z|1⟩ = −|1⟩ and Z|+⟩ = |−⟩ — the probabilities do not change at all, only the phase. Y does both at once: it flips the bit and adds a phase. H is the mixer you already know: it turns |0⟩ into |+⟩ and |1⟩ into |−⟩. Then come the smaller turns around the north–south axis: S is a quarter-turn of phase (S|1⟩ = i|1⟩, and two S gates make a Z), and T is an eighth-turn (T|1⟩ = e^{iπ/4}|1⟩, and two T gates make an S). Finally there are the rotation gates Rx, Ry and Rz, which turn the state by any angle you choose around an axis — X, Y and Z are just 180° rotations, and S and T are smaller turns of the same kind. Worked example: start in |0⟩ and apply H, then Z, then H again. H makes |+⟩, Z flips it to |−⟩, and the second H turns |−⟩ into |1⟩ — so H–Z–H turns |0⟩ into |1⟩. Leave out the Z and the two Hadamards simply cancel, leaving |0⟩. The Z gate changes nothing a direct measurement could see, yet it completely changes the outcome: that is why phase matters.',
+    animation: '/lessons/quantum-computing/animations/single-qubit-gates.html',
+    check: {
+      question:
+        'A qubit starts in |0⟩. You apply H, then Z, then H, and measure. What do you get every time — and what would you have got if you had left the Z out?',
+      answer:
+        'With the Z you get 1 every time: H|0⟩ = |+⟩, Z flips the phase so |+⟩ becomes |−⟩, and H|−⟩ = |1⟩. Without the Z, the two Hadamards cancel — H² is the identity — so you are back at |0⟩ and measure 0 every time. A phase flip is invisible to a measurement taken right after it, but the next gate can feel it, and here it flips the final answer from 0 to 1.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
