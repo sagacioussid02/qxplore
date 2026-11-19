@@ -1,4 +1,8 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
+
+# Python 3.12: qiskit-aer==0.15.1 (pinned in backend/requirements.txt) ships no
+# cp313 wheel, so pip install failed on the 3.13-slim base. All 48 pinned
+# packages verified to resolve as wheels for cp312.
 
 # libgomp1 is required by qiskit-aer (OpenMP threading)
 RUN apt-get update && apt-get install -y --no-install-recommends \
