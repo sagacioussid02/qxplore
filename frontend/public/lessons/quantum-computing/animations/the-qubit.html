@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>The Qubit — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 600px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 32px 28px 28px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 22px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+      /* ---- state vector ---- */
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(19px, 5vw, 26px);
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 0 0 6px;
+      }
+      .state .amp0 { color: var(--accent); }
+      .state .amp1 { color: var(--good); }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 20px;
+        line-height: 1.5;
+      }
+
+      /* ---- slider ---- */
+      .slider-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--ink-soft);
+        margin: 0 0 8px;
+      }
+      .slider-label output { color: var(--accent); font-variant-numeric: tabular-nums; }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+        cursor: pointer;
+        margin: 0;
+      }
+      .slider-ends {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin: 4px 0 0;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      /* ---- probability bars ---- */
+      .bars { margin-top: 22px; text-align: left; }
+      .bar-row { margin-bottom: 12px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+      .bar-foot {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        margin-top: 4px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.5; }
+
+      .divider {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 26px 0 18px;
+      }
+
+      /* ---- measurement ---- */
+      .measure-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .btn {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 14.5px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 11px 18px;
+        cursor: pointer;
+        transition: transform 0.15s ease, opacity 0.2s ease;
+      }
+      .btn:hover { opacity: 0.9; }
+      .btn:active { transform: scale(0.98); }
+      .btn.ghost {
+        background: transparent;
+        color: var(--accent);
+      }
+      .result {
+        margin: 18px auto 0;
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        border: 2px solid var(--line);
+        display: grid;
+        place-items: center;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 40px;
+        font-weight: 700;
+        color: var(--ink-soft);
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+      .result.show0 { border-color: var(--accent); color: var(--accent); }
+      .result.show1 { border-color: var(--good); color: var(--good); }
+      .result.flash { animation: pop 0.3s ease; }
+      @keyframes pop {
+        0% { transform: scale(1.25); }
+        100% { transform: scale(1); }
+      }
+      .tally {
+        margin: 16px 0 0;
+        font-size: 14px;
+        color: var(--ink-soft);
+        font-variant-numeric: tabular-nums;
+        min-height: 22px;
+      }
+      .tally b { color: var(--ink); }
+      .collapse-note {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        min-height: 40px;
+      }
+      .collapse-note b { color: var(--ink); }
+
+      .note {
+        margin: 24px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        min-height: 20px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .result.flash { animation: none; }
+        .bar-fill { transition: none; }
+        .btn { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: build a qubit state, then measure it and watch the probabilities play out">
+      <p class="caption"><span class="step">1 / 2</span> &nbsp;Dial in a qubit — drag the mix</p>
+
+      <p class="state" id="stateLine" aria-live="polite">|&psi;&rang; = 0.60|0&rang; + 0.80|1&rang;</p>
+      <p class="state-sub">The two numbers are the amplitudes. Square them and you get the
+        probabilities — and the probabilities always add to 1.</p>
+
+      <div class="slider-label">
+        <span>Chance of measuring 0</span>
+        <output id="sliderOut" for="mix">36%</output>
+      </div>
+      <input type="range" id="mix" min="0" max="100" value="36" step="1"
+        aria-label="Chance of measuring 0, in percent" />
+      <div class="slider-ends"><span>always 1</span><span>always 0</span></div>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 0</span><span class="pct" id="pct0">36%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 36%"></div></div>
+          <div class="bar-foot" id="amp0">amplitude &alpha; = &radic;0.36 = 0.60</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 1</span><span class="pct" id="pct1">64%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 64%"></div></div>
+          <div class="bar-foot" id="amp1">amplitude &beta; = &radic;0.64 = 0.80</div>
+        </div>
+      </div>
+
+      <p class="hint">Worked example: this starting state is &frac35;|0&rang; + &frac45;|1&rang;.
+        (3/5)&sup2; = 9/25 = 36% for 0, (4/5)&sup2; = 16/25 = 64% for 1. 36 + 64 = 100.</p>
+
+      <hr class="divider" />
+
+      <p class="caption"><span class="step">2 / 2</span> &nbsp;Measure it — one qubit, one answer</p>
+
+      <div class="measure-row">
+        <button class="btn" id="measureOnce" type="button">Measure once</button>
+        <button class="btn ghost" id="measure100" type="button">Measure 100 times</button>
+        <button class="btn ghost" id="resetTally" type="button">Reset tally</button>
+      </div>
+
+      <div class="result" id="result" aria-live="polite">?</div>
+      <p class="tally" id="tally">No measurements yet — the qubit is still in its mix.</p>
+      <p class="collapse-note" id="collapseNote">Measuring collapses the mix: the qubit becomes
+        whichever outcome you saw, and the other possibility is gone. Measure again right away
+        and you get the same answer every time.</p>
+
+      <p class="note">One measurement tells you almost nothing — the probabilities only show up over many runs.</p>
+    </main>
+
+    <script>
+      var mix = document.getElementById("mix");
+      var sliderOut = document.getElementById("sliderOut");
+      var stateLine = document.getElementById("stateLine");
+      var pct0 = document.getElementById("pct0");
+      var pct1 = document.getElementById("pct1");
+      var bar0 = document.getElementById("bar0");
+      var bar1 = document.getElementById("bar1");
+      var amp0 = document.getElementById("amp0");
+      var amp1 = document.getElementById("amp1");
+      var result = document.getElementById("result");
+      var tally = document.getElementById("tally");
+      var collapseNote = document.getElementById("collapseNote");
+
+      var count0 = 0;
+      var count1 = 0;
+
+      function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+      function render() {
+        var p0 = mix.value / 100;
+        var p1 = 1 - p0;
+        var a = Math.sqrt(p0);
+        var b = Math.sqrt(p1);
+        sliderOut.textContent = mix.value + "%";
+        stateLine.innerHTML = "|&psi;&rang; = " + fmt(a) + "|0&rang; + " + fmt(b) + "|1&rang;";
+        pct0.textContent = mix.value + "%";
+        pct1.textContent = (100 - mix.value) + "%";
+        bar0.style.width = mix.value + "%";
+        bar1.style.width = (100 - mix.value) + "%";
+        amp0.innerHTML = "amplitude &alpha; = &radic;" + fmt(p0) + " = " + fmt(a);
+        amp1.innerHTML = "amplitude &beta; = &radic;" + fmt(p1) + " = " + fmt(b);
+      }
+
+      function renderTally() {
+        var total = count0 + count1;
+        if (total === 0) {
+          tally.textContent = "No measurements yet — the qubit is still in its mix.";
+          return;
+        }
+        var share0 = Math.round((count0 / total) * 100);
+        var share1 = 100 - share0;
+        tally.innerHTML = "Measured <b>" + total + "</b> time" + (total === 1 ? "" : "s") +
+          ": 0 came up <b>" + count0 + "</b> (" + share0 + "%) · 1 came up <b>" + count1 +
+          "</b> (" + share1 + "%).";
+      }
+
+      function showResult(value) {
+        result.textContent = value;
+        result.classList.remove("show0", "show1", "flash");
+        // Force reflow so the pop animation replays on every measurement.
+        void result.offsetWidth;
+        result.classList.add(value === 0 ? "show0" : "show1", "flash");
+        collapseNote.innerHTML = "You measured <b>" + value + "</b> — the qubit has collapsed to |" +
+          value + "&rang;. Measure it again right now and you will get <b>" + value +
+          "</b> every single time.";
+      }
+
+      function measureOnce() {
+        var p0 = mix.value / 100;
+        var value = Math.random() < p0 ? 0 : 1;
+        if (value === 0) { count0++; } else { count1++; }
+        showResult(value);
+        renderTally();
+      }
+
+      function measure100() {
+        var p0 = mix.value / 100;
+        var last = 0;
+        for (var i = 0; i < 100; i++) {
+          var value = Math.random() < p0 ? 0 : 1;
+          if (value === 0) { count0++; } else { count1++; }
+          last = value;
+        }
+        showResult(last);
+        renderTally();
+      }
+
+      mix.addEventListener("input", function () {
+        // A new mix is a new experiment: clear the old tally.
+        count0 = 0;
+        count1 = 0;
+        result.textContent = "?";
+        result.classList.remove("show0", "show1", "flash");
+        collapseNote.innerHTML = "Measuring collapses the mix: the qubit becomes whichever " +
+          "outcome you saw, and the other possibility is gone. Measure again right away and " +
+          "you get the same answer every time.";
+        render();
+        renderTally();
+      });
+
+      document.getElementById("measureOnce").addEventListener("click", measureOnce);
+      document.getElementById("measure100").addEventListener("click", measure100);
+      document.getElementById("resetTally").addEventListener("click", function () {
+        count0 = 0;
+        count1 = 0;
+        result.textContent = "?";
+        result.classList.remove("show0", "show1", "flash");
+        renderTally();
+      });
+
+      render();
+    </script>
+  </body>
+</html>

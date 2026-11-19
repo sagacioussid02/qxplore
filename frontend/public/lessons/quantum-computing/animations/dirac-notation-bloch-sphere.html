@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Dirac Notation and the Bloch Sphere — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      canvas {
+        display: block;
+        margin: 0 auto;
+        width: 100%;
+        max-width: 360px;
+        height: auto;
+      }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(16px, 4.4vw, 21px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state .amp0 { color: var(--accent); }
+      .state .amp1 { color: var(--good); }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .sliders { text-align: left; }
+      .slider-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .slider-label output { color: var(--accent); font-variant-numeric: tabular-nums; }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+        cursor: pointer;
+        margin: 0 0 12px;
+      }
+
+      .presets {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+
+      .overlap {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .overlap b { color: var(--ink); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: move a point around the Bloch sphere and read off its Dirac notation">
+      <p class="caption"><span class="step">1 / 2</span> &nbsp;Every single-qubit state is one point on a sphere</p>
+      <p class="sub">North pole = <b>|0&rang;</b>, south pole = <b>|1&rang;</b>, equator = even
+        50/50 mixes. <b>&theta;</b> (down from the north pole) sets the probabilities;
+        <b>&phi;</b> (around the equator) is the phase — invisible to a plain measurement,
+        but a real part of the state.</p>
+
+      <canvas id="sphere" width="720" height="600" aria-label="Bloch sphere with the current qubit state marked as a point"></canvas>
+
+      <p class="state" id="stateLine" aria-live="polite">|&psi;&rang; = 0.71|0&rang; + 0.71|1&rang;</p>
+      <p class="state-sub" id="anglesLine">&theta; = 90&deg; from |0&rang; &middot; &phi; = 0&deg; around the equator</p>
+
+      <div class="sliders">
+        <div class="slider-label">
+          <span>&theta; — down from the north pole |0&rang;</span>
+          <output id="thetaOut" for="theta">90&deg;</output>
+        </div>
+        <input type="range" id="theta" min="0" max="180" value="90" step="1"
+          aria-label="Theta, angle down from the north pole, in degrees" />
+        <div class="slider-label">
+          <span>&phi; — around the equator (the phase)</span>
+          <output id="phiOut" for="phi">0&deg;</output>
+        </div>
+        <input type="range" id="phi" min="0" max="360" value="0" step="1"
+          aria-label="Phi, angle around the equator, in degrees" />
+      </div>
+
+      <div class="presets" id="presets">
+        <button class="chip" type="button" data-theta="0" data-phi="0">|0&rang;</button>
+        <button class="chip" type="button" data-theta="180" data-phi="0">|1&rang;</button>
+        <button class="chip active" type="button" data-theta="90" data-phi="0">|+&rang;</button>
+        <button class="chip" type="button" data-theta="90" data-phi="180">|&minus;&rang;</button>
+        <button class="chip" type="button" data-theta="90" data-phi="90">|+i&rang;</button>
+        <button class="chip" type="button" data-theta="90" data-phi="270">|&minus;i&rang;</button>
+      </div>
+
+      <p class="caption"><span class="step">2 / 2</span> &nbsp;Read the state in Dirac notation</p>
+      <p class="sub">A <b>bra</b> &lang;&psi;| is a ket flipped around. A <b>bracket</b>
+        &lang;&phi;|&psi;&rang; measures how much two states agree: 1 = identical,
+        0 = completely different. A measurement probability is a bracket, squared:
+        P(0) = |&lang;0|&psi;&rang;|&sup2;.</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 0 — P(0) = cos&sup2;(&theta;/2)</span><span class="pct" id="pct0">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 1 — P(1) = sin&sup2;(&theta;/2)</span><span class="pct" id="pct1">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 50%"></div></div>
+        </div>
+      </div>
+
+      <p class="overlap" id="overlapLine">
+        &lang;0|&psi;&rang; = <b>0.71</b> &nbsp;&middot;&nbsp; &lang;1|&psi;&rang; = <b>0.71</b><br />
+        |&lang;+|&psi;&rang;|&sup2; = <b>1.00</b> — this state <i>is</i> |+&rang;
+      </p>
+
+      <p class="hint">Worked example: this starting point is <b>|+&rang;</b> — &theta; = 90&deg;,
+        &phi; = 0&deg;, so |&psi;&rang; = (1/&radic;2)|0&rang; + (1/&radic;2)|1&rang;.
+        |&minus;&rang; sits exactly opposite (&phi; = 180&deg;) and also measures 50/50, yet
+        &lang;+|&minus;&rang; = 0 — as different as two qubit states can be. The phase is
+        invisible to a plain measurement, but gates can feel it.</p>
+    </main>
+
+    <script>
+      var canvas = document.getElementById("sphere");
+      var ctx = canvas.getContext("2d");
+      var thetaInput = document.getElementById("theta");
+      var phiInput = document.getElementById("phi");
+      var thetaOut = document.getElementById("thetaOut");
+      var phiOut = document.getElementById("phiOut");
+      var stateLine = document.getElementById("stateLine");
+      var anglesLine = document.getElementById("anglesLine");
+      var pct0 = document.getElementById("pct0");
+      var pct1 = document.getElementById("pct1");
+      var bar0 = document.getElementById("bar0");
+      var bar1 = document.getElementById("bar1");
+      var overlapLine = document.getElementById("overlapLine");
+      var presetButtons = document.querySelectorAll("#presets .chip");
+
+      // --- canvas setup (crisp on high-DPI screens) ---
+      var dpr = window.devicePixelRatio || 1;
+      var CW = 360, CH = 300; // CSS pixels
+      canvas.width = CW * dpr;
+      canvas.height = CH * dpr;
+      canvas.style.height = CH + "px";
+      ctx.scale(dpr, dpr);
+
+      var CX = CW / 2, CY = CH / 2 + 4, R = 118;
+      var TILT = 25 * Math.PI / 180; // view tilted so the sphere reads in 3D
+      var COS_T = Math.cos(TILT), SIN_T = Math.sin(TILT);
+
+      function cssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888888";
+      }
+
+      // 3D point on the unit sphere -> screen position + depth (z' > 0 faces the viewer).
+      function project(theta, phi) {
+        var x = Math.sin(theta) * Math.cos(phi);
+        var y = Math.sin(theta) * Math.sin(phi);
+        var z = Math.cos(theta);
+        var yp = y * COS_T + z * SIN_T;
+        var zp = -y * SIN_T + z * COS_T;
+        return { x: CX + R * x, y: CY - R * yp, front: zp > 0 };
+      }
+
+      function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+      function fmtComplex(re, im) {
+        var r = Math.round(re * 100) / 100;
+        var i = Math.round(im * 100) / 100;
+        if (Math.abs(i) < 0.005) { return r.toFixed(2); }
+        if (Math.abs(r) < 0.005) { return i.toFixed(2) + "i"; }
+        return r.toFixed(2) + (i < 0 ? " \u2212 " : " + ") + Math.abs(i).toFixed(2) + "i";
+      }
+
+      function drawSphere(theta, phi) {
+        var ink = cssVar("--ink");
+        var soft = cssVar("--ink-soft");
+        var line = cssVar("--line");
+        var accent = cssVar("--accent");
+        var good = cssVar("--good");
+
+        ctx.clearRect(0, 0, CW, CH);
+        ctx.lineWidth = 1.5;
+
+        // Sphere outline.
+        ctx.strokeStyle = line;
+        ctx.beginPath();
+        ctx.arc(CX, CY, R, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Equator (z = 0): an ellipse squashed by the tilt.
+        ctx.beginPath();
+        ctx.ellipse(CX, CY, R, R * COS_T, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Meridian through |+> and |-> (the x-z plane): ellipse squashed the other way.
+        ctx.beginPath();
+        ctx.ellipse(CX, CY, R, R * SIN_T, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Great circle through the poles and |+i>/|-i> (the y-z plane): a vertical line.
+        ctx.beginPath();
+        ctx.moveTo(CX, CY - R * COS_T);
+        ctx.lineTo(CX, CY + R * COS_T);
+        ctx.stroke();
+
+        // Cardinal points.
+        var cardinals = [
+          { t: 0, p: 0, label: "|0\u27e9", dx: 0, dy: -16 },
+          { t: Math.PI, p: 0, label: "|1\u27e9", dx: 0, dy: 22 },
+          { t: Math.PI / 2, p: 0, label: "|+\u27e9", dx: 16, dy: 5 },
+          { t: Math.PI / 2, p: Math.PI, label: "|\u2212\u27e9", dx: -16, dy: 5 },
+          { t: Math.PI / 2, p: Math.PI / 2, label: "|+i\u27e9", dx: 0, dy: -14 },
+          { t: Math.PI / 2, p: 3 * Math.PI / 2, label: "|\u2212i\u27e9", dx: 0, dy: 20 }
+        ];
+        ctx.font = "600 13px ui-monospace, Menlo, Consolas, monospace";
+        ctx.fillStyle = soft;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        cardinals.forEach(function (c) {
+          var pt = project(c.t, c.p);
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillText(c.label, pt.x + c.dx, pt.y + c.dy);
+        });
+
+        // Phi arc along the equator, from |+> to the state's meridian.
+        if (phi > 0.001) {
+          ctx.strokeStyle = good;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          for (var s = 0; s <= phi; s += 0.08) {
+            var q = project(Math.PI / 2, s);
+            if (s === 0) { ctx.moveTo(q.x, q.y); } else { ctx.lineTo(q.x, q.y); }
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Theta arc from the north pole down to the state, along its meridian.
+        if (theta > 0.001) {
+          ctx.strokeStyle = accent;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          for (var t = 0; t <= theta; t += 0.05) {
+            var q2 = project(t, phi);
+            if (t === 0) { ctx.moveTo(q2.x, q2.y); } else { ctx.lineTo(q2.x, q2.y); }
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Bloch vector: centre to the state point.
+        var pt = project(theta, phi);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(CX, CY);
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+        ctx.lineWidth = 1.5;
+
+        // State point: filled when facing the viewer, hollow on the far side.
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+        if (pt.front) {
+          ctx.fillStyle = accent;
+          ctx.fill();
+        } else {
+          ctx.fillStyle = cssVar("--surface");
+          ctx.fill();
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.lineWidth = 1.5;
+        }
+
+        // Angle labels.
+        ctx.fillStyle = accent;
+        ctx.font = "600 13px ui-monospace, Menlo, Consolas, monospace";
+        var pole = project(0, 0);
+        ctx.fillText("\u03b8", (CX + pole.x) / 2 + 14, (CY + pole.y) / 2 - 6);
+        if (phi > 5 * Math.PI / 180) {
+          ctx.fillStyle = good;
+          var mid = project(Math.PI / 2, phi / 2);
+          ctx.fillText("\u03c6", mid.x, mid.y + 16);
+        }
+      }
+
+      function render() {
+        var thetaDeg = parseFloat(thetaInput.value);
+        var phiDeg = parseFloat(phiInput.value);
+        var theta = thetaDeg * Math.PI / 180;
+        var phi = phiDeg * Math.PI / 180;
+
+        var a = Math.cos(theta / 2);
+        var b = Math.sin(theta / 2);
+        var re = b * Math.cos(phi);
+        var im = b * Math.sin(phi);
+        var p0 = a * a;
+        var p1 = b * b;
+
+        thetaOut.textContent = thetaDeg + "\u00b0";
+        phiOut.textContent = phiDeg + "\u00b0";
+        stateLine.innerHTML = "|&psi;&rang; = <span class=\"amp0\">" + fmt(a) +
+          "</span>|0&rang; + <span class=\"amp1\">(" + fmtComplex(re, im) +
+          ")</span>|1&rang;";
+        anglesLine.innerHTML = "&theta; = " + thetaDeg + "&deg; from |0&rang; &middot; &phi; = " +
+          phiDeg + "&deg; around the equator";
+
+        pct0.textContent = Math.round(p0 * 100) + "%";
+        pct1.textContent = Math.round(p1 * 100) + "%";
+        bar0.style.width = (p0 * 100) + "%";
+        bar1.style.width = (p1 * 100) + "%";
+
+        var overlapPlus = (1 + Math.sin(theta) * Math.cos(phi)) / 2;
+        var plusWord = overlapPlus > 0.99 ? " — this state <i>is</i> |+&rang;"
+          : overlapPlus < 0.01 ? " — this state is orthogonal to |+&rang;"
+          : "";
+        overlapLine.innerHTML = "&lang;0|&psi;&rang; = <b>" + fmt(a) + "</b> &nbsp;&middot;&nbsp; " +
+          "&lang;1|&psi;&rang; = <b>" + fmtComplex(re, im) + "</b><br />" +
+          "|&lang;+|&psi;&rang;|&sup2; = <b>" + fmt(overlapPlus) + "</b>" + plusWord;
+
+        presetButtons.forEach(function (btn) {
+          var active = parseFloat(btn.dataset.theta) === thetaDeg &&
+            parseFloat(btn.dataset.phi) === phiDeg;
+          btn.classList.toggle("active", active);
+        });
+
+        drawSphere(theta, phi);
+      }
+
+      thetaInput.addEventListener("input", render);
+      phiInput.addEventListener("input", render);
+      presetButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          thetaInput.value = btn.dataset.theta;
+          phiInput.value = btn.dataset.phi;
+          render();
+        });
+      });
+
+      render();
+    </script>
+  </body>
+</html>
