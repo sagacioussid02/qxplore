@@ -1,0 +1,28 @@
+{
+  "slug": "s-gate-phase",
+  "title": "S Gate: The \u221aZ Phase",
+  "category": "fundamentals",
+  "difficulty": "intermediate",
+  "description": "## S Gate: The \u221aZ Phase\n\nCreate the state **(|0\u27e9 + i|1\u27e9) / \u221a2** on qubit 0.\n\n### Goal\nYour circuit should produce the statevector:\n```\n(|0\u27e9 + i|1\u27e9) / \u221a2  \u2192  [1/\u221a2, i/\u221a2]  \u2248  [0.707, 0.707i]\n```\n\n### Background\nThe **S gate** is a quarter-turn phase gate: S = diag(1, i). It is literally the square root of Z (S\u00b2 = Z), a fact interviewers ask about because it tests whether you think of phase gates as rotations around the Bloch sphere's Z axis:\n- T rotates by \u03c0/4, S by \u03c0/2, Z by \u03c0\n- On the Bloch sphere this state sits on the equator, pointing along +Y\n\nBuild it the standard way: superposition first, then the phase.\n\n### Constraints\n- Use exactly **1 qubit**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "H first, to get the equal superposition.",
+    "Then apply the gate whose only job is a \u03c0/2 phase.",
+    "S|1\u27e9 = i|1\u27e9 \u2014 the |0\u27e9 component is untouched."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 4,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      0.0,
+      0.7071067811865475
+    ]
+  ],
+  "optimal_gates": 2
+}

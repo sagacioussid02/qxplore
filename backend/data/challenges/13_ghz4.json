@@ -1,0 +1,84 @@
+{
+  "slug": "ghz-state-4-qubit",
+  "title": "GHZ State: 4-Qubit Entanglement",
+  "category": "construction",
+  "difficulty": "expert",
+  "description": "## GHZ State: 4-Qubit Entanglement\n\nScale the GHZ state to **4 qubits**: **(|0000\u27e9 + |1111\u27e9) / \u221a2**.\n\n### Goal\nYour circuit should produce the 16-component statevector:\n```\n[1/\u221a2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1/\u221a2]\n```\n\n### Background\nGHZ states are the canonical **multipartite entanglement** example, and scaling them is a real engineering topic: on actual hardware (IBM, IonQ, Google), GHZ fidelity drops as qubits are added, which is why \"largest GHZ state prepared\" is a benchmark people publish. Interviewers ask about GHZ vs W states \u2014 GHZ loses all entanglement if one qubit is lost; W states keep some.\n\nThe construction is a cascade: one H, then a chain of CNOTs, each entangling one more qubit. Order matters \u2014 a CNOT can only spread entanglement from a qubit that is already entangled.\n\n### Constraints\n- Use exactly **4 qubits**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "H on qubit 0 creates the seed superposition.",
+    "Chain the CNOTs: 0\u21921, then 1\u21922, then 2\u21923.",
+    "Four gates total \u2014 if you're using more, simplify."
+  ],
+  "constraints": {
+    "max_qubits": 4,
+    "max_gates": 8,
+    "time_limit_seconds": 600
+  },
+  "expected_sv": [
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.7071067811865475,
+      0.0
+    ]
+  ],
+  "optimal_gates": 4
+}
