@@ -1,0 +1,36 @@
+{
+  "slug": "phi-minus-bell-state",
+  "title": "Bell State \u03a6\u2212: Entanglement with a Phase",
+  "category": "construction",
+  "difficulty": "intermediate",
+  "description": "## Bell State \u03a6\u2212: Entanglement with a Phase\n\nBuild the Bell state **|\u03a6\u2212\u27e9 = (|00\u27e9 \u2212 |11\u27e9) / \u221a2**.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|\u03a6\u2212\u27e9  \u2192  [1/\u221a2, 0, 0, \u22121/\u221a2]  \u2248  [0.707, 0, 0, \u22120.707]\n```\n\n### Background\n\u03a6\u2212 differs from \u03a6+ by a single sign \u2014 and that sign is the whole lesson. The two states give **identical measurement statistics** in the computational basis, yet they are orthogonal quantum states. Interviewers use \u03a6\u2212 to probe whether candidates understand that quantum information lives in amplitudes, not probabilities.\n\nRecipe: build \u03a6+ (H + CNOT), then apply Z to either qubit to flip the sign of the |11\u27e9 component only.\n\n### Constraints\n- Use exactly **2 qubits**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "H on qubit 0, CNOT to qubit 1 \u2014 that's \u03a6+.",
+    "A Z gate flips the phase of |1\u27e9 components only.",
+    "Apply Z to a qubit that is |1\u27e9 in the |11\u27e9 term but |0\u27e9 in the |00\u27e9 term \u2014 either one works."
+  ],
+  "constraints": {
+    "max_qubits": 2,
+    "max_gates": 6,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      -0.7071067811865475,
+      0.0
+    ]
+  ],
+  "optimal_gates": 3
+}

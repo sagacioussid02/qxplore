@@ -1,0 +1,28 @@
+{
+  "slug": "t-gate-phase",
+  "title": "T Gate: The \u03c0/8 Phase",
+  "category": "fundamentals",
+  "difficulty": "intermediate",
+  "description": "## T Gate: The \u03c0/8 Phase\n\nCreate the state **(|0\u27e9 + e^{i\u03c0/4}|1\u27e9) / \u221a2** on qubit 0.\n\n### Goal\nYour circuit should produce the statevector:\n```\n(|0\u27e9 + e^{i\u03c0/4}|1\u27e9) / \u221a2  \u2192  [1/\u221a2, (1+i)/2]  \u2248  [0.707, 0.5 + 0.5i]\n```\n\n### Background\nThe **T gate** (diag(1, e^{i\u03c0/4}), historically the \u03c0/8 gate) is famous in interviews for one reason: **it is not a Clifford gate**. H, S, and CNOT alone (the Clifford group) can be simulated efficiently on a classical computer \u2014 the Gottesman\u2013Knill theorem. Adding T is what makes a gate set universal and classically hard to simulate. It is also why fault-tolerant quantum computing spends so much effort on \"magic state distillation\" to produce T gates.\n\nT\u00b2 = S and T\u2074 = Z \u2014 the phase gates form a ladder.\n\n### Constraints\n- Use exactly **1 qubit**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "Same shape as the S-gate challenge, with a smaller rotation.",
+    "H first for the superposition.",
+    "e^{i\u03c0/4} = (1 + i)/\u221a2 \u2014 that's where 0.5 + 0.5i comes from."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 4,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      0.5,
+      0.4999999999999999
+    ]
+  ],
+  "optimal_gates": 2
+}

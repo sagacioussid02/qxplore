@@ -1,0 +1,28 @@
+{
+  "slug": "minus-state",
+  "title": "The Minus State |\u2212\u27e9",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## The Minus State |\u2212\u27e9\n\nCreate the **minus state** |\u2212\u27e9 on qubit 0.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|\u2212\u27e9  =  (|0\u27e9 \u2212 |1\u27e9) / \u221a2  \u2192  [1/\u221a2, \u22121/\u221a2]  \u2248  [0.707, \u22120.707]\n```\n\n### Background\n\"What's the difference between |+\u27e9 and |\u2212\u27e9?\" is one of the most common quantum interview questions. Measured either state and you get 50/50 \u2014 the difference is invisible to measurement in the computational basis. It lives in the **phase**, and it is exactly what makes phase kickback (and half of quantum algorithms) work: a control qubit in |\u2212\u27e9 turns a CNOT into a phase flip on the target's eigenvalue.\n\nTwo routes work: H then Z, or X then H.\n\n### Constraints\n- Use exactly **1 qubit**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "Start the way you would for |+\u27e9 \u2014 then flip a phase.",
+    "Z after H turns the + into a \u2212.",
+    "Or: flip the bit first, then apply H."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 4,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      -0.7071067811865475,
+      0.0
+    ]
+  ],
+  "optimal_gates": 2
+}

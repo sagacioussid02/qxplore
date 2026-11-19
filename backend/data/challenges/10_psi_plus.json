@@ -1,0 +1,36 @@
+{
+  "slug": "psi-plus-bell-state",
+  "title": "Bell State \u03a8+: The Other Entangled Pair",
+  "category": "construction",
+  "difficulty": "intermediate",
+  "description": "## Bell State \u03a8+: The Other Entangled Pair\n\nBuild the Bell state **|\u03a8+\u27e9 = (|01\u27e9 + |10\u27e9) / \u221a2**.\n\n### Goal\nYour circuit should produce the statevector:\n```\n|\u03a8+\u27e9  \u2192  [0, 1/\u221a2, 1/\u221a2, 0]  \u2248  [0, 0.707, 0.707, 0]\n```\n\n### Background\nThere are **four** Bell states, and interviews routinely ask candidates to produce more than the famous \u03a6+ = (|00\u27e9 + |11\u27e9)/\u221a2. \u03a8+ is the one where the two qubits are always **opposite**: measure one as 0 and the other is certainly 1, and vice versa \u2014 entanglement with anti-correlated outcomes.\n\nThe standard recipe adapts cleanly: make \u03a6+ first (H + CNOT), then flip one qubit with X. Flipping before the CNOT also works, if you think carefully about which qubit carries the flip through the CNOT.\n\n### Constraints\n- Use exactly **2 qubits**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "Start from the \u03a6+ recipe: H on qubit 0, then CNOT.",
+    "An X on either qubit afterwards converts \u03a6+ into \u03a8+.",
+    "Three gates total is optimal."
+  ],
+  "constraints": {
+    "max_qubits": 2,
+    "max_gates": 6,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      0.7071067811865475,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ]
+  ],
+  "optimal_gates": 3
+}

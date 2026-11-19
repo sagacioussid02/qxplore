@@ -1,0 +1,36 @@
+{
+  "slug": "grover-oracle",
+  "title": "Grover's Oracle: Mark the |11\u27e9 State",
+  "category": "algorithm",
+  "difficulty": "advanced",
+  "description": "## Grover's Oracle: Mark the |11\u27e9 State\n\nBuild the **phase oracle** for a 2-qubit Grover search whose marked item is **|11\u27e9**, and apply it to the uniform superposition.\n\n### Goal\nStart from |++\u27e9 (H on both qubits), then flip the sign of the |11\u27e9 amplitude only. Your circuit should produce:\n```\n[1/2, 1/2, 1/2, \u22121/2]  =  [0.5, 0.5, 0.5, \u22120.5]\n```\n\n### Background\n\"How does Grover's oracle mark a state without measuring it?\" \u2014 the answer is **phase marking**: the oracle flips the marked state's sign, and the diffusion operator then amplifies its amplitude. The marking itself is a controlled-Z (CZ) gate.\n\nThe composer has no CZ button \u2014 that's the interview twist. Build CZ from what you have: **CZ = H on the target, CNOT, H on the target**, because H turns Z into X and back. This H\u2013CNOT\u2013H identity is one of the most useful circuit identities in practice.\n\n### Constraints\n- Use exactly **2 qubits**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "First put both qubits into |+\u27e9 with H gates.",
+    "A CZ gate is H, CNOT, H \u2014 with both H gates on the same (target) qubit.",
+    "Only the |11\u27e9 amplitude should end up negative."
+  ],
+  "constraints": {
+    "max_qubits": 2,
+    "max_gates": 8,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.4999999999999998,
+      0.0
+    ],
+    [
+      0.4999999999999998,
+      0.0
+    ],
+    [
+      0.4999999999999998,
+      0.0
+    ],
+    [
+      -0.4999999999999998,
+      0.0
+    ]
+  ],
+  "optimal_gates": 5
+}

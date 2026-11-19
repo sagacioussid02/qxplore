@@ -1,0 +1,28 @@
+{
+  "slug": "pauli-y-gate",
+  "title": "Pauli-Y: Bit + Phase Flip",
+  "category": "fundamentals",
+  "difficulty": "beginner",
+  "description": "## Pauli-Y: Bit + Phase Flip\n\nApply the **Pauli-Y gate** to qubit 0, starting from |0\u27e9.\n\n### Goal\nYour circuit should produce the statevector:\n```\ni|1\u27e9  \u2192  [0, i]\n```\n\n### Background\nInterviewers love the Pauli gates because they test whether you track **phase**, not just bit values:\n- X flips the bit: X|0\u27e9 = |1\u27e9\n- Z flips the phase: Z|1\u27e9 = \u2212|1\u27e9\n- **Y does both**: Y|0\u27e9 = i|1\u27e9, Y|1\u27e9 = \u2212i|0\u27e9\n\nThe factor of i is a global phase here, so measurement still gives |1\u27e9 with certainty \u2014 but in larger circuits that phase stops being global and starts to matter.\n\n### Constraints\n- Use exactly **1 qubit**\n- Solution must be within fidelity \u03b5=0.01 of the target statevector",
+  "hints": [
+    "One single gate does the whole job.",
+    "Y is the only Pauli gate with imaginary entries.",
+    "Y = iXZ up to convention \u2014 but the composer has a dedicated Y gate."
+  ],
+  "constraints": {
+    "max_qubits": 1,
+    "max_gates": 2,
+    "time_limit_seconds": 300
+  },
+  "expected_sv": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ]
+  ],
+  "optimal_gates": 1
+}
