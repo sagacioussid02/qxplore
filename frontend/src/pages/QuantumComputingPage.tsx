@@ -88,6 +88,19 @@ const LESSONS = [
         'With the Z you get 1 every time: H|0⟩ = |+⟩, Z flips the phase so |+⟩ becomes |−⟩, and H|−⟩ = |1⟩. Without the Z, the two Hadamards cancel — H² is the identity — so you are back at |0⟩ and measure 0 every time. A phase flip is invisible to a measurement taken right after it, but the next gate can feel it, and here it flips the final answer from 0 to 1.',
     },
   },
+  {
+    slug: 'measurement',
+    title: 'Measurement',
+    intro:
+      'Measurement is how a quantum answer leaves the quantum world: it reads a qubit and returns a plain classical bit, 0 or 1. But it is not a peek at the mix — it is a collapse. The probabilities come from the amplitudes, P(0) = |α|² and P(1) = |β|², yet one measurement only ever shows a single outcome, never the probabilities themselves. And the moment you measure, the mix is gone: the qubit becomes whichever outcome you saw, so measuring the same qubit again gives the same answer every time. To learn the probabilities you have to prepare the same state over and over and count the outcomes — each fresh copy is a new roll of the same loaded dice. There is one more subtlety: the measurement itself is a choice. The plain way reads in the Z basis, 0 versus 1. But you can measure in a different basis — apply an H gate first, then read — and that asks a different question: is the state |+⟩ or |−⟩? That matters, because some states are twins in one basis and strangers in another: |+⟩ and |−⟩ both measure 50/50 the plain way, so no plain measurement can tell them apart, yet in the X basis |+⟩ always gives 0 and |−⟩ always gives 1. Worked example: a qubit in the state (3/5)|0⟩ + (4/5)|1⟩ gives 0 with probability (3/5)² = 36% and 1 with probability (4/5)² = 64%. Suppose you measure it and see 1: the qubit has collapsed to exactly |1⟩, and measuring it again gives 1 every single time. The 36/64 split only appears across many fresh preparations — one measurement tells you the outcome, not the mix.',
+    animation: '/lessons/quantum-computing/animations/measurement.html',
+    check: {
+      question:
+        'One qubit is in |+⟩ and another is in |−⟩. You measure both the plain way (the Z basis). What do you see — and how could a different measurement tell the two states apart?',
+      answer:
+        'Both measure 50/50 the plain way, so the outcomes tell you nothing: you see a mix of 0s and 1s from either qubit, and no plain measurement can distinguish |+⟩ from |−⟩. Measure in the X basis instead — apply an H gate first, then read: |+⟩ always gives 0 and |−⟩ always gives 1, because H|+⟩ = |0⟩ and H|−⟩ = |1⟩. The two states are as different as states can be (their overlap is zero), but only the right measurement question reveals the difference.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
