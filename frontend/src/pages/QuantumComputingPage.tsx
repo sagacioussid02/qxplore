@@ -101,6 +101,19 @@ const LESSONS = [
         'Both measure 50/50 the plain way, so the outcomes tell you nothing: you see a mix of 0s and 1s from either qubit, and no plain measurement can distinguish |+⟩ from |−⟩. Measure in the X basis instead — apply an H gate first, then read: |+⟩ always gives 0 and |−⟩ always gives 1, because H|+⟩ = |0⟩ and H|−⟩ = |1⟩. The two states are as different as states can be (their overlap is zero), but only the right measurement question reveals the difference.',
     },
   },
+  {
+    slug: 'multi-qubit-systems',
+    title: 'Multi-Qubit Systems and Joint Measurement',
+    intro:
+      'One qubit holds a mix of two outcomes, 0 and 1. Two qubits hold a mix of four: 00, 01, 10 and 11. The register is written as one state with four amplitudes — one for each outcome — and the probabilities, the squares of the amplitudes, always add to 1. Three qubits need eight amplitudes, four need sixteen, and ten need 1,024: the number of outcomes doubles with every qubit you add, 2^n in total. That is the whole reason a quantum computer can hold so much at once — and also why simulating one on a classical computer gets hard so fast. If the two qubits are independent, the joint state is just the product of the two single-qubit states — the tensor product, written ⊗. Each qubit keeps its own mix, and the joint probabilities multiply: a 50/50 qubit next to a certain-0 qubit gives 00 half the time and 10 half the time, never 01 or 11. Measuring the register reads out a whole bitstring at once. But you can also measure just one qubit of the register — a partial measurement. That collapses only the qubit you read; the other one survives, re-weighted to the outcomes that are still possible. And a measurement is a question you choose: each qubit can be read in the Z basis (0 vs 1), the X basis (+ vs −), or the Y basis — the three Pauli bases — and a joint measurement can ask about a combination, like whether the two bits agree (Z⊗Z, the parity). Worked example: put the first qubit in |+⟩ and the second in |0⟩. The joint state is |+⟩⊗|0⟩ = (|00⟩ + |10⟩)/√2. Measure the whole register and you get 00 with probability 50% and 10 with probability 50%; 01 and 11 never appear, because the second qubit is certain 0. Measure only the first qubit and get 1: the second qubit is still |0⟩ — reading one independent qubit leaves the other untouched. Not every two-qubit state splits into a product like this one — the ones that do not are entangled, and that is the next lesson.',
+    animation: '/lessons/quantum-computing/animations/multi-qubit-systems.html',
+    check: {
+      question:
+        'A register has three qubits, each in |+⟩. How many outcomes can measuring the whole register give, and what is the probability of seeing 000? And what happens to the other two qubits if you measure only the first one and get 1?',
+      answer:
+        'Eight outcomes — 2³ — each equally likely, so 000 has probability 1/8: each qubit contributes a factor of 1/2, since (1/√2)² = 1/2, three times over. Measuring the first qubit only collapses just that qubit: it becomes |1⟩, and the other two are untouched, still in |+⟩|+⟩. The three qubits are independent, so reading one leaves the rest exactly as they were — the state splits into a product, and a partial measurement only touches the part you read.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
