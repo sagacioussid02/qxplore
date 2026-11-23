@@ -127,6 +127,19 @@ const LESSONS = [
         'The second qubit is now certainly |1⟩: in Φ⁺ the two bits always agree, so seeing 1 on the first fixes the second to 1 — even though, before the measurement, each qubit on its own was 50/50. And no, it cannot be written as a product: a product (a|0⟩ + b|1⟩) ⊗ (c|0⟩ + d|1⟩) would need ac = 1/√2 and bd = 1/√2 for the |00⟩ and |11⟩ terms, while ad = 0 and bc = 0 for the |01⟩ and |10⟩ terms — but if a and d are both non-zero, ad cannot be zero. That impossibility is what entanglement is: the pair has a state that neither qubit has on its own.',
     },
   },
+  {
+    slug: 'quantum-teleportation',
+    title: 'Quantum Teleportation',
+    intro:
+      'Entanglement lets you move a quantum state without moving the qubit that holds it — that is quantum teleportation. Alice has a qubit in a state |ψ⟩ = α|0⟩ + β|1⟩ she wants to send to Bob, and the two of them already share an entangled pair in the Bell state Φ⁺. The protocol has three moves. First, Alice entangles her message qubit with her half of the pair: a CNOT with the message qubit as the control, then a Hadamard on the message qubit. Second, Alice measures her two qubits, which gives two ordinary classical bits — 00, 01, 10 or 11, each equally likely — and that measurement destroys her copy of |ψ⟩: a quantum state cannot be copied, so the original is gone the moment it is read. Third, Alice sends the two bits to Bob by any ordinary channel — a phone call, a radio link — and Bob applies a correction to his half of the pair that depends on the bits: 00 means do nothing, 01 means apply X, 10 means apply Z, 11 means apply X then Z. After the correction, Bob’s qubit is exactly |ψ⟩. The state has moved; no qubit travelled anywhere. Two things teleportation cannot do: it cannot go faster than light, because before the classical bits arrive Bob’s qubit holds nothing about |ψ⟩ — it is a featureless 50/50 mix no matter what |ψ⟩ was — and it cannot copy a state, because Alice’s measurement erases the original. Worked example: teleport |ψ⟩ = (3/5)|0⟩ + (4/5)|1⟩. Each of Alice’s four outcomes has probability 1/4. Suppose she measures 01: Bob holds (4/5)|0⟩ + (3/5)|1⟩ — the amplitudes are swapped — so he applies X, swapping them back, and his qubit is exactly |ψ⟩.',
+    animation: '/lessons/quantum-computing/animations/quantum-teleportation.html',
+    check: {
+      question:
+        'Alice measures 10. What correction does Bob apply — and why can’t Bob recover the state before the two classical bits reach him?',
+      answer:
+        'Bob applies Z: for the outcome 10 his qubit holds α|0⟩ − β|1⟩, and Z flips the sign of the |1⟩ term, giving back α|0⟩ + β|1⟩ = |ψ⟩. Before the bits arrive he cannot recover anything: his qubit measures 50/50 for every possible |ψ⟩, so it carries no information about the state at all. The entanglement alone sends nothing — the two classical bits are what tell him which correction to apply, and they travel no faster than light.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
