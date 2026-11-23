@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Entanglement and Bell States — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(14px, 4vw, 19px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+      .bar-fill.f2 { background: var(--plain); }
+      .bar-fill.f3 { background: #7a5a8e; }
+
+      /* The outcome flash: the bitstring that came out of the register. */
+      .outcome {
+        margin: 14px auto 0;
+        min-width: 84px;
+        height: 84px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 3px solid var(--line);
+        padding: 0 18px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 40px;
+        font-weight: 700;
+        color: var(--ink-soft);
+      }
+      .outcome.hit { border-color: var(--accent); color: var(--accent); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+
+      .note {
+        margin: 12px 0 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .note b { color: var(--ink); }
+
+      .wire {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 15px;
+        line-height: 1.9;
+        text-align: left;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin: 0 0 14px;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .wire b { color: var(--accent); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: entanglement and Bell states">
+      <p class="caption"><span class="step">1 / 4</span> &nbsp;Pick a two-qubit state</p>
+      <p class="sub">Two qubits can be linked so that the pair has a state
+        neither qubit has on its own — that is <b>entanglement</b>. The four
+        <b>Bell states</b> are the simplest entangled pairs: &Phi;&#8314; and
+        &Phi;&#8315; always agree when measured, &Psi;&#8314; and &Psi;&#8315;
+        always disagree. The worked example is &Phi;&#8314;, and the last
+        preset is an <b>independent</b> pair for comparison — no link at all.</p>
+
+      <div class="controls" role="group" aria-label="Preset two-qubit states">
+        <button class="chip" type="button" data-preset="00">|00&rang;</button>
+        <button class="chip active" type="button" data-preset="phi+">Worked example: &Phi;&#8314;</button>
+        <button class="chip" type="button" data-preset="phi-">&Phi;&#8315;</button>
+        <button class="chip" type="button" data-preset="psi+">&Psi;&#8314;</button>
+        <button class="chip" type="button" data-preset="psi-">&Psi;&#8315;</button>
+        <button class="chip" type="button" data-preset="prod">Independent: |+&rang; &otimes; |0&rang;</button>
+      </div>
+
+      <p class="state" id="stateLine" aria-live="polite">|&psi;&rang; = 0.71|00&rang; + 0.71|11&rang;</p>
+      <p class="state-sub" id="stateName">The Bell state &Phi;&#8314; — the two qubits always agree</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 00</span><span class="pct" id="pct0">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 01</span><span class="pct" id="pct1">0%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 10</span><span class="pct" id="pct2">0%</span></div>
+          <div class="bar-track"><div class="bar-fill f2" id="bar2" style="width: 0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 11</span><span class="pct" id="pct3">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f3" id="bar3" style="width: 50%"></div></div>
+        </div>
+      </div>
+
+      <p class="note" id="splitNote">Can this state be split into two single-qubit
+        states? The test: a product (a|0&rang; + b|1&rang;) &otimes; (c|0&rang; +
+        d|1&rang;) needs a&#8320;&#8320; &middot; a&#8321;&#8321; to equal
+        a&#8320;&#8321; &middot; a&#8321;&#8320;. Here 0.71 &middot; 0.71 = 0.50,
+        but 0 &middot; 0 = 0.00 — they differ, so no two single-qubit states
+        multiply to this one. <b>Entangled.</b></p>
+
+      <p class="note" id="marginalNote">Each qubit on its own: the first is
+        <b>50% 0 / 50% 1</b>, the second is <b>50% 0 / 50% 1</b> — perfectly
+        random alone, yet together they <b>agree 100% of the time</b>.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">2 / 4</span> &nbsp;Build it: Hadamard, then CNOT</p>
+      <p class="sub">An entangled pair is made with two gates. A Hadamard on
+        the first qubit mixes it; then a <b>CNOT</b> — a controlled-NOT — flips
+        the second qubit only where the first is 1. The Hadamard alone leaves
+        the qubits independent; it is the CNOT that links them. Step through
+        the build for the state you picked.</p>
+
+      <pre class="wire" id="wireDiagram">q0 &mdash;&mdash;[H]&mdash;&mdash;&#9679;&mdash;&mdash;
+q1 &mdash;&mdash;&mdash;&mdash;&mdash;&oplus;&mdash;&mdash;</pre>
+      <p class="note" id="buildNote"><b>Step 3 of 3:</b> CNOT — the first qubit
+        controls, the second is the target. Where the first is 1, the second
+        flips: |10&rang; becomes |11&rang;, giving &Phi;&#8314;.</p>
+
+      <div class="controls">
+        <button class="chip" type="button" id="replayBuild">Replay the build</button>
+        <button class="chip go" type="button" id="nextStep">Next step</button>
+      </div>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">3 / 4</span> &nbsp;Measure the whole register</p>
+      <p class="sub">Measuring the register reads out both bits at once. For
+        &Phi;&#8314; only <b>00</b> and <b>11</b> ever appear — 01 and 10 never
+        do. One measurement gives one bitstring; measure many fresh pairs to
+        see the pattern.</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measureOnce">Measure the register once</button>
+        <button class="chip" type="button" id="measure100">Measure 100 fresh pairs</button>
+        <button class="chip ghost" type="button" id="resetTally">Reset tally</button>
+      </div>
+
+      <div class="outcome" id="outcomeBox" aria-live="polite">??</div>
+      <p class="tally" id="tallyLine">No register measurements yet — pick a state, then measure.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">4 / 4</span> &nbsp;Measure just one qubit</p>
+      <p class="sub">Now read only one qubit of the pair. For an entangled
+        pair, that single reading decides the other qubit too — measure the
+        first and see 1, and the second is certainly 1, even though it was
+        50/50 a moment ago. For the independent pair, measuring one qubit
+        leaves the other exactly as it was. Try both and compare.</p>
+
+      <div class="controls" role="group" aria-label="Which qubit to measure">
+        <button class="chip active" type="button" data-qubit="0">First qubit (left digit)</button>
+        <button class="chip" type="button" data-qubit="1">Second qubit (right digit)</button>
+      </div>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measureOne">Measure this qubit once</button>
+        <button class="chip ghost" type="button" id="reprepare">Re-prepare the pair</button>
+      </div>
+
+      <p class="note" id="partialNote">No single-qubit measurement yet — pick a qubit above and press <b>Measure this qubit once</b>.</p>
+
+      <p class="hint">Worked example: prepare &Phi;&#8314; = (|00&rang; +
+        |11&rang;) / &radic;2 and measure the register 100 times — you land
+        near 50 &times; <b>00</b> and 50 &times; <b>11</b>, and never see 01
+        or 10. Now take a fresh pair and measure only the first qubit: half
+        the time you see 0 and the second qubit becomes certainly |0&rang;;
+        half the time you see 1 and it becomes certainly |1&rang;. Compare
+        with the independent pair |+&rang; &otimes; |0&rang;: measuring its
+        first qubit never changes the second, because the two still have
+        states of their own.</p>
+    </main>
+
+    <script>
+      // The joint state is kept as four real amplitudes, one per outcome,
+      // in the order |00>, |01>, |10>, |11>. The first digit is qubit 0
+      // (the left digit), the second digit is qubit 1. Probabilities are
+      // the squares of the amplitudes and always add to 1. A state is a
+      // product of two single-qubit states exactly when
+      // a00 * a11 == a01 * a10; when the two sides differ, no split exists
+      // and the pair is entangled.
+      var SQRT1_2 = 1 / Math.sqrt(2);
+      var LABELS = ["00", "01", "10", "11"];
+
+      var PRESETS = {
+        "00": {
+          amps: [1, 0, 0, 0],
+          note: "Both qubits are certain 0 — one outcome, no link at all.",
+          steps: [
+            { label: "Already |00\u27e9 — no gates needed. With no Hadamard and no CNOT, there is nothing to link.",
+              wire: "q0 \u2014\u2014\u2014\u2014\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [1, 0, 0, 0] }
+          ]
+        },
+        "phi+": {
+          amps: [SQRT1_2, 0, 0, SQRT1_2],
+          note: "The Bell state \u03a6\u207a — the two qubits always agree",
+          steps: [
+            { label: "Start: |00\u27e9 — two fresh qubits.",
+              wire: "q0 \u2014\u2014\u2014\u2014\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [1, 0, 0, 0] },
+            { label: "H on the first qubit — it becomes |+\u27e9, but the qubits are still independent: (|00\u27e9 + |10\u27e9) / \u221a2.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [SQRT1_2, 0, SQRT1_2, 0] },
+            { label: "CNOT — the first qubit controls, the second is the target. Where the first is 1, the second flips: |10\u27e9 becomes |11\u27e9, giving \u03a6\u207a.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u25cf\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2295\u2014\u2014",
+              amps: [SQRT1_2, 0, 0, SQRT1_2] }
+          ]
+        },
+        "phi-": {
+          amps: [SQRT1_2, 0, 0, -SQRT1_2],
+          note: "The Bell state \u03a6\u207b — the two qubits always agree, with a minus sign on |11\u27e9",
+          steps: [
+            { label: "Start: |00\u27e9 — two fresh qubits.",
+              wire: "q0 \u2014\u2014\u2014\u2014\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [1, 0, 0, 0] },
+            { label: "H on the first qubit — it becomes |+\u27e9, but the qubits are still independent: (|00\u27e9 + |10\u27e9) / \u221a2.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [SQRT1_2, 0, SQRT1_2, 0] },
+            { label: "CNOT — the first qubit controls, the second is the target: |10\u27e9 becomes |11\u27e9, giving \u03a6\u207a.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u25cf\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2295\u2014\u2014",
+              amps: [SQRT1_2, 0, 0, SQRT1_2] },
+            { label: "Z on the first qubit flips the sign of the |11\u27e9 term — probabilities unchanged, phase changed: \u03a6\u207b.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u25cf\u2014\u2014[Z]\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2295\u2014\u2014\u2014",
+              amps: [SQRT1_2, 0, 0, -SQRT1_2] }
+          ]
+        },
+        "psi+": {
+          amps: [0, SQRT1_2, SQRT1_2, 0],
+          note: "The Bell state \u03a8\u207a — the two qubits always disagree",
+          steps: [
+            { label: "Start: |01\u27e9 — flip the second qubit with X first.",
+              wire: "q0 \u2014\u2014\u2014\u2014\u2014\u2014\u2014\nq1 \u2014\u2014[X]\u2014\u2014\u2014",
+              amps: [0, 1, 0, 0] },
+            { label: "H on the first qubit: (|01\u27e9 + |11\u27e9) / \u221a2 — still independent.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u2014\nq1 \u2014\u2014[X]\u2014\u2014\u2014",
+              amps: [0, SQRT1_2, 0, SQRT1_2] },
+            { label: "CNOT — where the first is 1, the second flips: |11\u27e9 becomes |10\u27e9, giving \u03a8\u207a.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u25cf\u2014\u2014\nq1 \u2014\u2014[X]\u2014\u2014\u2295\u2014\u2014",
+              amps: [0, SQRT1_2, SQRT1_2, 0] }
+          ]
+        },
+        "psi-": {
+          amps: [0, SQRT1_2, -SQRT1_2, 0],
+          note: "The Bell state \u03a8\u207b — the two qubits always disagree, with a minus sign on |10\u27e9",
+          steps: [
+            { label: "Start: |01\u27e9 — flip the second qubit with X first.",
+              wire: "q0 \u2014\u2014\u2014\u2014\u2014\u2014\u2014\nq1 \u2014\u2014[X]\u2014\u2014\u2014",
+              amps: [0, 1, 0, 0] },
+            { label: "H on the first qubit: (|01\u27e9 + |11\u27e9) / \u221a2 — still independent.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u2014\nq1 \u2014\u2014[X]\u2014\u2014\u2014",
+              amps: [0, SQRT1_2, 0, SQRT1_2] },
+            { label: "CNOT — where the first is 1, the second flips: |11\u27e9 becomes |10\u27e9, giving \u03a8\u207a.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u25cf\u2014\u2014\nq1 \u2014\u2014[X]\u2014\u2014\u2295\u2014\u2014",
+              amps: [0, SQRT1_2, SQRT1_2, 0] },
+            { label: "Z on the first qubit flips the sign of the |10\u27e9 term: \u03a8\u207b.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u25cf\u2014\u2014[Z]\nq1 \u2014\u2014[X]\u2014\u2014\u2295\u2014\u2014\u2014",
+              amps: [0, SQRT1_2, -SQRT1_2, 0] }
+          ]
+        },
+        "prod": {
+          amps: [SQRT1_2, 0, SQRT1_2, 0],
+          note: "Two independent qubits: the first is |+\u27e9 (50/50), the second is |0\u27e9 (certain) — no link",
+          steps: [
+            { label: "Start: |00\u27e9 — two fresh qubits.",
+              wire: "q0 \u2014\u2014\u2014\u2014\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [1, 0, 0, 0] },
+            { label: "H on the first qubit: |+\u27e9 \u2297 |0\u27e9. No CNOT — without it the qubits stay independent.",
+              wire: "q0 \u2014\u2014[H]\u2014\u2014\u2014\nq1 \u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+              amps: [SQRT1_2, 0, SQRT1_2, 0] }
+          ]
+        }
+      };
+
+      var currentPreset = "phi+";
+      var buildSteps = PRESETS[currentPreset].steps;
+      var buildStep = buildSteps.length - 1; // start fully built
+      var amps = buildSteps[buildStep].amps.slice();
+      var whichQubit = 0; // 0 = first (left digit), 1 = second (right digit)
+      var tally = [0, 0, 0, 0];
+
+      var stateLine = document.getElementById("stateLine");
+      var stateName = document.getElementById("stateName");
+      var splitNote = document.getElementById("splitNote");
+      var marginalNote = document.getElementById("marginalNote");
+      var wireDiagram = document.getElementById("wireDiagram");
+      var buildNote = document.getElementById("buildNote");
+      var outcomeBox = document.getElementById("outcomeBox");
+      var tallyLine = document.getElementById("tallyLine");
+      var partialNote = document.getElementById("partialNote");
+      var presetButtons = document.querySelectorAll("[data-preset]");
+      var qubitButtons = document.querySelectorAll("[data-qubit]");
+
+      function fmtNum(n) { return (Math.round(Math.abs(n) * 100) / 100).toFixed(2); }
+
+      function probs() {
+        return amps.map(function (a) { return a * a; });
+      }
+
+      function isEntangled() {
+        return Math.abs(amps[0] * amps[3] - amps[1] * amps[2]) > 0.001;
+      }
+
+      function renderState() {
+        var p = probs();
+        var parts = [];
+        for (var i = 0; i < 4; i++) {
+          if (Math.abs(amps[i]) > 0.001) {
+            var sign = amps[i] < 0 ? "\u2212" : "+";
+            parts.push({ sign: sign, text: fmtNum(amps[i]) + "|" + LABELS[i] + "\u27e9" });
+          }
+        }
+        var line = "|\u03c8\u27e9 = ";
+        if (parts.length === 0) { line += "0"; }
+        else {
+          line += (parts[0].sign === "\u2212" ? "\u2212" : "") + parts[0].text;
+          for (var k = 1; k < parts.length; k++) {
+            line += " " + parts[k].sign + " " + parts[k].text;
+          }
+        }
+        stateLine.textContent = line;
+        for (var j = 0; j < 4; j++) {
+          document.getElementById("pct" + j).textContent = Math.round(p[j] * 100) + "%";
+          document.getElementById("bar" + j).style.width = (p[j] * 100) + "%";
+        }
+        // Split test: a00 * a11 vs a01 * a10.
+        var prod = amps[0] * amps[3];
+        var cross = amps[1] * amps[2];
+        var entangled = isEntangled();
+        splitNote.innerHTML = "Can this state be split into two single-qubit " +
+          "states? The test: a product (a|0\u27e9 + b|1\u27e9) \u2297 (c|0\u27e9 + " +
+          "d|1\u27e9) needs a\u2080\u2080 \u00b7 a\u2081\u2081 to equal a\u2080\u2081 \u00b7 " +
+          "a\u2081\u2080. Here " + fmtNum(prod) + " vs " + fmtNum(cross) + " — " +
+          (entangled
+            ? "they differ, so no two single-qubit states multiply to this one. <b>Entangled.</b>"
+            : "they match, so this one splits into two single-qubit states. <b>Not entangled — independent.</b>");
+        // Marginals + agreement.
+        var q0z = p[0] + p[1], q0o = p[2] + p[3];
+        var q1z = p[0] + p[2], q1o = p[1] + p[3];
+        var agree = p[0] + p[3], disagree = p[1] + p[2];
+        var agreeWord = agree > 0.999 ? "agree 100% of the time"
+          : disagree > 0.999 ? "disagree 100% of the time"
+          : "agree " + Math.round(agree * 100) + "% of the time";
+        marginalNote.innerHTML = "Each qubit on its own: the first is <b>" +
+          Math.round(q0z * 100) + "% 0 / " + Math.round(q0o * 100) + "% 1</b>, the second is <b>" +
+          Math.round(q1z * 100) + "% 0 / " + Math.round(q1o * 100) + "% 1</b> — " +
+          (entangled
+            ? "random alone, yet together they <b>" + agreeWord + "</b>."
+            : "and together they <b>" + agreeWord + "</b> — no link, just the product of the two.");
+      }
+
+      function renderBuild() {
+        var step = buildSteps[buildStep];
+        wireDiagram.textContent = step.wire;
+        buildNote.innerHTML = "<b>Step " + (buildStep + 1) + " of " + buildSteps.length + ":</b> " + step.label;
+      }
+
+      function renderTally() {
+        var total = tally[0] + tally[1] + tally[2] + tally[3];
+        if (total === 0) {
+          tallyLine.textContent = "No register measurements yet — pick a state, then measure.";
+          return;
+        }
+        var p = probs();
+        var parts = [];
+        for (var i = 0; i < 4; i++) {
+          parts.push("<b>" + tally[i] + "</b> \u00d7 " + LABELS[i] + " (" +
+            Math.round(tally[i] / total * 100) + "%, expected " +
+            Math.round(p[i] * 100) + "%)");
+        }
+        tallyLine.innerHTML = "Measured <b>" + total + "</b> fresh pairs: " + parts.join(", ") + ".";
+      }
+
+      function render() {
+        renderState();
+        renderBuild();
+        renderTally();
+      }
+
+      function resetMeasurements() {
+        tally = [0, 0, 0, 0];
+        outcomeBox.textContent = "??";
+        outcomeBox.className = "outcome";
+        partialNote.innerHTML = "No single-qubit measurement yet — pick a qubit above and press <b>Measure this qubit once</b>.";
+      }
+
+      function setPreset(key) {
+        currentPreset = key;
+        buildSteps = PRESETS[key].steps;
+        buildStep = buildSteps.length - 1;
+        amps = buildSteps[buildStep].amps.slice();
+        stateName.textContent = PRESETS[key].note;
+        resetMeasurements();
+        presetButtons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.preset === key);
+        });
+        render();
+      }
+
+      function drawOutcome() {
+        var p = probs();
+        var r = Math.random();
+        var acc = 0;
+        for (var i = 0; i < 4; i++) {
+          acc += p[i];
+          if (r < acc) { return i; }
+        }
+        return 3;
+      }
+
+      function singleQubitLabel(amps1) {
+        var p0 = amps1[0] * amps1[0];
+        var p1 = amps1[1] * amps1[1];
+        if (p0 > 0.999) { return "|0\u27e9"; }
+        if (p1 > 0.999) { return "|1\u27e9"; }
+        if (Math.abs(amps1[0] - SQRT1_2) < 0.01 && Math.abs(amps1[1] - SQRT1_2) < 0.01) { return "|+\u27e9"; }
+        if (Math.abs(amps1[0] - SQRT1_2) < 0.01 && Math.abs(amps1[1] + SQRT1_2) < 0.01) { return "|\u2212\u27e9"; }
+        return "(" + fmtNum(amps1[0]) + ")|0\u27e9 + (" + fmtNum(amps1[1]) + ")|1\u27e9";
+      }
+
+      document.getElementById("replayBuild").addEventListener("click", function () {
+        buildStep = 0;
+        amps = buildSteps[0].amps.slice();
+        resetMeasurements();
+        render();
+      });
+
+      document.getElementById("nextStep").addEventListener("click", function () {
+        if (buildStep < buildSteps.length - 1) {
+          buildStep++;
+          amps = buildSteps[buildStep].amps.slice();
+          resetMeasurements();
+          render();
+        }
+      });
+
+      document.getElementById("measureOnce").addEventListener("click", function () {
+        var i = drawOutcome();
+        outcomeBox.textContent = LABELS[i];
+        outcomeBox.className = "outcome hit";
+      });
+
+      document.getElementById("measure100").addEventListener("click", function () {
+        for (var k = 0; k < 100; k++) {
+          tally[drawOutcome()]++;
+        }
+        renderTally();
+      });
+
+      document.getElementById("resetTally").addEventListener("click", function () {
+        tally = [0, 0, 0, 0];
+        renderTally();
+      });
+
+      document.getElementById("measureOne").addEventListener("click", function () {
+        var p = probs();
+        var q = whichQubit;
+        // Outcomes where the measured qubit is 0: for qubit 0, 00 and 01;
+        // for qubit 1, 00 and 10.
+        var zeroIdx = q === 0 ? [0, 1] : [0, 2];
+        var oneIdx = q === 0 ? [2, 3] : [1, 3];
+        var pZero = p[zeroIdx[0]] + p[zeroIdx[1]];
+        var outcome = Math.random() < pZero ? 0 : 1;
+        var kept = outcome === 0 ? zeroIdx : oneIdx;
+        var pKept = outcome === 0 ? pZero : 1 - pZero;
+        var norm = Math.sqrt(pKept);
+        // The surviving qubit's amplitudes, re-normalized.
+        var remAmps = [amps[kept[0]] / norm, amps[kept[1]] / norm];
+        var whichName = q === 0 ? "first" : "second";
+        var otherName = q === 0 ? "second" : "first";
+        var remLabel = singleQubitLabel(remAmps);
+        var remP0 = Math.round(remAmps[0] * remAmps[0] * 100);
+        var remP1 = Math.round(remAmps[1] * remAmps[1] * 100);
+        var entangled = isEntangled();
+        var beforeP0 = Math.round((q === 0 ? p[0] + p[2] : p[0] + p[1]) * 100);
+        partialNote.innerHTML = "Measured the <b>" + whichName + "</b> qubit: it came out <b>" +
+          outcome + "</b> (probability " + Math.round((outcome === 0 ? pZero : 1 - pZero) * 100) +
+          "%). That qubit has collapsed to |" + outcome + "\u27e9. The <b>" + otherName +
+          "</b> qubit is now <b>" + remLabel + "</b> — it measures 0 with probability " + remP0 +
+          "% and 1 with probability " + remP1 + "%. " +
+          (entangled
+            ? "Before this measurement it was " + beforeP0 + "% 0 on its own — measuring its partner decided it. That is entanglement: one reading, both qubits fixed."
+            : "It is exactly what it was before the measurement — an independent qubit is untouched by reading its neighbour.") +
+          " Press <b>Re-prepare the pair</b> to start over.";
+      });
+
+      document.getElementById("reprepare").addEventListener("click", function () {
+        setPreset(currentPreset);
+      });
+
+      presetButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () { setPreset(btn.dataset.preset); });
+      });
+
+      qubitButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          whichQubit = parseInt(btn.dataset.qubit, 10);
+          qubitButtons.forEach(function (b) {
+            b.classList.toggle("active", b === btn);
+          });
+        });
+      });
+
+      setPreset("phi+");
+    </script>
+  </body>
+</html>

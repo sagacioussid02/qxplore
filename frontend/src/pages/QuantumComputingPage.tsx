@@ -114,6 +114,19 @@ const LESSONS = [
         'Eight outcomes — 2³ — each equally likely, so 000 has probability 1/8: each qubit contributes a factor of 1/2, since (1/√2)² = 1/2, three times over. Measuring the first qubit only collapses just that qubit: it becomes |1⟩, and the other two are untouched, still in |+⟩|+⟩. The three qubits are independent, so reading one leaves the rest exactly as they were — the state splits into a product, and a partial measurement only touches the part you read.',
     },
   },
+  {
+    slug: 'entanglement-bell-states',
+    title: 'Entanglement and Bell States',
+    intro:
+      'Two qubits can be linked in a way that has no classical counterpart: entangled. The simplest entangled pair is the Bell state Φ⁺ = (|00⟩ + |11⟩)/√2. Measure the whole register and you get 00 half the time and 11 half the time — 01 and 10 never appear. Measure just the first qubit and you instantly know the second: see 0 and the second is certainly 0, see 1 and it is certainly 1 — even though each qubit on its own, measured alone, is a perfectly random 50/50 coin. That is the strange part: neither qubit has a state of its own. You cannot write Φ⁺ as a product of two single-qubit states: a product (a|0⟩ + b|1⟩) ⊗ (c|0⟩ + d|1⟩) would need the |00⟩ and |11⟩ terms to be non-zero while the |01⟩ and |10⟩ terms are zero, and the arithmetic makes that impossible — if a and d are both non-zero, then the |01⟩ term ad cannot be zero. The pair has a joint state that its parts do not have. Entangled pairs are made with two gates: a Hadamard on the first qubit, then a CNOT — a controlled-NOT that flips the second qubit only where the first is 1. Start in |00⟩, apply H to the first qubit and you have (|00⟩ + |10⟩)/√2 — still two independent qubits, each with its own state. Apply the CNOT and the |10⟩ term becomes |11⟩, giving (|00⟩ + |11⟩)/√2 — and now the qubits can no longer be described separately. There are four Bell states in total: Φ⁺ = (|00⟩ + |11⟩)/√2 and Φ⁻ = (|00⟩ − |11⟩)/√2, in which the bits always agree, and Ψ⁺ = (|01⟩ + |10⟩)/√2 and Ψ⁻ = (|01⟩ − |10⟩)/√2, in which they always disagree — the minus sign changes the phase, not the probabilities. Worked example: prepare Φ⁺ and measure the register 100 times — you land near 50 × 00 and 50 × 11, and never see 01 or 10. Now take a fresh pair and measure only the first qubit: half the time you see 0 and the second qubit becomes certainly |0⟩; half the time you see 1 and it becomes certainly |1⟩. Compare with the independent pair |+⟩⊗|0⟩ from the last lesson: measuring its first qubit never changes the second, because the two still have states of their own.',
+    animation: '/lessons/quantum-computing/animations/entanglement-bell-states.html',
+    check: {
+      question:
+        'A pair of qubits is in the Bell state Φ⁺ = (|00⟩ + |11⟩)/√2. You measure the first qubit and see 1. What is the second qubit now — and could this state have been written as two separate single-qubit states?',
+      answer:
+        'The second qubit is now certainly |1⟩: in Φ⁺ the two bits always agree, so seeing 1 on the first fixes the second to 1 — even though, before the measurement, each qubit on its own was 50/50. And no, it cannot be written as a product: a product (a|0⟩ + b|1⟩) ⊗ (c|0⟩ + d|1⟩) would need ac = 1/√2 and bd = 1/√2 for the |00⟩ and |11⟩ terms, while ad = 0 and bc = 0 for the |01⟩ and |10⟩ terms — but if a and d are both non-zero, ad cannot be zero. That impossibility is what entanglement is: the pair has a state that neither qubit has on its own.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
