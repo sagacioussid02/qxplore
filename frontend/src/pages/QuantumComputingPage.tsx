@@ -140,6 +140,19 @@ const LESSONS = [
         'Bob applies Z: for the outcome 10 his qubit holds α|0⟩ − β|1⟩, and Z flips the sign of the |1⟩ term, giving back α|0⟩ + β|1⟩ = |ψ⟩. Before the bits arrive he cannot recover anything: his qubit measures 50/50 for every possible |ψ⟩, so it carries no information about the state at all. The entanglement alone sends nothing — the two classical bits are what tell him which correction to apply, and they travel no faster than light.',
     },
   },
+  {
+    slug: 'superdense-coding',
+    title: 'Superdense Coding',
+    intro:
+      'Entanglement is not just a curiosity — it is a resource you can spend. Superdense coding is the first protocol that spends it: it sends two classical bits by shipping only one qubit. Here is the deal. Alice and Bob already share an entangled pair in the Bell state Φ⁺, one qubit each. Alice wants to send Bob a two-bit message — 00, 01, 10 or 11. She does it by touching only her own qubit: she applies one of four gates to her half, and each gate turns the shared pair into a different Bell state. Doing nothing (the identity) leaves Φ⁺; an X flip makes Ψ⁺; a Z flip makes Φ⁻; X then Z makes Ψ⁻. Four messages, four Bell states — the two bits are now stored in which Bell state the pair is in. Then Alice sends her single qubit to Bob. Bob now holds both qubits, and he reads the message out with a Bell measurement: a CNOT with Alice’s qubit as the control, a Hadamard on Alice’s qubit, then a plain measurement of both. Φ⁺ reads out as 00, Ψ⁺ as 01, Φ⁻ as 10, Ψ⁻ as 11 — always the two bits Alice chose. One qubit travelled; two bits arrived. Why does this not break the rules? A lone qubit can carry at most one classical bit — that is a hard limit. The second bit rode on the entanglement Alice and Bob shared in advance: the pair was set up before the message was even chosen. And it does not send anything faster than light, because Bob can read nothing until Alice’s qubit physically reaches him. Worked example: Alice wants to send 10. She applies Z to her half of Φ⁺, turning the pair into Φ⁻ = (|00⟩ − |11⟩)/√2, and sends her qubit to Bob. Bob’s Bell measurement — the CNOT turns Φ⁻ into (|00⟩ − |10⟩)/√2, the Hadamard turns that into |10⟩ — reads out 10, exactly the bits Alice sent.',
+    animation: '/lessons/quantum-computing/animations/superdense-coding.html',
+    check: {
+      question:
+        'Alice wants to send the message 11. Which gate does she apply to her half of the pair, what Bell state does the pair become, and what does Bob’s Bell measurement read out? And why could she not have sent two bits by shipping one qubit with no shared pair?',
+      answer:
+        'She applies X then Z (either order — the difference is only a global minus sign, which is not a physical difference). Her half flips and gains a phase, and the pair becomes Ψ⁻ = (|01⟩ − |10⟩)/√2. Bob’s Bell measurement turns Ψ⁻ into |11⟩, so he reads 11. Without the shared pair there would be nothing for the gates to act on jointly: a single qubit sent alone can carry at most one classical bit — Alice could encode one bit as |0⟩ or |1⟩, but the second bit would have nowhere to go, and Bob would have to guess it. The entanglement set up in advance is what carries the second bit.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {
