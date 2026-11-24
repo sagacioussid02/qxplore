@@ -88,6 +88,71 @@ const LESSONS = [
         'With the Z you get 1 every time: H|0⟩ = |+⟩, Z flips the phase so |+⟩ becomes |−⟩, and H|−⟩ = |1⟩. Without the Z, the two Hadamards cancel — H² is the identity — so you are back at |0⟩ and measure 0 every time. A phase flip is invisible to a measurement taken right after it, but the next gate can feel it, and here it flips the final answer from 0 to 1.',
     },
   },
+  {
+    slug: 'measurement',
+    title: 'Measurement',
+    intro:
+      'Measurement is how a quantum answer leaves the quantum world: it reads a qubit and returns a plain classical bit, 0 or 1. But it is not a peek at the mix — it is a collapse. The probabilities come from the amplitudes, P(0) = |α|² and P(1) = |β|², yet one measurement only ever shows a single outcome, never the probabilities themselves. And the moment you measure, the mix is gone: the qubit becomes whichever outcome you saw, so measuring the same qubit again gives the same answer every time. To learn the probabilities you have to prepare the same state over and over and count the outcomes — each fresh copy is a new roll of the same loaded dice. There is one more subtlety: the measurement itself is a choice. The plain way reads in the Z basis, 0 versus 1. But you can measure in a different basis — apply an H gate first, then read — and that asks a different question: is the state |+⟩ or |−⟩? That matters, because some states are twins in one basis and strangers in another: |+⟩ and |−⟩ both measure 50/50 the plain way, so no plain measurement can tell them apart, yet in the X basis |+⟩ always gives 0 and |−⟩ always gives 1. Worked example: a qubit in the state (3/5)|0⟩ + (4/5)|1⟩ gives 0 with probability (3/5)² = 36% and 1 with probability (4/5)² = 64%. Suppose you measure it and see 1: the qubit has collapsed to exactly |1⟩, and measuring it again gives 1 every single time. The 36/64 split only appears across many fresh preparations — one measurement tells you the outcome, not the mix.',
+    animation: '/lessons/quantum-computing/animations/measurement.html',
+    check: {
+      question:
+        'One qubit is in |+⟩ and another is in |−⟩. You measure both the plain way (the Z basis). What do you see — and how could a different measurement tell the two states apart?',
+      answer:
+        'Both measure 50/50 the plain way, so the outcomes tell you nothing: you see a mix of 0s and 1s from either qubit, and no plain measurement can distinguish |+⟩ from |−⟩. Measure in the X basis instead — apply an H gate first, then read: |+⟩ always gives 0 and |−⟩ always gives 1, because H|+⟩ = |0⟩ and H|−⟩ = |1⟩. The two states are as different as states can be (their overlap is zero), but only the right measurement question reveals the difference.',
+    },
+  },
+  {
+    slug: 'multi-qubit-systems',
+    title: 'Multi-Qubit Systems and Joint Measurement',
+    intro:
+      'One qubit holds a mix of two outcomes, 0 and 1. Two qubits hold a mix of four: 00, 01, 10 and 11. The register is written as one state with four amplitudes — one for each outcome — and the probabilities, the squares of the amplitudes, always add to 1. Three qubits need eight amplitudes, four need sixteen, and ten need 1,024: the number of outcomes doubles with every qubit you add, 2^n in total. That is the whole reason a quantum computer can hold so much at once — and also why simulating one on a classical computer gets hard so fast. If the two qubits are independent, the joint state is just the product of the two single-qubit states — the tensor product, written ⊗. Each qubit keeps its own mix, and the joint probabilities multiply: a 50/50 qubit next to a certain-0 qubit gives 00 half the time and 10 half the time, never 01 or 11. Measuring the register reads out a whole bitstring at once. But you can also measure just one qubit of the register — a partial measurement. That collapses only the qubit you read; the other one survives, re-weighted to the outcomes that are still possible. And a measurement is a question you choose: each qubit can be read in the Z basis (0 vs 1), the X basis (+ vs −), or the Y basis — the three Pauli bases — and a joint measurement can ask about a combination, like whether the two bits agree (Z⊗Z, the parity). Worked example: put the first qubit in |+⟩ and the second in |0⟩. The joint state is |+⟩⊗|0⟩ = (|00⟩ + |10⟩)/√2. Measure the whole register and you get 00 with probability 50% and 10 with probability 50%; 01 and 11 never appear, because the second qubit is certain 0. Measure only the first qubit and get 1: the second qubit is still |0⟩ — reading one independent qubit leaves the other untouched. Not every two-qubit state splits into a product like this one — the ones that do not are entangled, and that is the next lesson.',
+    animation: '/lessons/quantum-computing/animations/multi-qubit-systems.html',
+    check: {
+      question:
+        'A register has three qubits, each in |+⟩. How many outcomes can measuring the whole register give, and what is the probability of seeing 000? And what happens to the other two qubits if you measure only the first one and get 1?',
+      answer:
+        'Eight outcomes — 2³ — each equally likely, so 000 has probability 1/8: each qubit contributes a factor of 1/2, since (1/√2)² = 1/2, three times over. Measuring the first qubit only collapses just that qubit: it becomes |1⟩, and the other two are untouched, still in |+⟩|+⟩. The three qubits are independent, so reading one leaves the rest exactly as they were — the state splits into a product, and a partial measurement only touches the part you read.',
+    },
+  },
+  {
+    slug: 'entanglement-bell-states',
+    title: 'Entanglement and Bell States',
+    intro:
+      'Two qubits can be linked in a way that has no classical counterpart: entangled. The simplest entangled pair is the Bell state Φ⁺ = (|00⟩ + |11⟩)/√2. Measure the whole register and you get 00 half the time and 11 half the time — 01 and 10 never appear. Measure just the first qubit and you instantly know the second: see 0 and the second is certainly 0, see 1 and it is certainly 1 — even though each qubit on its own, measured alone, is a perfectly random 50/50 coin. That is the strange part: neither qubit has a state of its own. You cannot write Φ⁺ as a product of two single-qubit states: a product (a|0⟩ + b|1⟩) ⊗ (c|0⟩ + d|1⟩) would need the |00⟩ and |11⟩ terms to be non-zero while the |01⟩ and |10⟩ terms are zero, and the arithmetic makes that impossible — if a and d are both non-zero, then the |01⟩ term ad cannot be zero. The pair has a joint state that its parts do not have. Entangled pairs are made with two gates: a Hadamard on the first qubit, then a CNOT — a controlled-NOT that flips the second qubit only where the first is 1. Start in |00⟩, apply H to the first qubit and you have (|00⟩ + |10⟩)/√2 — still two independent qubits, each with its own state. Apply the CNOT and the |10⟩ term becomes |11⟩, giving (|00⟩ + |11⟩)/√2 — and now the qubits can no longer be described separately. There are four Bell states in total: Φ⁺ = (|00⟩ + |11⟩)/√2 and Φ⁻ = (|00⟩ − |11⟩)/√2, in which the bits always agree, and Ψ⁺ = (|01⟩ + |10⟩)/√2 and Ψ⁻ = (|01⟩ − |10⟩)/√2, in which they always disagree — the minus sign changes the phase, not the probabilities. Worked example: prepare Φ⁺ and measure the register 100 times — you land near 50 × 00 and 50 × 11, and never see 01 or 10. Now take a fresh pair and measure only the first qubit: half the time you see 0 and the second qubit becomes certainly |0⟩; half the time you see 1 and it becomes certainly |1⟩. Compare with the independent pair |+⟩⊗|0⟩ from the last lesson: measuring its first qubit never changes the second, because the two still have states of their own.',
+    animation: '/lessons/quantum-computing/animations/entanglement-bell-states.html',
+    check: {
+      question:
+        'A pair of qubits is in the Bell state Φ⁺ = (|00⟩ + |11⟩)/√2. You measure the first qubit and see 1. What is the second qubit now — and could this state have been written as two separate single-qubit states?',
+      answer:
+        'The second qubit is now certainly |1⟩: in Φ⁺ the two bits always agree, so seeing 1 on the first fixes the second to 1 — even though, before the measurement, each qubit on its own was 50/50. And no, it cannot be written as a product: a product (a|0⟩ + b|1⟩) ⊗ (c|0⟩ + d|1⟩) would need ac = 1/√2 and bd = 1/√2 for the |00⟩ and |11⟩ terms, while ad = 0 and bc = 0 for the |01⟩ and |10⟩ terms — but if a and d are both non-zero, ad cannot be zero. That impossibility is what entanglement is: the pair has a state that neither qubit has on its own.',
+    },
+  },
+  {
+    slug: 'quantum-teleportation',
+    title: 'Quantum Teleportation',
+    intro:
+      'Entanglement lets you move a quantum state without moving the qubit that holds it — that is quantum teleportation. Alice has a qubit in a state |ψ⟩ = α|0⟩ + β|1⟩ she wants to send to Bob, and the two of them already share an entangled pair in the Bell state Φ⁺. The protocol has three moves. First, Alice entangles her message qubit with her half of the pair: a CNOT with the message qubit as the control, then a Hadamard on the message qubit. Second, Alice measures her two qubits, which gives two ordinary classical bits — 00, 01, 10 or 11, each equally likely — and that measurement destroys her copy of |ψ⟩: a quantum state cannot be copied, so the original is gone the moment it is read. Third, Alice sends the two bits to Bob by any ordinary channel — a phone call, a radio link — and Bob applies a correction to his half of the pair that depends on the bits: 00 means do nothing, 01 means apply X, 10 means apply Z, 11 means apply X then Z. After the correction, Bob’s qubit is exactly |ψ⟩. The state has moved; no qubit travelled anywhere. Two things teleportation cannot do: it cannot go faster than light, because before the classical bits arrive Bob’s qubit holds nothing about |ψ⟩ — it is a featureless 50/50 mix no matter what |ψ⟩ was — and it cannot copy a state, because Alice’s measurement erases the original. Worked example: teleport |ψ⟩ = (3/5)|0⟩ + (4/5)|1⟩. Each of Alice’s four outcomes has probability 1/4. Suppose she measures 01: Bob holds (4/5)|0⟩ + (3/5)|1⟩ — the amplitudes are swapped — so he applies X, swapping them back, and his qubit is exactly |ψ⟩.',
+    animation: '/lessons/quantum-computing/animations/quantum-teleportation.html',
+    check: {
+      question:
+        'Alice measures 10. What correction does Bob apply — and why can’t Bob recover the state before the two classical bits reach him?',
+      answer:
+        'Bob applies Z: for the outcome 10 his qubit holds α|0⟩ − β|1⟩, and Z flips the sign of the |1⟩ term, giving back α|0⟩ + β|1⟩ = |ψ⟩. Before the bits arrive he cannot recover anything: his qubit measures 50/50 for every possible |ψ⟩, so it carries no information about the state at all. The entanglement alone sends nothing — the two classical bits are what tell him which correction to apply, and they travel no faster than light.',
+    },
+  },
+  {
+    slug: 'superdense-coding',
+    title: 'Superdense Coding',
+    intro:
+      'Entanglement is not just a curiosity — it is a resource you can spend. Superdense coding is the first protocol that spends it: it sends two classical bits by shipping only one qubit. Here is the deal. Alice and Bob already share an entangled pair in the Bell state Φ⁺, one qubit each. Alice wants to send Bob a two-bit message — 00, 01, 10 or 11. She does it by touching only her own qubit: she applies one of four gates to her half, and each gate turns the shared pair into a different Bell state. Doing nothing (the identity) leaves Φ⁺; an X flip makes Ψ⁺; a Z flip makes Φ⁻; X then Z makes Ψ⁻. Four messages, four Bell states — the two bits are now stored in which Bell state the pair is in. Then Alice sends her single qubit to Bob. Bob now holds both qubits, and he reads the message out with a Bell measurement: a CNOT with Alice’s qubit as the control, a Hadamard on Alice’s qubit, then a plain measurement of both. Φ⁺ reads out as 00, Ψ⁺ as 01, Φ⁻ as 10, Ψ⁻ as 11 — always the two bits Alice chose. One qubit travelled; two bits arrived. Why does this not break the rules? A lone qubit can carry at most one classical bit — that is a hard limit. The second bit rode on the entanglement Alice and Bob shared in advance: the pair was set up before the message was even chosen. And it does not send anything faster than light, because Bob can read nothing until Alice’s qubit physically reaches him. Worked example: Alice wants to send 10. She applies Z to her half of Φ⁺, turning the pair into Φ⁻ = (|00⟩ − |11⟩)/√2, and sends her qubit to Bob. Bob’s Bell measurement — the CNOT turns Φ⁻ into (|00⟩ − |10⟩)/√2, the Hadamard turns that into |10⟩ — reads out 10, exactly the bits Alice sent.',
+    animation: '/lessons/quantum-computing/animations/superdense-coding.html',
+    check: {
+      question:
+        'Alice wants to send the message 11. Which gate does she apply to her half of the pair, what Bell state does the pair become, and what does Bob’s Bell measurement read out? And why could she not have sent two bits by shipping one qubit with no shared pair?',
+      answer:
+        'She applies X then Z (either order — the difference is only a global minus sign, which is not a physical difference). Her half flips and gains a phase, and the pair becomes Ψ⁻ = (|01⟩ − |10⟩)/√2. Bob’s Bell measurement turns Ψ⁻ into |11⟩, so he reads 11. Without the shared pair there would be nothing for the gates to act on jointly: a single qubit sent alone can carry at most one classical bit — Alice could encode one bit as |0⟩ or |1⟩, but the second bit would have nowhere to go, and Bob would have to guess it. The entanglement set up in advance is what carries the second bit.',
+    },
+  },
 ];
 
 export default function QuantumComputingPage() {

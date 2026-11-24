@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Measurement — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      .slider-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 2px 0 16px;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+      }
+      .slider-row input[type="range"] { width: 180px; accent-color: var(--accent); }
+      .slider-row output {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-weight: 700;
+        color: var(--ink);
+        min-width: 52px;
+      }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(15px, 4.2vw, 20px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state .amp0 { color: var(--accent); }
+      .state .amp1 { color: var(--good); }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+
+      /* The outcome flash: the classical bit that came out of the measurement. */
+      .outcome {
+        margin: 14px auto 0;
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        border: 3px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 44px;
+        font-weight: 700;
+        color: var(--ink-soft);
+      }
+      .outcome.zero { border-color: var(--accent); color: var(--accent); }
+      .outcome.one { border-color: var(--good); color: var(--good); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+      .tally .last {
+        display: block;
+        margin-top: 4px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .tally .last.zero { color: var(--accent); }
+      .tally .last.one { color: var(--good); }
+
+      .collapse-note {
+        margin: 12px 0 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .collapse-note b { color: var(--ink); }
+      .collapse-note .amp0 { color: var(--accent); }
+      .collapse-note .amp1 { color: var(--good); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: measure a qubit and watch it collapse">
+      <p class="caption"><span class="step">1 / 3</span> &nbsp;Pick a state to measure</p>
+      <p class="sub">A qubit holds a mix of 0 and 1. The mix slider sets how much of
+        each outcome is in it — <b>36%</b> is the worked example,
+        (3/5)|0&rang; + (4/5)|1&rang;. The presets include two states,
+        <b>|+&rang;</b> and <b>|&minus;&rang;</b>, that both measure 50/50 the
+        plain way. Keep them in mind for step 3.</p>
+
+      <div class="controls" role="group" aria-label="Preset states">
+        <button class="chip" type="button" data-preset="0">|0&rang;</button>
+        <button class="chip" type="button" data-preset="1">|1&rang;</button>
+        <button class="chip" type="button" data-preset="+">|+&rang;</button>
+        <button class="chip" type="button" data-preset="-">|&minus;&rang;</button>
+        <button class="chip active" type="button" data-preset="worked">Worked example: 36 / 64</button>
+      </div>
+
+      <div class="slider-row">
+        <label for="mixSlider">Mix — chance of measuring 0:</label>
+        <input type="range" id="mixSlider" min="0" max="100" step="1" value="36" />
+        <output id="mixValue" for="mixSlider">36%</output>
+      </div>
+
+      <p class="state" id="stateLine" aria-live="polite">|&psi;&rang; = 0.60|0&rang; + (0.80)|1&rang;</p>
+      <p class="state-sub" id="stateName">A general mix — the amplitudes are &radic;(0.36) = 0.60 and &radic;(0.64) = 0.80</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 0 — P(0) = |amplitude of |0&rang;|&sup2;</span><span class="pct" id="pct0">36%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 36%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 1 — P(1) = |amplitude of |1&rang;|&sup2;</span><span class="pct" id="pct1">64%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 64%"></div></div>
+        </div>
+      </div>
+
+      <p class="caption"><span class="step">2 / 3</span> &nbsp;Measure it once — and watch it collapse</p>
+      <p class="sub">One measurement gives one classical bit: a <b>0</b> or a
+        <b>1</b>. It does not show you the mix — and it destroys it. The qubit
+        becomes whichever outcome you saw. Measure the <i>same</i> qubit again
+        and you get the same answer every time; only a fresh preparation can
+        give a different one.</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measureOnce">Measure once</button>
+        <button class="chip" type="button" id="measureAgain">Measure this qubit again</button>
+        <button class="chip ghost" type="button" id="reprepare">Re-prepare the state</button>
+      </div>
+
+      <div class="outcome" id="outcomeCircle" aria-live="polite">?</div>
+      <p class="collapse-note" id="collapseNote">No measurement yet — the qubit is still in its mix. Press <b>Measure once</b>.</p>
+
+      <p class="caption"><span class="step">3 / 3</span> &nbsp;Measure many fresh copies — and change the basis</p>
+      <p class="sub">One measurement never reveals the probabilities. To see them,
+        prepare the same state again and again and count the outcomes. And the
+        measurement itself is a choice: the plain way reads in the
+        <b>Z basis</b> (0 vs 1), while the <b>X basis</b> first applies an H gate
+        and then reads — it asks whether the state is |+&rang; or |&minus;&rang;.
+        |+&rang; and |&minus;&rang; are twins in the Z basis (both 50/50), but in
+        the X basis |+&rang; always gives 0 and |&minus;&rang; always gives 1.</p>
+
+      <div class="controls" role="group" aria-label="Measurement basis">
+        <button class="chip active" type="button" data-basis="Z">Z basis — plain (0 vs 1)</button>
+        <button class="chip" type="button" data-basis="X">X basis — H first (|+&rang; vs |&minus;&rang;)</button>
+      </div>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measure100">Measure 100 fresh copies</button>
+        <button class="chip ghost" type="button" id="resetTally">Reset tally</button>
+      </div>
+
+      <div class="controls" role="group" aria-label="Worked examples">
+        <button class="chip ghost" type="button" id="presetWorked100">Try it: worked example, 100 times</button>
+        <button class="chip ghost" type="button" id="presetPlusMinus">Try it: |+&rang; vs |&minus;&rang; in the X basis</button>
+      </div>
+
+      <p class="tally" id="tallyLine">No measurements yet — pick a state and a basis, then measure 100 fresh copies.</p>
+
+      <p class="hint">Worked example: the state (3/5)|0&rang; + (4/5)|1&rang; gives
+        <b>0 with probability (3/5)&sup2; = 36%</b> and <b>1 with probability
+        (4/5)&sup2; = 64%</b>. Suppose you measure and see <b>1</b>: the qubit
+        has collapsed to exactly |1&rang;, and measuring it again gives 1 every
+        time. The 36/64 split only shows up across many fresh preparations.
+        And the twins: |+&rang; and |&minus;&rang; both measure 50/50 in the Z
+        basis, so a plain measurement cannot tell them apart — but in the X
+        basis |+&rang; gives 0 every time and |&minus;&rang; gives 1 every time.
+        The right measurement can tell states apart that the plain one cannot.</p>
+    </main>
+
+    <script>
+      // The state is kept as real amplitudes (a for |0>, b for |1>), with b
+      // allowed to be negative for |->. Probabilities are a^2 and b^2.
+      var SQRT1_2 = 1 / Math.sqrt(2);
+
+      var PRESETS = {
+        "0": { a: 1, b: 0, label: "|0\u27e9", mix: 100 },
+        "1": { a: 0, b: 1, label: "|1\u27e9", mix: 0 },
+        "+": { a: SQRT1_2, b: SQRT1_2, label: "|+\u27e9", mix: 50 },
+        "-": { a: SQRT1_2, b: -SQRT1_2, label: "|\u2212\u27e9", mix: 50 },
+        "worked": { a: 0.6, b: 0.8, label: null, mix: 36 }
+      };
+
+      var a = 0.6;            // amplitude of |0>
+      var b = 0.8;            // amplitude of |1> (may be negative for |->)
+      var basis = "Z";        // "Z" plain, "X" = H first, then measure
+      var collapsed = null;   // null, or the collapsed state label after a measurement
+      var collapsedOutcome = null; // 0 or 1, the outcome the qubit collapsed to
+      var repeatCount = 0;    // how many times the collapsed qubit was re-measured
+      var tally = { zero: 0, one: 0 };
+
+      var stateLine = document.getElementById("stateLine");
+      var stateName = document.getElementById("stateName");
+      var pct0 = document.getElementById("pct0");
+      var pct1 = document.getElementById("pct1");
+      var bar0 = document.getElementById("bar0");
+      var bar1 = document.getElementById("bar1");
+      var outcomeCircle = document.getElementById("outcomeCircle");
+      var collapseNote = document.getElementById("collapseNote");
+      var tallyLine = document.getElementById("tallyLine");
+      var mixSlider = document.getElementById("mixSlider");
+      var mixValue = document.getElementById("mixValue");
+      var presetButtons = document.querySelectorAll("[data-preset]");
+      var basisButtons = document.querySelectorAll("[data-basis]");
+
+      function fmtNum(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+      function stateLabel() {
+        if (a === 1 && b === 0) { return "|0\u27e9"; }
+        if (a === 0 && b === 1) { return "|1\u27e9"; }
+        if (Math.abs(a - SQRT1_2) < 0.01 && Math.abs(b - SQRT1_2) < 0.01) { return "|+\u27e9"; }
+        if (Math.abs(a - SQRT1_2) < 0.01 && Math.abs(b + SQRT1_2) < 0.01) { return "|\u2212\u27e9"; }
+        return null;
+      }
+
+      // Probability of outcome 0 in the chosen basis.
+      // Z basis: P(0) = a^2. X basis: P(0) = |<+|psi>|^2 = (a + b)^2 / 2.
+      function p0InBasis() {
+        if (basis === "Z") { return a * a; }
+        return Math.pow((a + b) / Math.sqrt(2), 2);
+      }
+
+      function renderState() {
+        var p0 = a * a;
+        var p1 = b * b;
+        var bText = b < 0 ? "(" + fmtNum(b) + ")" : fmtNum(b);
+        stateLine.innerHTML = "|&psi;&rang; = <span class=\"amp0\">" + fmtNum(a) +
+          "</span>|0&rang; + <span class=\"amp1\">" + bText + "</span>|1&rang;";
+        var label = stateLabel();
+        var nameText;
+        if (label) {
+          nameText = "This state is <b>" + label + "</b> — it measures " +
+            Math.round(p0 * 100) + "% zeros and " + Math.round(p1 * 100) + "% ones, the plain way";
+        } else {
+          nameText = "A general mix — the amplitudes are \u221a(" +
+            Math.round(p0 * 100) + "%) = " + fmtNum(Math.abs(a)) + " and \u221a(" +
+            Math.round(p1 * 100) + "%) = " + fmtNum(Math.abs(b)) + "";
+        }
+        stateName.innerHTML = nameText;
+        pct0.textContent = Math.round(p0 * 100) + "%";
+        pct1.textContent = Math.round(p1 * 100) + "%";
+        bar0.style.width = (p0 * 100) + "%";
+        bar1.style.width = (p1 * 100) + "%";
+      }
+
+      function renderTally() {
+        var total = tally.zero + tally.one;
+        if (total === 0) {
+          tallyLine.textContent = "No measurements yet — pick a state and a basis, then measure 100 fresh copies.";
+          return;
+        }
+        var p0 = p0InBasis();
+        var basisName = basis === "Z" ? "Z basis (plain)" : "X basis (H first)";
+        tallyLine.innerHTML =
+          basisName + " — measured <b>" + total + "</b> fresh cop" +
+          (total === 1 ? "y" : "ies") + ": <b>" + tally.zero + "</b> zeros, <b>" +
+          tally.one + "</b> ones (" + Math.round(tally.zero / total * 100) + "% / " +
+          Math.round(tally.one / total * 100) + "%)<br />Expected from the state: " +
+          Math.round(p0 * 100) + "% zeros, " + Math.round((1 - p0) * 100) + "% ones.";
+      }
+
+      function render() {
+        renderState();
+        renderTally();
+      }
+
+      function setState(na, nb, presetKey) {
+        a = na;
+        b = nb;
+        collapsed = null;
+        collapsedOutcome = null;
+        repeatCount = 0;
+        tally = { zero: 0, one: 0 };
+        outcomeCircle.textContent = "?";
+        outcomeCircle.className = "outcome";
+        collapseNote.innerHTML = "No measurement yet — the qubit is still in its mix. Press <b>Measure once</b>.";
+        presetButtons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.preset === presetKey);
+        });
+        render();
+      }
+
+      function setPreset(key) {
+        var p = PRESETS[key];
+        mixSlider.value = p.mix;
+        mixValue.textContent = p.mix + "%";
+        setState(p.a, p.b, key);
+      }
+
+      function setBasis(nb) {
+        basis = nb;
+        basisButtons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.basis === nb);
+        });
+        renderTally();
+      }
+
+      // Draw one outcome in the current basis from the (uncollapsed) state.
+      function drawOutcome() {
+        return Math.random() < p0InBasis() ? 0 : 1;
+      }
+
+      function collapsedLabel(outcome) {
+        if (basis === "Z") { return outcome === 0 ? "|0\u27e9" : "|1\u27e9"; }
+        return outcome === 0 ? "|+\u27e9" : "|\u2212\u27e9";
+      }
+
+      function showOutcome(outcome, isRepeat) {
+        outcomeCircle.textContent = outcome;
+        outcomeCircle.className = "outcome " + (outcome === 0 ? "zero" : "one");
+        var basisName = basis === "Z" ? "the Z basis" : "the X basis";
+        if (isRepeat) {
+          collapseNote.innerHTML = "Same qubit, measured again in " + basisName +
+            ": still <b>" + outcome + "</b> — that is the " + repeatCount +
+            (repeatCount === 1 ? "st" : repeatCount === 2 ? "nd" : repeatCount === 3 ? "rd" : "th") +
+            " repeat, and it will never change. The mix is gone; the qubit <i>is</i> " +
+            "<b>" + collapsedLabel(outcome) + "</b> now. Press <b>Re-prepare the state</b> to start over.";
+        } else {
+          collapseNote.innerHTML = "Measured in " + basisName + ": the outcome is <b>" +
+            outcome + "</b>. The qubit has <b>collapsed</b> to <b>" +
+            collapsedLabel(outcome) + "</b> — the mix is gone. Measure this same qubit again " +
+            "and you get <b>" + outcome + "</b> every time.";
+        }
+      }
+
+      document.getElementById("measureOnce").addEventListener("click", function () {
+        if (collapsed !== null) {
+          // Measuring the already-collapsed qubit again: same outcome.
+          repeatCount++;
+          showOutcome(collapsedOutcome, true);
+          return;
+        }
+        var outcome = drawOutcome();
+        collapsed = collapsedLabel(outcome);
+        collapsedOutcome = outcome;
+        repeatCount = 0;
+        showOutcome(outcome, false);
+      });
+
+      document.getElementById("measureAgain").addEventListener("click", function () {
+        if (collapsed === null) {
+          collapseNote.innerHTML = "Nothing to repeat yet — press <b>Measure once</b> first, " +
+            "so the qubit has collapsed to something.";
+          return;
+        }
+        repeatCount++;
+        showOutcome(collapsedOutcome, true);
+      });
+
+      document.getElementById("reprepare").addEventListener("click", function () {
+        var key = null;
+        presetButtons.forEach(function (btn) {
+          if (btn.classList.contains("active")) { key = btn.dataset.preset; }
+        });
+        if (key) { setPreset(key); } else { setState(a, b, null); }
+      });
+
+      document.getElementById("measure100").addEventListener("click", function () {
+        // Each trial re-prepares the state from scratch, then measures once.
+        for (var i = 0; i < 100; i++) {
+          if (drawOutcome() === 0) { tally.zero++; } else { tally.one++; }
+        }
+        collapsed = null;
+        collapsedOutcome = null;
+        repeatCount = 0;
+        outcomeCircle.textContent = "?";
+        outcomeCircle.className = "outcome";
+        collapseNote.innerHTML = "Those 100 measurements each used a <b>fresh copy</b> of the state — " +
+          "that is the only way to see the probabilities. The tally below is the result.";
+        renderTally();
+      });
+
+      document.getElementById("resetTally").addEventListener("click", function () {
+        tally = { zero: 0, one: 0 };
+        renderTally();
+      });
+
+      document.getElementById("presetWorked100").addEventListener("click", function () {
+        setPreset("worked");
+        setBasis("Z");
+        document.getElementById("measure100").click();
+      });
+
+      document.getElementById("presetPlusMinus").addEventListener("click", function () {
+        setPreset("+");
+        setBasis("X");
+        document.getElementById("measure100").click();
+        var note = document.createElement("div");
+        tallyLine.innerHTML += "<br />Now switch the state to <b>|\u2212\u27e9</b> (preset above) " +
+          "and measure 100 fresh copies in the X basis again — every one comes out <b>1</b>. " +
+          "Same 50/50 twins in the Z basis, perfectly told apart in the X basis.";
+      });
+
+      presetButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () { setPreset(btn.dataset.preset); });
+      });
+
+      basisButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () { setBasis(btn.dataset.basis); });
+      });
+
+      mixSlider.addEventListener("input", function () {
+        var p = parseInt(mixSlider.value, 10) / 100;
+        mixValue.textContent = mixSlider.value + "%";
+        // A slider mix has real, positive amplitudes; the |-> preset keeps its minus sign.
+        setState(Math.sqrt(p), Math.sqrt(1 - p), null);
+      });
+
+      setPreset("worked");
+    </script>
+  </body>
+</html>

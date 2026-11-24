@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Quantum Teleportation — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        justify-content: center;
+        margin: 0 0 14px;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+      }
+      .slider-row input[type="range"] { width: 180px; accent-color: var(--accent); }
+      .slider-row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(13px, 3.6vw, 17px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+      .bar-fill.f2 { background: var(--plain); }
+      .bar-fill.f3 { background: #7a5a8e; }
+
+      /* The two classical bits Alice measures. */
+      .outcome {
+        margin: 14px auto 0;
+        min-width: 84px;
+        height: 84px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 3px solid var(--line);
+        padding: 0 18px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 40px;
+        font-weight: 700;
+        color: var(--ink-soft);
+      }
+      .outcome.hit { border-color: var(--accent); color: var(--accent); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+
+      .note {
+        margin: 12px 0 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .note b { color: var(--ink); }
+
+      .wire {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.9;
+        text-align: left;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin: 0 0 14px;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .wire b { color: var(--accent); }
+
+      table.corrections {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin: 0 0 14px;
+        text-align: left;
+      }
+      table.corrections th, table.corrections td {
+        border: 1px solid var(--line);
+        padding: 7px 10px;
+        line-height: 1.45;
+      }
+      table.corrections th { color: var(--ink); background: var(--bg); }
+      table.corrections td.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      table.corrections tr.hit td { background: var(--bg); font-weight: 700; color: var(--ink); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: quantum teleportation">
+      <p class="caption"><span class="step">1 / 4</span> &nbsp;Pick the state to send</p>
+      <p class="sub">Alice holds a qubit in a state |&psi;&rang; = &alpha;|0&rang; +
+        &beta;|1&rang; that she wants to send to Bob. She will not ship the
+        qubit itself — she will move the <b>state</b> onto Bob's qubit. The
+        worked example is |&psi;&rang; = (3/5)|0&rang; + (4/5)|1&rang;:
+        36% 0, 64% 1. Drag the slider to teleport a different state.</p>
+
+      <div class="controls" role="group" aria-label="Preset states to teleport">
+        <button class="chip" type="button" data-preset="0">|0&rang;</button>
+        <button class="chip" type="button" data-preset="50">|+&rang;</button>
+        <button class="chip active" type="button" data-preset="36">Worked example: 36% / 64%</button>
+        <button class="chip" type="button" data-preset="100">|1&rang;</button>
+      </div>
+
+      <div class="slider-row">
+        <span>Probability of 0:</span>
+        <input type="range" id="mixSlider" min="0" max="100" value="36" step="1" aria-label="Probability of measuring 0" />
+        <b id="mixLabel">36%</b>
+      </div>
+
+      <p class="state" id="psiLine" aria-live="polite">|&psi;&rang; = 0.60|0&rang; + 0.80|1&rang;</p>
+      <p class="state-sub" id="psiSub">Alice's state to send — Bob's qubit will end up exactly like this</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>|&psi;&rang; measures 0</span><span class="pct" id="pct0">36%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 36%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>|&psi;&rang; measures 1</span><span class="pct" id="pct1">64%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 64%"></div></div>
+        </div>
+      </div>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">2 / 4</span> &nbsp;Step through the protocol</p>
+      <p class="sub">Alice and Bob already share an entangled pair in the Bell
+        state &Phi;&#8314;. Alice's message qubit is q0, her half of the pair
+        is q1, Bob's half is q2. The three-qubit state is written with all
+        eight outcomes — only the non-zero terms are shown. Step through:
+        CNOT, then Hadamard, then Alice measures her two qubits.</p>
+
+      <pre class="wire" id="wireDiagram">q0 (Alice, message) &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;
+q1 (Alice, half)  &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;
+q2 (Bob)          &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;</pre>
+      <p class="state" id="threeQubitLine" aria-live="polite">|&psi;&rang; &otimes; &Phi;&#8314; = 0.42|000&rang; + 0.42|011&rang; + 0.57|100&rang; + 0.57|111&rang;</p>
+      <p class="state-sub" id="threeQubitSub">Start: Alice's state times the shared pair &Phi;&#8314; = (|00&rang; + |11&rang;) / &radic;2</p>
+
+      <p class="note" id="stepNote"><b>Step 1 of 4:</b> Alice and Bob share the
+        entangled pair &Phi;&#8314;. Alice's message qubit is still untouched
+        — nothing has happened to it yet.</p>
+
+      <div class="controls">
+        <button class="chip" type="button" id="replayProtocol">Replay the protocol</button>
+        <button class="chip go" type="button" id="nextStep">Next step</button>
+      </div>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">3 / 4</span> &nbsp;Teleport it — measure, send two bits, correct</p>
+      <p class="sub">Alice measures her two qubits and gets two ordinary
+        classical bits — each of the four outcomes is equally likely, 25%.
+        She sends the bits to Bob, who applies the correction from the table.
+        After the correction, Bob's qubit is exactly |&psi;&rang; — and
+        Alice's original is gone: her measurement destroyed it.</p>
+
+      <table class="corrections" id="correctionTable">
+        <tr><th>Alice measures</th><th>Bob holds</th><th>Bob applies</th></tr>
+        <tr data-outcome="00"><td class="mono">00</td><td class="mono">&alpha;|0&rang; + &beta;|1&rang;</td><td>Nothing (I)</td></tr>
+        <tr data-outcome="01"><td class="mono">01</td><td class="mono">&beta;|0&rang; + &alpha;|1&rang;</td><td>X — swap 0 and 1</td></tr>
+        <tr data-outcome="10"><td class="mono">10</td><td class="mono">&alpha;|0&rang; &minus; &beta;|1&rang;</td><td>Z — flip the sign of |1&rang;</td></tr>
+        <tr data-outcome="11"><td class="mono">11</td><td class="mono">&minus;&beta;|0&rang; + &alpha;|1&rang;</td><td>X, then Z</td></tr>
+      </table>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="teleportOnce">Teleport once</button>
+        <button class="chip" type="button" id="teleport100">Teleport 100 times</button>
+        <button class="chip ghost" type="button" id="resetTally">Reset tally</button>
+      </div>
+
+      <div class="outcome" id="outcomeBox" aria-live="polite">??</div>
+      <p class="tally" id="tallyLine">No teleportations yet — press <b>Teleport once</b>.</p>
+      <p class="note" id="resultNote">Bob's qubit after the correction will appear here, next to the state Alice sent, so you can check they match.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">4 / 4</span> &nbsp;What if the two bits never arrive?</p>
+      <p class="sub">Before the classical bits reach him, Bob's half of the
+        pair holds nothing about |&psi;&rang; at all — the entanglement alone
+        carries no message, which is why nothing travels faster than light.
+        Check it for the state you picked:</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="checkBob">What does Bob hold before the bits arrive?</button>
+      </div>
+      <p class="note" id="bobNote">Press the button to look at Bob's qubit before any classical bits have arrived.</p>
+
+      <p class="hint">Worked example: teleport |&psi;&rang; = (3/5)|0&rang; +
+        (4/5)|1&rang;. Each of Alice's four outcomes has probability 1/4.
+        Suppose she measures <b>01</b>: Bob holds (4/5)|0&rang; +
+        (3/5)|1&rang; — the amplitudes are swapped — so he applies <b>X</b>,
+        swapping them back, and his qubit is exactly |&psi;&rang;. Alice's
+        measurement collapsed her qubits to the bits 01, so her copy of
+        |&psi;&rang; is gone: the state moved, it was not copied.</p>
+    </main>
+
+    <script>
+      // Three qubits, in the order q0 (Alice's message), q1 (Alice's half
+      // of the shared pair), q2 (Bob's half). The state is kept as eight
+      // real amplitudes, one per outcome, in the order
+      // |000>, |001>, |010>, |011>, |100>, |101>, |110>, |111> — the first
+      // digit is q0, the second q1, the third q2. All amplitudes stay real:
+      // the state to send has real amplitudes, and H, CNOT, X and Z are
+      // real gates, so no complex arithmetic is needed.
+      //
+      // Protocol: start from |psi> (x) Phi+; CNOT with q0 controlling q1;
+      // H on q0; Alice measures q0 and q1. The four outcomes are equally
+      // likely (25% each), and Bob's half is left in one of four states:
+      //   00 -> (a, b)        correction: nothing
+      //   01 -> (b, a)        correction: X
+      //   10 -> (a, -b)       correction: Z
+      //   11 -> (-b, a)       correction: X, then Z
+      // After the correction Bob always holds (a, b) = |psi>. Before the
+      // bits arrive, Bob's qubit is a featureless 50/50 mix for every |psi>.
+      var SQRT1_2 = 1 / Math.sqrt(2);
+      var LABELS3 = ["000", "001", "010", "011", "100", "101", "110", "111"];
+      var OUTCOMES = ["00", "01", "10", "11"];
+      // Bob's (unnormalised) amplitudes before correction, per outcome.
+      // Each entry is [amplitude of |0>, amplitude of |1>] as a function
+      // of the sent amplitudes (a, b).
+      function bobBefore(outcome, a, b) {
+        if (outcome === "00") { return [a, b]; }
+        if (outcome === "01") { return [b, a]; }
+        if (outcome === "10") { return [a, -b]; }
+        return [-b, a]; // "11"
+      }
+      function correctionFor(outcome) {
+        if (outcome === "00") { return "nothing (I)"; }
+        if (outcome === "01") { return "X"; }
+        if (outcome === "10") { return "Z"; }
+        return "X, then Z";
+      }
+
+      var p0 = 36; // probability of 0 in |psi>, in percent (worked example)
+      var alpha = 0.6, beta = 0.8;
+      var protocolStep = 0; // 0 = shared pair, 1 = CNOT, 2 = H, 3 = measured
+      var lastOutcome = null;
+      var tally = [0, 0, 0, 0];
+
+      var mixSlider = document.getElementById("mixSlider");
+      var mixLabel = document.getElementById("mixLabel");
+      var psiLine = document.getElementById("psiLine");
+      var psiSub = document.getElementById("psiSub");
+      var threeQubitLine = document.getElementById("threeQubitLine");
+      var threeQubitSub = document.getElementById("threeQubitSub");
+      var wireDiagram = document.getElementById("wireDiagram");
+      var stepNote = document.getElementById("stepNote");
+      var outcomeBox = document.getElementById("outcomeBox");
+      var tallyLine = document.getElementById("tallyLine");
+      var resultNote = document.getElementById("resultNote");
+      var bobNote = document.getElementById("bobNote");
+      var presetButtons = document.querySelectorAll("[data-preset]");
+
+      function fmtNum(n) { return (Math.round(Math.abs(n) * 100) / 100).toFixed(2); }
+      function fmtSigned(n) {
+        if (Math.abs(n) < 0.005) { return "0.00"; }
+        return (n < 0 ? "\u2212" : "") + fmtNum(n);
+      }
+
+      function psiString(a, b) {
+        if (Math.abs(a) < 0.005) { return fmtNum(b) + "|1\u27e9"; }
+        if (Math.abs(b) < 0.005) { return fmtNum(a) + "|0\u27e9"; }
+        return fmtNum(a) + "|0\u27e9 + " + fmtSigned(b) + "|1\u27e9";
+      }
+
+      function state3String(amps) {
+        var parts = [];
+        for (var i = 0; i < 8; i++) {
+          if (Math.abs(amps[i]) > 0.005) {
+            parts.push({ amp: amps[i], text: fmtNum(amps[i]) + "|" + LABELS3[i] + "\u27e9" });
+          }
+        }
+        if (parts.length === 0) { return "0"; }
+        var line = (parts[0].amp < 0 ? "\u2212" : "") + parts[0].text;
+        for (var k = 1; k < parts.length; k++) {
+          line += " " + (parts[k].amp < 0 ? "\u2212" : "+") + " " + parts[k].text;
+        }
+        return line;
+      }
+
+      // The three-qubit state at each protocol step, from (a, b).
+      function stepAmps(step, a, b) {
+        var s = SQRT1_2;
+        if (step === 0) {
+          // |psi> (x) Phi+ = (a|000> + a|011> + b|100> + b|111>) / sqrt(2)
+          return [a * s, 0, 0, a * s, b * s, 0, 0, b * s];
+        }
+        if (step === 1) {
+          // CNOT, q0 controls q1: |100> <-> |110>, |101> <-> |111>
+          return [a * s, 0, 0, a * s, 0, b * s, b * s, 0];
+        }
+        // Step 2 (and 3, the pre-measurement state): H on q0.
+        // (1/2)[ |00>(a|0>+b|1>) + |01>(b|0>+a|1>)
+        //      + |10>(a|0>-b|1>) + |11>(-b|0>+a|1>) ]
+        return [a / 2, b / 2, b / 2, a / 2, a / 2, -b / 2, -b / 2, a / 2];
+      }
+
+      var WIRES = [
+        "q0 (Alice, message) \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n" +
+        "q1 (Alice, half)  \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n" +
+        "q2 (Bob)          \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+        "q0 (Alice, message) \u2014\u2014\u25cf\u2014\u2014\u2014\u2014\u2014\u2014\n" +
+        "q1 (Alice, half)  \u2014\u2014\u2295\u2014\u2014\u2014\u2014\u2014\u2014\n" +
+        "q2 (Bob)          \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+        "q0 (Alice, message) \u2014\u2014\u25cf\u2014\u2014[H]\u2014\u2014\n" +
+        "q1 (Alice, half)  \u2014\u2014\u2295\u2014\u2014\u2014\u2014\u2014\u2014\n" +
+        "q2 (Bob)          \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+        "q0 (Alice, message) \u2014\u2014\u25cf\u2014\u2014[H]\u2014\u2014[M]\u2550\u2550\n" +
+        "q1 (Alice, half)  \u2014\u2014\u2295\u2014\u2014\u2014\u2014\u2014\u2014[M]\u2550\u2550\n" +
+        "q2 (Bob)          \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014[?]"
+      ];
+
+      var STEP_SUBS = [
+        "Start: Alice's state times the shared pair \u03a6\u207a = (|00\u27e9 + |11\u27e9) / \u221a2",
+        "After the CNOT: where the message qubit is 1, Alice's half flips — |100\u27e9 becomes |110\u27e9, |111\u27e9 becomes |101\u27e9",
+        "After the Hadamard on the message qubit: the state is regrouped so each of Alice's four outcomes leaves Bob with a version of |\u03c8\u27e9",
+        "Measured: Alice's two qubits are now just the two classical bits — her copy of |\u03c8\u27e9 is gone. Bob waits for the bits."
+      ];
+
+      function stepLabel(step, a, b) {
+        if (step === 0) {
+          return "<b>Step 1 of 4:</b> Alice and Bob share the entangled pair \u03a6\u207a. Alice's message qubit is still untouched — nothing has happened to it yet.";
+        }
+        if (step === 1) {
+          return "<b>Step 2 of 4:</b> CNOT — Alice's message qubit controls her half of the pair. Where the message is 1, her half flips. The three qubits are now linked, but Bob's half is still untouched.";
+        }
+        if (step === 2) {
+          return "<b>Step 3 of 4:</b> Hadamard on Alice's message qubit. The state is now four groups of two terms: whichever two bits Alice measures, Bob's half is left holding |\u03c8\u27e9 up to one of the four corrections in the table below.";
+        }
+        return "<b>Step 4 of 4:</b> Alice measures her two qubits. She gets two classical bits — 00, 01, 10 or 11, each with probability 1/4 — and her copy of |\u03c8\u27e9 collapses away. The state now lives only in Bob's qubit, scrambled by a correction he has not applied yet.";
+      }
+
+      function renderPsi() {
+        psiLine.textContent = "|\u03c8\u27e9 = " + psiString(alpha, beta);
+        psiSub.textContent = "Alice's state to send — Bob's qubit will end up exactly like this";
+        document.getElementById("pct0").textContent = Math.round(p0) + "%";
+        document.getElementById("bar0").style.width = p0 + "%";
+        document.getElementById("pct1").textContent = Math.round(100 - p0) + "%";
+        document.getElementById("bar1").style.width = (100 - p0) + "%";
+        mixLabel.textContent = Math.round(p0) + "%";
+        mixSlider.value = String(Math.round(p0));
+      }
+
+      function renderProtocol() {
+        var amps = stepAmps(protocolStep, alpha, beta);
+        wireDiagram.textContent = WIRES[protocolStep];
+        threeQubitLine.textContent = (protocolStep === 0 ? "|\u03c8\u27e9 \u2297 \u03a6\u207a = " : "|\u03c8\u27e9, q0, q1, q2 = ") + state3String(amps);
+        threeQubitSub.textContent = STEP_SUBS[protocolStep];
+        stepNote.innerHTML = stepLabel(protocolStep, alpha, beta);
+      }
+
+      function renderTally() {
+        var total = tally[0] + tally[1] + tally[2] + tally[3];
+        if (total === 0) {
+          tallyLine.textContent = "No teleportations yet — press Teleport once.";
+          return;
+        }
+        var parts = [];
+        for (var i = 0; i < 4; i++) {
+          parts.push("<b>" + tally[i] + "</b> \u00d7 " + OUTCOMES[i] + " (" +
+            Math.round(tally[i] / total * 100) + "%, expected 25%)");
+        }
+        tallyLine.innerHTML = "Teleported <b>" + total + "</b> times: " + parts.join(", ") + ". Every outcome is equally likely — the bits are random, and Bob's correction depends on them.";
+      }
+
+      function resetRun() {
+        lastOutcome = null;
+        outcomeBox.textContent = "??";
+        outcomeBox.className = "outcome";
+        resultNote.innerHTML = "Bob's qubit after the correction will appear here, next to the state Alice sent, so you can check they match.";
+        document.querySelectorAll("#correctionTable tr[data-outcome]").forEach(function (row) {
+          row.classList.remove("hit");
+        });
+      }
+
+      function resetAll() {
+        tally = [0, 0, 0, 0];
+        protocolStep = 0;
+        resetRun();
+        bobNote.innerHTML = "Press the button to look at Bob's qubit before any classical bits have arrived.";
+        renderTally();
+        renderProtocol();
+      }
+
+      function setState(newP0) {
+        p0 = newP0;
+        alpha = Math.sqrt(p0 / 100);
+        beta = Math.sqrt(1 - p0 / 100);
+        presetButtons.forEach(function (btn) {
+          btn.classList.toggle("active", parseInt(btn.dataset.preset, 10) === Math.round(p0));
+        });
+        renderPsi();
+        resetAll();
+      }
+
+      function teleportOne() {
+        // Alice's measurement: each of the four outcomes with probability 1/4.
+        var idx = Math.floor(Math.random() * 4);
+        var outcome = OUTCOMES[idx];
+        tally[idx]++;
+        lastOutcome = outcome;
+        outcomeBox.textContent = outcome;
+        outcomeBox.className = "outcome hit";
+        var before = bobBefore(outcome, alpha, beta);
+        var corr = correctionFor(outcome);
+        resultNote.innerHTML = "Alice measured <b>" + outcome + "</b> and sent the two bits to Bob. " +
+          "Before the correction Bob held <b>" + psiString(before[0], before[1]) + "</b>. " +
+          "He applied <b>" + corr + "</b>, so his qubit is now <b>" + psiString(alpha, beta) +
+          "</b> — exactly the state Alice sent. Alice's qubits are now just the bits " + outcome +
+          "; her copy of |\u03c8\u27e9 is gone.";
+        document.querySelectorAll("#correctionTable tr[data-outcome]").forEach(function (row) {
+          row.classList.toggle("hit", row.dataset.outcome === outcome);
+        });
+        renderTally();
+      }
+
+      document.getElementById("replayProtocol").addEventListener("click", function () {
+        protocolStep = 0;
+        renderProtocol();
+      });
+
+      document.getElementById("nextStep").addEventListener("click", function () {
+        if (protocolStep < 3) {
+          protocolStep++;
+          renderProtocol();
+        }
+      });
+
+      document.getElementById("teleportOnce").addEventListener("click", function () {
+        teleportOne();
+      });
+
+      document.getElementById("teleport100").addEventListener("click", function () {
+        for (var k = 0; k < 100; k++) {
+          var idx = Math.floor(Math.random() * 4);
+          tally[idx]++;
+        }
+        // Show one representative run as well, so the result note is live.
+        teleportOne();
+      });
+
+      document.getElementById("resetTally").addEventListener("click", function () {
+        tally = [0, 0, 0, 0];
+        resetRun();
+        renderTally();
+      });
+
+      document.getElementById("checkBob").addEventListener("click", function () {
+        bobNote.innerHTML = "Before the bits arrive, Bob's qubit measures 0 with probability <b>50%</b> and 1 with probability <b>50%</b> — no matter what |\u03c8\u27e9 was. " +
+          "Try it: change the state in step 1 (even to |0\u27e9 or |1\u27e9) and press again — still 50/50. The entanglement alone carries no information about |\u03c8\u27e9; " +
+          "the two classical bits are what tell Bob which correction to apply, and they travel no faster than light. That is why teleportation cannot send a message faster than light — " +
+          "and why Alice's measurement destroying her copy is not a bug: a quantum state cannot be copied, only moved.";
+      });
+
+      mixSlider.addEventListener("input", function () {
+        setState(parseInt(mixSlider.value, 10));
+      });
+
+      presetButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setState(parseInt(btn.dataset.preset, 10));
+        });
+      });
+
+      renderPsi();
+      renderProtocol();
+      renderTally();
+    </script>
+  </body>
+</html>

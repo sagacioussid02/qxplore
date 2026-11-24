@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Multi-Qubit Systems and Joint Measurement — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(14px, 4vw, 19px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+      .bar-fill.f2 { background: var(--plain); }
+      .bar-fill.f3 { background: #7a5a8e; }
+
+      /* The outcome flash: the bitstring that came out of the register. */
+      .outcome {
+        margin: 14px auto 0;
+        min-width: 84px;
+        height: 84px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 3px solid var(--line);
+        padding: 0 18px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 40px;
+        font-weight: 700;
+        color: var(--ink-soft);
+      }
+      .outcome.hit { border-color: var(--accent); color: var(--accent); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+
+      .note {
+        margin: 12px 0 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .note b { color: var(--ink); }
+      .note .amp0 { color: var(--accent); }
+      .note .amp1 { color: var(--good); }
+
+      .scale-table {
+        margin: 14px auto 0;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+      }
+      .scale-table td, .scale-table th {
+        border: 1px solid var(--line);
+        padding: 5px 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .scale-table th { color: var(--ink); font-weight: 600; }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: a two-qubit register and joint measurement">
+      <p class="caption"><span class="step">1 / 4</span> &nbsp;Pick a two-qubit state</p>
+      <p class="sub">One qubit holds a mix of two outcomes, 0 and 1. Two qubits
+        hold a mix of <b>four</b>: |00&rang;, |01&rang;, |10&rang; and |11&rang; —
+        the first digit is the first qubit, the second digit is the second.
+        The state has four amplitudes, one per outcome, and their squares
+        always add to 1. The worked example is two independent qubits:
+        the first in |+&rang;, the second in |0&rang;.</p>
+
+      <div class="controls" role="group" aria-label="Preset two-qubit states">
+        <button class="chip" type="button" data-preset="00">|00&rang;</button>
+        <button class="chip" type="button" data-preset="01">|01&rang;</button>
+        <button class="chip active" type="button" data-preset="worked">Worked example: |+&rang; &otimes; |0&rang;</button>
+        <button class="chip" type="button" data-preset="pp">|++&rang; — even mix</button>
+        <button class="chip" type="button" data-preset="cond">Three-way mix</button>
+      </div>
+
+      <p class="state" id="stateLine" aria-live="polite">|&psi;&rang; = 0.71|00&rang; + 0.71|10&rang;</p>
+      <p class="state-sub" id="stateName">Two independent qubits: the first is |+&rang; (50/50), the second is |0&rang; (certain)</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 00</span><span class="pct" id="pct0">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 01</span><span class="pct" id="pct1">0%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 10</span><span class="pct" id="pct2">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f2" id="bar2" style="width: 50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 11</span><span class="pct" id="pct3">0%</span></div>
+          <div class="bar-track"><div class="bar-fill f3" id="bar3" style="width: 0%"></div></div>
+        </div>
+      </div>
+
+      <table class="scale-table" aria-label="How the number of outcomes grows with qubits">
+        <tr><th>Qubits</th><td>1</td><td>2</td><td>3</td><td>4</td><td>10</td><td>20</td></tr>
+        <tr><th>Outcomes (2<sup>n</sup>)</th><td>2</td><td>4</td><td>8</td><td>16</td><td>1,024</td><td>1,048,576</td></tr>
+      </table>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">2 / 4</span> &nbsp;Measure the whole register</p>
+      <p class="sub">Measuring the register reads out a whole bitstring at
+        once — <b>00</b>, <b>01</b>, <b>10</b> or <b>11</b>. One measurement
+        gives one bitstring; to see the probabilities, measure many fresh
+        copies of the same state and count.</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measureOnce">Measure the register once</button>
+        <button class="chip" type="button" id="measure100">Measure 100 fresh registers</button>
+        <button class="chip ghost" type="button" id="resetTally">Reset tally</button>
+      </div>
+
+      <div class="outcome" id="outcomeBox" aria-live="polite">??</div>
+      <p class="tally" id="tallyLine">No register measurements yet — pick a state, then measure.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">3 / 4</span> &nbsp;Measure just one qubit</p>
+      <p class="sub">You do not have to read the whole register. Measure one
+        qubit and only that qubit collapses — the other one survives,
+        re-weighted to the outcomes that are still possible. Try it on the
+        <b>three-way mix</b> (|00&rang; + |01&rang; + |10&rang;) / &radic;3:
+        measuring the first qubit gives 0 two times in three, and then the
+        second qubit is still 50/50; but if it gives 1, the second qubit
+        becomes a certain 0.</p>
+
+      <div class="controls" role="group" aria-label="Which qubit to measure">
+        <button class="chip active" type="button" data-qubit="0">First qubit (left digit)</button>
+        <button class="chip" type="button" data-qubit="1">Second qubit (right digit)</button>
+      </div>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="measureOne">Measure this qubit once</button>
+        <button class="chip ghost" type="button" id="reprepare">Re-prepare the state</button>
+      </div>
+
+      <p class="note" id="partialNote">No partial measurement yet — pick a qubit above and press <b>Measure this qubit once</b>.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">4 / 4</span> &nbsp;A joint question: do the two qubits agree?</p>
+      <p class="sub">A measurement is a question you choose. Each qubit can be
+        read in the Z basis (0 vs 1), the X basis (+ vs &minus;) or the Y basis —
+        the three Pauli bases. And a joint measurement can ask about a
+        combination: <b>Z&otimes;Z</b> asks whether the two bits agree, without
+        asking what either bit is. It has two answers — agree (00 or 11) or
+        disagree (01 or 10) — and the probabilities come straight from the
+        same four amplitudes.</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Agree — 00 or 11</span><span class="pct" id="pctAgree">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="barAgree" style="width: 50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Disagree — 01 or 10</span><span class="pct" id="pctDisagree">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="barDisagree" style="width: 50%"></div></div>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top: 14px">
+        <button class="chip go" type="button" id="measureParity">Ask: do they agree?</button>
+      </div>
+      <p class="note" id="parityNote">No parity measurement yet — press <b>Ask: do they agree?</b> and see which answer comes out, without learning either bit.</p>
+
+      <p class="hint">Worked example: the first qubit is |+&rang; and the second
+        is |0&rang;, so the joint state is |+&rang; &otimes; |0&rang; =
+        (|00&rang; + |10&rang;) / &radic;2. Measuring the register gives
+        <b>00 with probability 50%</b> and <b>10 with probability 50%</b>;
+        01 and 11 never appear, because the second qubit is certain 0. The
+        joint probabilities multiply because the qubits are independent.
+        Measure only the first qubit and get 1: the second qubit is still
+        |0&rang; — reading one independent qubit leaves the other untouched.
+        Not every two-qubit state splits into a product like this one. The
+        ones that do not are entangled — and that is the next lesson.</p>
+    </main>
+
+    <script>
+      // The joint state is kept as four real amplitudes, one per outcome,
+      // in the order |00>, |01>, |10>, |11>. The first digit is qubit 0
+      // (the left digit), the second digit is qubit 1. Probabilities are
+      // the squares of the amplitudes and always add to 1.
+      var SQRT1_2 = 1 / Math.sqrt(2);
+      var SQRT1_3 = 1 / Math.sqrt(3);
+
+      var LABELS = ["00", "01", "10", "11"];
+
+      var PRESETS = {
+        "00": { amps: [1, 0, 0, 0], note: "Both qubits are certain 0 — one outcome, |00\u27e9, with probability 100%." },
+        "01": { amps: [0, 1, 0, 0], note: "Both qubits are certain — the first is 0, the second is 1 — so the register always reads |01\u27e9." },
+        "worked": { amps: [SQRT1_2, 0, SQRT1_2, 0], note: "Two independent qubits: the first is |+\u27e9 (50/50), the second is |0\u27e9 (certain)" },
+        "pp": { amps: [0.5, 0.5, 0.5, 0.5], note: "Both qubits are |+\u27e9 — every outcome is equally likely, 25% each" },
+        "cond": { amps: [SQRT1_3, SQRT1_3, SQRT1_3, 0], note: "A three-way mix: (|00\u27e9 + |01\u27e9 + |10\u27e9) / \u221a3 — 11 never appears. Measure one qubit and watch the other one change." }
+      };
+
+      var amps = PRESETS["worked"].amps.slice(); // [a00, a01, a10, a11]
+      var whichQubit = 0; // 0 = first (left digit), 1 = second (right digit)
+      var tally = [0, 0, 0, 0];
+      var partial = null; // { qubit, outcome, remaining: [a0, a1] } after a partial measurement
+
+      var stateLine = document.getElementById("stateLine");
+      var stateName = document.getElementById("stateName");
+      var outcomeBox = document.getElementById("outcomeBox");
+      var tallyLine = document.getElementById("tallyLine");
+      var partialNote = document.getElementById("partialNote");
+      var parityNote = document.getElementById("parityNote");
+      var presetButtons = document.querySelectorAll("[data-preset]");
+      var qubitButtons = document.querySelectorAll("[data-qubit]");
+
+      function fmtNum(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+      function probs() {
+        return amps.map(function (a) { return a * a; });
+      }
+
+      function renderState() {
+        var p = probs();
+        var terms = [];
+        for (var i = 0; i < 4; i++) {
+          if (Math.abs(amps[i]) > 0.001) {
+            terms.push(fmtNum(amps[i]) + "|" + LABELS[i] + "\u27e9");
+          }
+        }
+        stateLine.textContent = "|\u03c8\u27e9 = " + (terms.length ? terms.join(" + ") : "0");
+        for (var j = 0; j < 4; j++) {
+          document.getElementById("pct" + j).textContent = Math.round(p[j] * 100) + "%";
+          document.getElementById("bar" + j).style.width = (p[j] * 100) + "%";
+        }
+        // Parity (Z x Z): agree = 00 or 11, disagree = 01 or 10.
+        var agree = p[0] + p[3];
+        var disagree = p[1] + p[2];
+        document.getElementById("pctAgree").textContent = Math.round(agree * 100) + "%";
+        document.getElementById("barAgree").style.width = (agree * 100) + "%";
+        document.getElementById("pctDisagree").textContent = Math.round(disagree * 100) + "%";
+        document.getElementById("barDisagree").style.width = (disagree * 100) + "%";
+      }
+
+      function renderTally() {
+        var total = tally[0] + tally[1] + tally[2] + tally[3];
+        if (total === 0) {
+          tallyLine.textContent = "No register measurements yet — pick a state, then measure.";
+          return;
+        }
+        var p = probs();
+        var parts = [];
+        for (var i = 0; i < 4; i++) {
+          parts.push("<b>" + tally[i] + "</b> \u00d7 " + LABELS[i] + " (" +
+            Math.round(tally[i] / total * 100) + "%, expected " +
+            Math.round(p[i] * 100) + "%)");
+        }
+        tallyLine.innerHTML = "Measured <b>" + total + "</b> fresh registers: " + parts.join(", ") + ".";
+      }
+
+      function render() {
+        renderState();
+        renderTally();
+      }
+
+      function setPreset(key) {
+        var preset = PRESETS[key];
+        amps = preset.amps.slice();
+        tally = [0, 0, 0, 0];
+        partial = null;
+        stateName.textContent = preset.note;
+        outcomeBox.textContent = "??";
+        outcomeBox.className = "outcome";
+        partialNote.innerHTML = "No partial measurement yet — pick a qubit above and press <b>Measure this qubit once</b>.";
+        parityNote.innerHTML = "No parity measurement yet — press <b>Ask: do they agree?</b> and see which answer comes out, without learning either bit.";
+        presetButtons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.preset === key);
+        });
+        render();
+      }
+
+      function drawOutcome() {
+        var p = probs();
+        var r = Math.random();
+        var acc = 0;
+        for (var i = 0; i < 4; i++) {
+          acc += p[i];
+          if (r < acc) { return i; }
+        }
+        return 3;
+      }
+
+      function singleQubitLabel(amps1) {
+        var p0 = amps1[0] * amps1[0];
+        var p1 = amps1[1] * amps1[1];
+        if (p0 > 0.999) { return "|0\u27e9"; }
+        if (p1 > 0.999) { return "|1\u27e9"; }
+        if (Math.abs(amps1[0] - SQRT1_2) < 0.01 && Math.abs(amps1[1] - SQRT1_2) < 0.01) { return "|+\u27e9"; }
+        if (Math.abs(amps1[0] - SQRT1_2) < 0.01 && Math.abs(amps1[1] + SQRT1_2) < 0.01) { return "|\u2212\u27e9"; }
+        return "(" + fmtNum(amps1[0]) + ")|0\u27e9 + (" + fmtNum(amps1[1]) + ")|1\u27e9";
+      }
+
+      document.getElementById("measureOnce").addEventListener("click", function () {
+        var i = drawOutcome();
+        outcomeBox.textContent = LABELS[i];
+        outcomeBox.className = "outcome hit";
+      });
+
+      document.getElementById("measure100").addEventListener("click", function () {
+        for (var k = 0; k < 100; k++) {
+          tally[drawOutcome()]++;
+        }
+        renderTally();
+      });
+
+      document.getElementById("resetTally").addEventListener("click", function () {
+        tally = [0, 0, 0, 0];
+        renderTally();
+      });
+
+      document.getElementById("measureOne").addEventListener("click", function () {
+        var p = probs();
+        var q = whichQubit;
+        // Outcomes where the measured qubit is 0: for qubit 0, 00 and 01;
+        // for qubit 1, 00 and 10.
+        var zeroIdx = q === 0 ? [0, 1] : [0, 2];
+        var oneIdx = q === 0 ? [2, 3] : [1, 3];
+        var pZero = p[zeroIdx[0]] + p[zeroIdx[1]];
+        var outcome = Math.random() < pZero ? 0 : 1;
+        var kept = outcome === 0 ? zeroIdx : oneIdx;
+        var pKept = outcome === 0 ? pZero : 1 - pZero;
+        var norm = Math.sqrt(pKept);
+        // The surviving qubit's amplitudes, re-normalized.
+        var remAmps = [amps[kept[0]] / norm, amps[kept[1]] / norm];
+        partial = { qubit: q, outcome: outcome, remaining: remAmps };
+        var whichName = q === 0 ? "first" : "second";
+        var otherName = q === 0 ? "second" : "first";
+        var remLabel = singleQubitLabel(remAmps);
+        var remP0 = Math.round(remAmps[0] * remAmps[0] * 100);
+        var remP1 = Math.round(remAmps[1] * remAmps[1] * 100);
+        partialNote.innerHTML = "Measured the <b>" + whichName + "</b> qubit: it came out <b>" +
+          outcome + "</b> (probability " + Math.round((outcome === 0 ? pZero : 1 - pZero) * 100) +
+          "%). That qubit has collapsed to |" + outcome + "\u27e9. The <b>" + otherName +
+          "</b> qubit survives, re-weighted to the outcomes still possible: it is now <b>" +
+          remLabel + "</b> — it measures 0 with probability " + remP0 + "% and 1 with probability " +
+          remP1 + "%. Press <b>Re-prepare the state</b> to start over.";
+      });
+
+      document.getElementById("reprepare").addEventListener("click", function () {
+        var key = null;
+        presetButtons.forEach(function (btn) {
+          if (btn.classList.contains("active")) { key = btn.dataset.preset; }
+        });
+        if (key) { setPreset(key); } else { setPreset("worked"); }
+      });
+
+      document.getElementById("measureParity").addEventListener("click", function () {
+        var p = probs();
+        var agree = p[0] + p[3];
+        var isAgree = Math.random() < agree;
+        parityNote.innerHTML = "The parity measurement says: <b>" +
+          (isAgree ? "agree" : "disagree") + "</b> (probability " +
+          Math.round((isAgree ? agree : 1 - agree) * 100) +
+          "%). You learned whether the two bits match — and nothing about what either bit is. " +
+          "That is a joint measurement: one question about the pair, not two questions about the qubits.";
+      });
+
+      presetButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () { setPreset(btn.dataset.preset); });
+      });
+
+      qubitButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          whichQubit = parseInt(btn.dataset.qubit, 10);
+          qubitButtons.forEach(function (b) {
+            b.classList.toggle("active", b === btn);
+          });
+        });
+      });
+
+      setPreset("worked");
+    </script>
+  </body>
+</html>
