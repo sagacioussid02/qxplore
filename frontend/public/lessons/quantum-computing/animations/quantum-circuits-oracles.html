@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Quantum Circuits and Oracles — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(13px, 3.6vw, 17px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+
+      .note {
+        margin: 12px 0 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .note b { color: var(--ink); }
+
+      .wire {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.9;
+        text-align: left;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin: 0 0 14px;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .wire b { color: var(--accent); }
+
+      table.mini {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin: 0 0 14px;
+        text-align: left;
+      }
+      table.mini th, table.mini td {
+        border: 1px solid var(--line);
+        padding: 7px 10px;
+        line-height: 1.45;
+      }
+      table.mini th { color: var(--ink); background: var(--bg); }
+      table.mini td.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      table.mini tr.hit td { background: var(--bg); font-weight: 700; color: var(--ink); }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: quantum circuits and oracles">
+      <p class="caption"><span class="step">1 / 4</span> &nbsp;Pick a classical function f</p>
+      <p class="sub">An <b>oracle</b> is a box that stands for a classical
+        function f: it computes f without telling you how. The algorithm that
+        calls it never looks inside — it just counts how many times it has
+        to ask. Here f takes one bit and returns one bit, so there are only
+        four possible functions. The worked example is <b>NOT x</b>:
+        f(0) = 1, f(1) = 0.</p>
+
+      <div class="controls" role="group" aria-label="Classical function f">
+        <button class="chip" type="button" data-fn="const0">f(x) = 0 — always 0</button>
+        <button class="chip" type="button" data-fn="const1">f(x) = 1 — always 1</button>
+        <button class="chip" type="button" data-fn="identity">f(x) = x</button>
+        <button class="chip active" type="button" data-fn="not">f(x) = NOT x — worked example</button>
+      </div>
+
+      <table class="mini" id="truthTable">
+        <tr><th>x</th><th>f(x)</th><th>What kind of function</th></tr>
+        <tr><td class="mono">0</td><td class="mono" id="f0">1</td><td rowspan="2" id="fnKind">Balanced — one 0, one 1</td></tr>
+        <tr><td class="mono">1</td><td class="mono" id="f1">0</td></tr>
+      </table>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">2 / 4</span> &nbsp;The bit oracle: the answer as a bit</p>
+      <p class="sub">The <b>bit oracle</b> writes the answer into a spare
+        qubit: U<sub>f</sub> |x&rang;|y&rang; = |x&rang;|y &oplus; f(x)&rang;.
+        It flips the spare qubit exactly when f(x) = 1, and leaves it alone
+        when f(x) = 0. Pick an input and a spare-qubit value, then apply
+        the oracle.</p>
+
+      <pre class="wire">q0 (input x) &mdash;&mdash;&mdash;&mdash;[  U<sub>f</sub>  ]&mdash;&mdash;&mdash;
+q1 (spare y) &mdash;&mdash;&mdash;&mdash;[  U<sub>f</sub>  ]&mdash;&mdash;&mdash;</pre>
+
+      <div class="controls" role="group" aria-label="Input qubit x">
+        <button class="chip active" type="button" data-x="0">x = 0</button>
+        <button class="chip" type="button" data-x="1">x = 1</button>
+      </div>
+      <div class="controls" role="group" aria-label="Spare qubit y">
+        <button class="chip active" type="button" data-y="0">y = 0</button>
+        <button class="chip" type="button" data-y="1">y = 1</button>
+      </div>
+      <div class="controls">
+        <button class="chip go" type="button" id="applyBit">Apply the bit oracle</button>
+      </div>
+
+      <p class="state" id="bitLine" aria-live="polite">Press "Apply the bit oracle".</p>
+      <p class="state-sub" id="bitSub">The oracle flips the spare qubit exactly when f(x) = 1.</p>
+
+      <table class="mini" id="bitTable">
+        <tr><th>Input |x&rang;|y&rang;</th><th>Output after U<sub>f</sub></th><th>Spare qubit flipped?</th></tr>
+        <tr data-in="00"><td class="mono">|0&rang;|0&rang;</td><td class="mono" id="bitOut00">&mdash;</td><td id="bitFlip00">&mdash;</td></tr>
+        <tr data-in="01"><td class="mono">|0&rang;|1&rang;</td><td class="mono" id="bitOut01">&mdash;</td><td id="bitFlip01">&mdash;</td></tr>
+        <tr data-in="10"><td class="mono">|1&rang;|0&rang;</td><td class="mono" id="bitOut10">&mdash;</td><td id="bitFlip10">&mdash;</td></tr>
+        <tr data-in="11"><td class="mono">|1&rang;|1&rang;</td><td class="mono" id="bitOut11">&mdash;</td><td id="bitFlip11">&mdash;</td></tr>
+      </table>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">3 / 4</span> &nbsp;Phase kickback: the answer as a sign</p>
+      <p class="sub">Prepare the spare qubit in the state
+        |&minus;&rang; = (|0&rang; &minus; |1&rang;) / &radic;2 instead. That
+        state is special: flipping it changes nothing but a minus sign,
+        X|&minus;&rang; = &minus;|&minus;&rang;. So when the oracle flips the
+        spare qubit — which it does exactly when f(x) = 1 — the minus sign
+        has nowhere to go but <b>back onto the input</b>:
+        U<sub>f</sub> |x&rang;|&minus;&rang; = (&minus;1)<sup>f(x)</sup>
+        |x&rang;|&minus;&rang;. The spare qubit comes out exactly as it went
+        in; the input carries the answer as a phase. Pick an input and apply
+        the oracle.</p>
+
+      <pre class="wire">q0 (input x) &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;[  U<sub>f</sub>  ]&mdash;&mdash;&mdash;
+q1 (spare)   &mdash;[X]&mdash;[H]&mdash;[  U<sub>f</sub>  ]&mdash;&mdash;&mdash;  |&minus;&rang;</pre>
+
+      <div class="controls" role="group" aria-label="Input qubit x for phase kickback">
+        <button class="chip active" type="button" data-px="0">x = 0</button>
+        <button class="chip" type="button" data-px="1">x = 1</button>
+      </div>
+      <div class="controls">
+        <button class="chip go" type="button" id="applyPhase">Apply the oracle with |&minus;&rang;</button>
+      </div>
+
+      <p class="state" id="phaseLine" aria-live="polite">Press "Apply the oracle with |&minus;&rang;".</p>
+      <p class="state-sub" id="phaseSub">The spare qubit stays |&minus;&rang; — the sign lands on the input instead.</p>
+
+      <table class="mini" id="phaseTable">
+        <tr><th>Input |x&rang;</th><th>f(x)</th><th>Phase oracle output</th></tr>
+        <tr data-px="0"><td class="mono">|0&rang;</td><td class="mono" id="phaseF0">1</td><td class="mono" id="phaseOut0">&mdash;</td></tr>
+        <tr data-px="1"><td class="mono">|1&rang;</td><td class="mono" id="phaseF1">0</td><td class="mono" id="phaseOut1">&mdash;</td></tr>
+      </table>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">4 / 4</span> &nbsp;Try it on a superposition — and measure</p>
+      <p class="sub">Now feed the phase oracle a superposition instead of a
+        single input: |+&rang; = (|0&rang; + |1&rang;) / &radic;2. Each term
+        picks up its own sign, (&minus;1)<sup>f(x)</sup>, so the oracle can
+        turn |+&rang; into a different state — but a phase is invisible to
+        a direct measurement. Apply it, then measure 100 fresh copies and
+        watch the tally.</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="applySuper">Apply the phase oracle to |+&rang;</button>
+        <button class="chip" type="button" id="measure100">Measure 100 fresh copies</button>
+        <button class="chip ghost" type="button" id="resetSuper">Reset</button>
+      </div>
+
+      <p class="state" id="superLine" aria-live="polite">|+&rang; = 0.71|0&rang; + 0.71|1&rang;</p>
+      <p class="state-sub" id="superSub">Before the oracle: an even mix of |0&rang; and |1&rang;.</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 0</span><span class="pct" id="pct0">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measure 1</span><span class="pct" id="pct1">50%</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 50%"></div></div>
+        </div>
+      </div>
+
+      <p class="tally" id="superTally">No measurements yet — apply the oracle, then press <b>Measure 100 fresh copies</b>.</p>
+      <p class="note" id="superNote">The phase oracle sorts functions into two camps: <b>constant</b> functions leave |+&rang; alone, and <b>balanced</b> functions turn it into |&minus;&rang;. That sorting is exactly what the next lesson exploits.</p>
+
+      <p class="hint">Worked example: f(x) = NOT x, so f(0) = 1 and
+        f(1) = 0. The bit oracle flips the spare qubit when the input is 0
+        and leaves it when the input is 1: |0&rang;|0&rang; becomes
+        |0&rang;|1&rang;, while |1&rang;|0&rang; stays |1&rang;|0&rang;. With
+        the spare qubit in |&minus;&rang;, the phase oracle gives
+        &minus;|0&rang; for input 0 and +|1&rang; for input 1 — so on
+        |+&rang; it returns (&minus;|0&rang; + |1&rang;) / &radic;2, which is
+        |&minus;&rang; up to an overall minus sign that carries no
+        information. Constant functions do nothing at all to |+&rang;: if f
+        is always 0 nothing flips, and if f is always 1 both terms flip,
+        which is again just an overall sign. A phase is invisible to a
+        direct measurement — |+&rang; and |&minus;&rang; both measure 50/50
+        — but the next gate can feel it, and that is the whole point.</p>
+    </main>
+
+    <script>
+      // One-bit classical functions. Each f maps 0/1 to 0/1; the four
+      // functions below are all of them. "Balanced" means f(0) != f(1);
+      // "constant" means f(0) == f(1).
+      //
+      // Bit oracle:  U_f |x>|y> = |x>|y XOR f(x)>.
+      //   The spare qubit flips exactly when f(x) = 1.
+      //
+      // Phase oracle via kickback: the spare qubit is prepared in
+      //   |-> = (|0> - |1>) / sqrt(2), an eigenstate of X with
+      //   eigenvalue -1, so X|-> = -|->. The bit oracle flips the spare
+      //   qubit exactly when f(x) = 1, and the -1 kicks back onto the
+      //   input: U_f |x>|-> = (-1)^f(x) |x>|->. The spare qubit is
+      //   unchanged; the input carries the answer as a phase.
+      //
+      // On a superposition |+> = (|0> + |1>) / sqrt(2):
+      //   U_f |+> = ((-1)^f(0) |0> + (-1)^f(1) |1>) / sqrt(2).
+      //   Constant f:  |+> stays |+> (up to a global sign, which is not
+      //   physical). Balanced f: |+> becomes |-> (up to a global sign).
+      //   Either way the measurement probabilities stay 50/50 — a phase
+      //   is invisible to a direct measurement.
+      var SQRT1_2 = 1 / Math.sqrt(2);
+      var FUNCTIONS = {
+        const0:    { label: "f(x) = 0",  f: [0, 0], kind: "Constant — f is 0 for both inputs" },
+        const1:    { label: "f(x) = 1",  f: [1, 1], kind: "Constant — f is 1 for both inputs" },
+        identity:  { label: "f(x) = x",  f: [0, 1], kind: "Balanced — one 0, one 1" },
+        not:       { label: "f(x) = NOT x", f: [1, 0], kind: "Balanced — one 0, one 1" }
+      };
+
+      var fnKey = "not"; // worked example
+      var xBit = 0;
+      var yBit = 0;
+      var pxBit = 0;
+      var superApplied = false;
+      var superTally = { n0: 0, n1: 0, total: 0 };
+
+      var f0Cell = document.getElementById("f0");
+      var f1Cell = document.getElementById("f1");
+      var fnKindCell = document.getElementById("fnKind");
+      var bitLine = document.getElementById("bitLine");
+      var bitSub = document.getElementById("bitSub");
+      var phaseLine = document.getElementById("phaseLine");
+      var phaseSub = document.getElementById("phaseSub");
+      var superLine = document.getElementById("superLine");
+      var superSub = document.getElementById("superSub");
+      var superTallyLine = document.getElementById("superTally");
+      var superNote = document.getElementById("superNote");
+      var fnButtons = document.querySelectorAll("[data-fn]");
+      var xButtons = document.querySelectorAll("[data-x]");
+      var yButtons = document.querySelectorAll("[data-y]");
+      var pxButtons = document.querySelectorAll("[data-px]");
+
+      function fmtNum(n) { return (Math.round(Math.abs(n) * 100) / 100).toFixed(2); }
+
+      function state1String(amps) {
+        // amps: [a0, a1] for |0>, |1>. Prints e.g. "-0.71|0> + 0.71|1>".
+        var parts = [];
+        for (var i = 0; i < 2; i++) {
+          if (Math.abs(amps[i]) > 0.005) {
+            parts.push({ amp: amps[i], text: fmtNum(amps[i]) + "|" + i + "\u27e9" });
+          }
+        }
+        if (parts.length === 0) { return "0"; }
+        var line = (parts[0].amp < 0 ? "\u2212" : "") + parts[0].text;
+        for (var k = 1; k < parts.length; k++) {
+          line += " " + (parts[k].amp < 0 ? "\u2212" : "+") + " " + parts[k].text;
+        }
+        return line;
+      }
+
+      function superAmps() {
+        // Phase oracle on |+>: term |x> picks up (-1)^f(x).
+        var f = FUNCTIONS[fnKey].f;
+        return [(f[0] === 1 ? -1 : 1) * SQRT1_2, (f[1] === 1 ? -1 : 1) * SQRT1_2];
+      }
+
+      function superStateName() {
+        var f = FUNCTIONS[fnKey].f;
+        var balanced = f[0] !== f[1];
+        if (!balanced) {
+          return f[0] === 0 ? "|+\u27e9 (unchanged)" : "\u2212|+\u27e9 — an overall minus sign, physically the same as |+\u27e9";
+        }
+        return (f[0] === 0) ? "|−\u27e9" : "\u2212|−\u27e9 — an overall minus sign, physically the same as |−\u27e9";
+      }
+
+      function renderFunction() {
+        var fn = FUNCTIONS[fnKey];
+        f0Cell.textContent = fn.f[0];
+        f1Cell.textContent = fn.f[1];
+        fnKindCell.textContent = fn.kind;
+        fnButtons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.fn === fnKey);
+        });
+        // Bit oracle full table: |x>|y> -> |x>|y XOR f(x)>.
+        ["00", "01", "10", "11"].forEach(function (pair) {
+          var x = parseInt(pair.charAt(0), 10);
+          var y = parseInt(pair.charAt(1), 10);
+          var out = "|" + x + "\u27e9|" + (y ^ fn.f[x]) + "\u27e9";
+          document.getElementById("bitOut" + pair).textContent = out;
+          document.getElementById("bitFlip" + pair).textContent =
+            fn.f[x] === 1 ? "Yes — f(" + x + ") = 1" : "No — f(" + x + ") = 0";
+        });
+        // Phase oracle table: |x> -> (-1)^f(x) |x>.
+        [0, 1].forEach(function (x) {
+          document.getElementById("phaseF" + x).textContent = fn.f[x];
+          document.getElementById("phaseOut" + x).textContent =
+            (fn.f[x] === 1 ? "\u2212" : "") + "|" + x + "\u27e9";
+        });
+        // Highlight the row matching the chosen bit-oracle input.
+        document.querySelectorAll("#bitTable tr[data-in]").forEach(function (row) {
+          row.classList.toggle("hit", row.dataset.in === ("" + xBit + yBit));
+        });
+        document.querySelectorAll("#phaseTable tr[data-px]").forEach(function (row) {
+          row.classList.toggle("hit", parseInt(row.dataset.px, 10) === pxBit);
+        });
+        resetSuper();
+      }
+
+      function renderBit() {
+        var fn = FUNCTIONS[fnKey];
+        var flipped = fn.f[xBit] === 1;
+        var outY = yBit ^ fn.f[xBit];
+        bitLine.textContent = "|" + xBit + "\u27e9|" + yBit + "\u27e9  \u2192  |" + xBit + "\u27e9|" + outY + "\u27e9";
+        bitSub.innerHTML = "f(" + xBit + ") = " + fn.f[xBit] + ", so the spare qubit " +
+          (flipped ? "<b>flips</b>: " + yBit + " \u2192 " + outY + "." : "<b>stays put</b>.") +
+          " The input |" + xBit + "\u27e9 is untouched.";
+        document.querySelectorAll("#bitTable tr[data-in]").forEach(function (row) {
+          row.classList.toggle("hit", row.dataset.in === ("" + xBit + yBit));
+        });
+      }
+
+      function renderPhase() {
+        var fn = FUNCTIONS[fnKey];
+        var sign = fn.f[pxBit] === 1 ? -1 : 1;
+        phaseLine.textContent = (sign === -1 ? "\u2212" : "") + "|" + pxBit + "\u27e9|\u2212\u27e9  (spare qubit unchanged)";
+        phaseSub.innerHTML = "f(" + pxBit + ") = " + fn.f[pxBit] + ", so the input picks up the factor " +
+          (sign === -1 ? "(−1)<sup>1</sup> = <b>−1</b>" : "(−1)<sup>0</sup> = <b>+1</b>") +
+          " — the answer is now a phase on |" + pxBit + "\u27e9, and the spare qubit is still |−\u27e9.";
+        document.querySelectorAll("#phaseTable tr[data-px]").forEach(function (row) {
+          row.classList.toggle("hit", parseInt(row.dataset.px, 10) === pxBit);
+        });
+      }
+
+      function renderSuper() {
+        var amps = superApplied ? superAmps() : [SQRT1_2, SQRT1_2];
+        superLine.textContent = state1String(amps);
+        superSub.textContent = superApplied
+          ? "After the phase oracle: " + superStateName() + "."
+          : "Before the oracle: an even mix of |0\u27e9 and |1\u27e9.";
+        for (var i = 0; i < 2; i++) {
+          var pct = Math.round(amps[i] * amps[i] * 100);
+          document.getElementById("pct" + i).textContent = pct + "%";
+          document.getElementById("bar" + i).style.width = pct + "%";
+        }
+        if (superTally.total === 0) {
+          superTallyLine.innerHTML = superApplied
+            ? "Oracle applied — press <b>Measure 100 fresh copies</b> to see what a measurement finds."
+            : "No measurements yet — apply the oracle, then press <b>Measure 100 fresh copies</b>.";
+        } else {
+          var p0 = Math.round(superTally.n0 / superTally.total * 100);
+          var p1 = Math.round(superTally.n1 / superTally.total * 100);
+          superTallyLine.innerHTML = "Measured <b>" + superTally.total + "</b> fresh copies of " +
+            (superApplied ? "the oracle output" : "|+\u27e9") + ": 0 came up <b>" + superTally.n0 +
+            "</b> (" + p0 + "%), 1 came up <b>" + superTally.n1 + "</b> (" + p1 + "%). " +
+            "Still 50/50 — the phase left no trace in the probabilities.";
+        }
+        superNote.innerHTML = superApplied
+          ? (FUNCTIONS[fnKey].f[0] !== FUNCTIONS[fnKey].f[1]
+            ? "<b>Balanced</b> f turned |+&rang; into |&minus;&rang; (up to an overall sign). A constant f would have left |+&rang; alone. The phase oracle sorts functions into exactly these two camps — and the next lesson reads that sorting out with one more gate."
+            : "<b>Constant</b> f left |+&rang; alone (up to an overall sign, which is not a physical difference). A balanced f would have turned it into |&minus;&rang;. The phase oracle sorts functions into exactly these two camps — and the next lesson reads that sorting out with one more gate.")
+          : "The phase oracle sorts functions into two camps: <b>constant</b> functions leave |+&rang; alone, and <b>balanced</b> functions turn it into |&minus;&rang;. That sorting is exactly what the next lesson exploits.";
+      }
+
+      function resetSuper() {
+        superApplied = false;
+        superTally = { n0: 0, n1: 0, total: 0 };
+        renderSuper();
+      }
+
+      function measureOnce(amps) {
+        var r = Math.random();
+        return r < amps[0] * amps[0] ? 0 : 1;
+      }
+
+      fnButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          fnKey = btn.dataset.fn;
+          renderFunction();
+          renderBit();
+          renderPhase();
+        });
+      });
+
+      xButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          xBit = parseInt(btn.dataset.x, 10);
+          xButtons.forEach(function (b) { b.classList.toggle("active", b === btn); });
+          renderBit();
+        });
+      });
+
+      yButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          yBit = parseInt(btn.dataset.y, 10);
+          yButtons.forEach(function (b) { b.classList.toggle("active", b === btn); });
+          renderBit();
+        });
+      });
+
+      pxButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          pxBit = parseInt(btn.dataset.px, 10);
+          pxButtons.forEach(function (b) { b.classList.toggle("active", b === btn); });
+          renderPhase();
+        });
+      });
+
+      document.getElementById("applyBit").addEventListener("click", function () {
+        renderBit();
+      });
+
+      document.getElementById("applyPhase").addEventListener("click", function () {
+        renderPhase();
+      });
+
+      document.getElementById("applySuper").addEventListener("click", function () {
+        superApplied = true;
+        renderSuper();
+      });
+
+      document.getElementById("measure100").addEventListener("click", function () {
+        var amps = superApplied ? superAmps() : [SQRT1_2, SQRT1_2];
+        for (var k = 0; k < 100; k++) {
+          if (measureOnce(amps) === 0) { superTally.n0++; } else { superTally.n1++; }
+          superTally.total++;
+        }
+        renderSuper();
+      });
+
+      document.getElementById("resetSuper").addEventListener("click", function () {
+        resetSuper();
+      });
+
+      renderFunction();
+      renderBit();
+      renderPhase();
+      renderSuper();
+    </script>
+  </body>
+</html>

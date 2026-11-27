@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>The Deutsch–Jozsa Algorithm — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(13px, 3.6vw, 17px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-row .bar-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13.5px;
+        margin-bottom: 5px;
+      }
+      .bar-row .bar-head .pct { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+      .bar-track {
+        height: 14px;
+        border-radius: 7px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .bar-fill { height: 100%; border-radius: 7px; transition: width 0.2s ease; }
+      .bar-fill.f0 { background: var(--accent); }
+      .bar-fill.f1 { background: var(--good); }
+
+      .tally {
+        margin: 14px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.7;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .tally b { color: var(--ink); }
+
+      .note {
+        margin: 12px 0 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--ink-soft);
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .note b { color: var(--ink); }
+
+      .wire {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.9;
+        text-align: left;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin: 0 0 14px;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .wire b { color: var(--accent); }
+
+      table.mini {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin: 0 0 14px;
+        text-align: left;
+      }
+      table.mini th, table.mini td {
+        border: 1px solid var(--line);
+        padding: 7px 10px;
+        line-height: 1.45;
+      }
+      table.mini th { color: var(--ink); background: var(--bg); }
+      table.mini td.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      table.mini tr.hit td { background: var(--bg); font-weight: 700; color: var(--ink); }
+
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        justify-content: center;
+        margin: 4px 0 16px;
+        font-size: 14px;
+      }
+      .slider-row input[type="range"] { width: 220px; accent-color: var(--accent); }
+      .slider-row .n-val {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-weight: 700;
+        min-width: 2ch;
+      }
+
+      .hint { font-size: 13px; color: var(--ink-soft); margin: 16px 0 0; line-height: 1.55; }
+      .hint b { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar-fill { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage" aria-label="Animation: the Deutsch–Jozsa algorithm">
+      <p class="caption"><span class="step">1 / 4</span> &nbsp;Pick a function f — constant or balanced?</p>
+      <p class="sub">You are handed a black box for a function f that takes
+        one bit and returns one bit, with a promise: f is either
+        <b>constant</b> — the same answer for every input — or
+        <b>balanced</b> — half the inputs give 0 and half give 1. Your job:
+        tell which kind it is, with as few questions to the box as possible.
+        The worked example is <b>NOT x</b>: f(0) = 1, f(1) = 0, balanced.</p>
+
+      <div class="controls" role="group" aria-label="Classical function f">
+        <button class="chip" type="button" data-fn="const0">f(x) = 0 — always 0</button>
+        <button class="chip" type="button" data-fn="const1">f(x) = 1 — always 1</button>
+        <button class="chip" type="button" data-fn="identity">f(x) = x</button>
+        <button class="chip active" type="button" data-fn="not">f(x) = NOT x — worked example</button>
+      </div>
+
+      <table class="mini" id="truthTable">
+        <tr><th>x</th><th>f(x)</th><th>What kind of function</th></tr>
+        <tr><td class="mono">0</td><td class="mono" id="f0">1</td><td rowspan="2" id="fnKind">Balanced — one 0, one 1</td></tr>
+        <tr><td class="mono">1</td><td class="mono" id="f1">0</td></tr>
+      </table>
+
+      <p class="note" id="classicalNote">Classically, one input bit needs
+        <b>2 questions</b> to be sure: you have to see both f(0) and f(1),
+        because a single answer — say f(0) = 1 — could come from a constant
+        function (always 1) or a balanced one (NOT x). The gap grows fast
+        with more input bits — see step 4.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">2 / 4</span> &nbsp;Walk the circuit, one gate at a time</p>
+      <p class="sub">The Deutsch–Jozsa circuit for one input bit uses a
+        second qubit as a helper. Start in |0&rang;|1&rang;, put a Hadamard
+        on both qubits, ask the oracle once (phase kickback stamps the
+        answer onto the first qubit as a sign), then a final Hadamard on the
+        first qubit turns that phase into a probability you can measure.
+        The helper qubit stays |&minus;&rang; the whole way through — it
+        is only there to do the kicking back.</p>
+
+      <pre class="wire">q0 (input) &mdash;|0&rang;&mdash;[H]&mdash;&mdash;[  U<sub>f</sub>  ]&mdash;&mdash;[H]&mdash;&mdash;[M]&mdash;&mdash;
+q1 (helper) &mdash;|1&rang;&mdash;[H]&mdash;&mdash;[  U<sub>f</sub>  ]&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;  |&minus;&rang;</pre>
+
+      <div class="controls" role="group" aria-label="Circuit step">
+        <button class="chip active" type="button" data-step="0">Start</button>
+        <button class="chip" type="button" data-step="1">H on both</button>
+        <button class="chip" type="button" data-step="2">Oracle U<sub>f</sub></button>
+        <button class="chip" type="button" data-step="3">Final H</button>
+        <button class="chip go" type="button" data-step="4">Measure</button>
+      </div>
+
+      <p class="state" id="circuitLine" aria-live="polite">q0 = |0&rang;, q1 = |1&rang;</p>
+      <p class="state-sub" id="circuitSub">Before anything happens: a fresh input qubit and a fresh helper qubit.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">3 / 4</span> &nbsp;Run the algorithm — is the answer certain?</p>
+      <p class="sub">The whole circuit uses the oracle exactly
+        <b>once</b>. Run it and watch the measurement: a constant function
+        always gives 0, a balanced one always gives 1. Run it 100 times —
+        the tally should not budge. That certainty is the point: the final
+        Hadamard turned a phase difference into a probability difference of
+        100% vs 0%.</p>
+
+      <div class="controls">
+        <button class="chip go" type="button" id="runOnce">Run the algorithm once</button>
+        <button class="chip" type="button" id="run100">Run 100 times</button>
+        <button class="chip ghost" type="button" id="resetRuns">Reset</button>
+      </div>
+
+      <p class="state" id="runLine" aria-live="polite">Not run yet.</p>
+      <p class="state-sub" id="runSub">One oracle call per run — count them.</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span>Measured 0 (constant)</span><span class="pct" id="pct0">&mdash;</span></div>
+          <div class="bar-track"><div class="bar-fill f0" id="bar0" style="width: 0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span>Measured 1 (balanced)</span><span class="pct" id="pct1">&mdash;</span></div>
+          <div class="bar-track"><div class="bar-fill f1" id="bar1" style="width: 0%"></div></div>
+        </div>
+      </div>
+
+      <p class="tally" id="runTally">No runs yet — press <b>Run the algorithm once</b> or <b>Run 100 times</b>.</p>
+
+      <p class="caption" style="margin-top: 20px"><span class="step">4 / 4</span> &nbsp;Scale it up: more input bits, same one query</p>
+      <p class="sub">With n input bits the circuit is the same idea, wider:
+        n input qubits plus the helper, Hadamards everywhere, one oracle
+        call, Hadamards on the inputs, then measure. A constant function
+        always reads out all zeros; a balanced one never does. Classically
+        the worst case is 2<sup>n&minus;1</sup> + 1 questions — you could
+        see 2<sup>n&minus;1</sup> identical answers in a row and still not
+        know. Drag the slider and watch the gap grow.</p>
+
+      <div class="slider-row">
+        <label for="nSlider">Input bits n =</label>
+        <input type="range" id="nSlider" min="1" max="10" step="1" value="3" />
+        <span class="n-val" id="nVal">3</span>
+      </div>
+
+      <table class="mini" id="scaleTable">
+        <tr><th></th><th>Oracle questions</th><th>Answer</th></tr>
+        <tr><td>Classical (worst case)</td><td class="mono" id="classicalQs">5</td><td>Certain, after that many</td></tr>
+        <tr><td><b>Deutsch–Jozsa</b></td><td class="mono"><b>1</b></td><td>Certain, always</td></tr>
+      </table>
+
+      <p class="note" id="scaleNote">With <b>n = 3</b> input bits there are
+        8 possible inputs. A balanced function has four 0s and four 1s, so
+        you could ask four times, see four 0s, and still not know — the
+        fifth answer settles it. The quantum circuit asks once and reads
+        all zeros for constant, anything else for balanced.</p>
+
+      <p class="hint">Worked example: f(x) = NOT x, so f(0) = 1 and
+        f(1) = 0 — balanced. After the first Hadamards the state is
+        |+&rang;|&minus;&rang;. The oracle stamps a &minus;1 onto the |0&rang;
+        term (f(0) = 1) and leaves the |1&rang; term alone (f(1) = 0),
+        giving (&minus;|0&rang; + |1&rang;) / &radic;2 = &minus;|&minus;&rang;.
+        The final Hadamard turns |&minus;&rang; into |1&rang;, so you
+        measure 1 — balanced, with certainty. A constant f would have left
+        both signs the same, so the final Hadamard would give back |0&rang;.
+        Classically you would have needed both f(0) and f(1) — two
+        questions — to reach the same conclusion.</p>
+    </main>
+
+    <script>
+      // Deutsch-Jozsa for one input bit. The four one-bit functions f,
+      // each either constant (f(0) == f(1)) or balanced (f(0) != f(1)).
+      //
+      // Circuit (q0 = input, q1 = helper):
+      //   start |0>|1>
+      //   H on both: |+>|->   = ((|0> + |1>)/sqrt2) |-> 
+      //   oracle U_f (phase kickback): the |x> term picks up (-1)^f(x),
+      //     so q0 becomes ((-1)^f(0) |0> + (-1)^f(1) |1>) / sqrt2,
+      //     and q1 stays |->.
+      //   H on q0: H((a|0> + b|1>)/sqrt2) = ((a+b)/2) |0> + ((a-b)/2) |1>
+      //     with a = (-1)^f(0), b = (-1)^f(1).
+      //     Constant: a == b, so the state is |0> (up to a global sign).
+      //     Balanced: a == -b, so the state is |1> (up to a global sign).
+      //   Measure q0: 0 means constant, 1 means balanced — with certainty.
+      //
+      // Classical worst case for n input bits: 2^(n-1) + 1 questions.
+      // A balanced function has 2^(n-1) zeros, so that many identical
+      // answers in a row still prove nothing; the next answer settles it.
+      var SQRT1_2 = 1 / Math.sqrt(2);
+      var FUNCTIONS = {
+        const0:    { label: "f(x) = 0",  f: [0, 0], kind: "Constant — f is 0 for both inputs" },
+        const1:    { label: "f(x) = 1",  f: [1, 1], kind: "Constant — f is 1 for both inputs" },
+        identity:  { label: "f(x) = x",  f: [0, 1], kind: "Balanced — one 0, one 1" },
+        not:       { label: "f(x) = NOT x", f: [1, 0], kind: "Balanced — one 0, one 1" }
+      };
+
+      var fnKey = "not"; // worked example
+      var step = 0;
+      var runs = { n0: 0, n1: 0, total: 0, oracleCalls: 0 };
+
+      var f0Cell = document.getElementById("f0");
+      var f1Cell = document.getElementById("f1");
+      var fnKindCell = document.getElementById("fnKind");
+      var classicalNote = document.getElementById("classicalNote");
+      var circuitLine = document.getElementById("circuitLine");
+      var circuitSub = document.getElementById("circuitSub");
+      var runLine = document.getElementById("runLine");
+      var runSub = document.getElementById("runSub");
+      var runTallyLine = document.getElementById("runTally");
+      var stepButtons = document.querySelectorAll("[data-step]");
+      var fnButtons = document.querySelectorAll("[data-fn]");
+      var nSlider = document.getElementById("nSlider");
+      var nVal = document.getElementById("nVal");
+      var classicalQs = document.getElementById("classicalQs");
+      var scaleNote = document.getElementById("scaleNote");
+
+      function fmtNum(n) { return (Math.round(Math.abs(n) * 100) / 100).toFixed(2); }
+
+      function isBalanced() {
+        var f = FUNCTIONS[fnKey].f;
+        return f[0] !== f[1];
+      }
+
+      // Amplitudes [a0, a1] of q0 after the oracle, before the final H.
+      function oracleAmps() {
+        var f = FUNCTIONS[fnKey].f;
+        var s0 = f[0] === 1 ? -1 : 1;
+        var s1 = f[1] === 1 ? -1 : 1;
+        return [s0 * SQRT1_2, s1 * SQRT1_2];
+      }
+
+      // Amplitudes of q0 after the final H (up to a global sign).
+      function finalAmps() {
+        var amps = oracleAmps();
+        return [(amps[0] + amps[1]) * SQRT1_2, (amps[0] - amps[1]) * SQRT1_2];
+      }
+
+      function stateString(amps) {
+        var parts = [];
+        for (var i = 0; i < 2; i++) {
+          if (Math.abs(amps[i]) > 0.005) {
+            parts.push({ amp: amps[i], text: fmtNum(amps[i]) + "|" + i + "\u27e9" });
+          }
+        }
+        if (parts.length === 0) { return "0"; }
+        var line = (parts[0].amp < 0 ? "\u2212" : "") + parts[0].text;
+        for (var k = 1; k < parts.length; k++) {
+          line += " " + (parts[k].amp < 0 ? "\u2212" : "+") + " " + parts[k].text;
+        }
+        return line;
+      }
+
+      function stateName(amps) {
+        // Name the q0 state when it is one of |+>, |->, |0>, |1>
+        // (up to a global sign, which is not physical).
+        var a0 = amps[0], a1 = amps[1];
+        var tol = 0.01;
+        if (Math.abs(a0 - SQRT1_2) < tol && Math.abs(a1 - SQRT1_2) < tol) { return "|+\u27e9"; }
+        if (Math.abs(a0 + SQRT1_2) < tol && Math.abs(a1 + SQRT1_2) < tol) { return "\u2212|+\u27e9 — an overall minus sign, physically the same as |+\u27e9"; }
+        if (Math.abs(a0 - SQRT1_2) < tol && Math.abs(a1 + SQRT1_2) < tol) { return "|−\u27e9"; }
+        if (Math.abs(a0 + SQRT1_2) < tol && Math.abs(a1 - SQRT1_2) < tol) { return "\u2212|−\u27e9 — an overall minus sign, physically the same as |−\u27e9"; }
+        if (Math.abs(Math.abs(a0) - 1) < tol && Math.abs(a1) < tol) { return (a0 < 0 ? "\u2212" : "") + "|0\u27e9"; }
+        if (Math.abs(a0) < tol && Math.abs(Math.abs(a1) - 1) < tol) { return (a1 < 0 ? "\u2212" : "") + "|1\u27e9"; }
+        return "";
+      }
+
+      function renderFunction() {
+        var fn = FUNCTIONS[fnKey];
+        f0Cell.textContent = fn.f[0];
+        f1Cell.textContent = fn.f[1];
+        fnKindCell.textContent = fn.kind;
+        fnButtons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.fn === fnKey);
+        });
+        classicalNote.innerHTML = "Classically, one input bit needs " +
+          "<b>2 questions</b> to be sure: you have to see both f(0) and f(1), " +
+          "because a single answer — say f(0) = " + fn.f[0] + " — could come " +
+          "from a constant function (always " + fn.f[0] + ") or a balanced one. " +
+          "The gap grows fast with more input bits — see step 4.";
+        renderCircuit();
+        resetRuns();
+      }
+
+      function renderCircuit() {
+        var f = FUNCTIONS[fnKey].f;
+        var balanced = isBalanced();
+        stepButtons.forEach(function (btn) {
+          btn.classList.toggle("active", parseInt(btn.dataset.step, 10) === step);
+        });
+        if (step === 0) {
+          circuitLine.textContent = "q0 = |0\u27e9, q1 = |1\u27e9";
+          circuitSub.textContent = "Before anything happens: a fresh input qubit and a fresh helper qubit.";
+        } else if (step === 1) {
+          circuitLine.textContent = "q0 = |+\u27e9, q1 = |\u2212\u27e9";
+          circuitSub.textContent = "The Hadamards spread both qubits into even mixes: q0 is |+\u27e9, the helper is |\u2212\u27e9.";
+        } else if (step === 2) {
+          var amps = oracleAmps();
+          var name = stateName(amps);
+          circuitLine.textContent = "q0 = " + stateString(amps) + "   (" + name + "), q1 = |\u2212\u27e9";
+          circuitSub.textContent = "The oracle stamped the answer on as a phase: |0\u27e9 picked up (\u22121)^" + f[0] +
+            " and |1\u27e9 picked up (\u22121)^" + f[1] + ". The helper qubit is unchanged — the sign kicked back onto q0.";
+        } else if (step === 3) {
+          var famps = finalAmps();
+          var fname = stateName(famps);
+          circuitLine.textContent = "q0 = " + stateString(famps) + "   (" + fname + "), q1 = |\u2212\u27e9";
+          circuitSub.textContent = balanced
+            ? "The two terms had opposite signs, so the final Hadamard turned q0 into |1\u27e9. A measurement will read 1 — balanced."
+            : "The two terms had the same sign, so the final Hadamard turned q0 back into |0\u27e9. A measurement will read 0 — constant.";
+        } else {
+          circuitLine.textContent = balanced ? "Measured q0 = 1  \u2192  balanced" : "Measured q0 = 0  \u2192  constant";
+          circuitSub.textContent = balanced
+            ? "The answer is certain: a constant function could never give 1 here, and a balanced one could never give 0."
+            : "The answer is certain: a balanced function could never give 0 here, and a constant one could never give 1.";
+        }
+      }
+
+      function renderRuns() {
+        var balanced = isBalanced();
+        var expected = balanced ? 1 : 0;
+        if (runs.total === 0) {
+          runLine.textContent = "Not run yet.";
+          runSub.textContent = "One oracle call per run — count them.";
+          document.getElementById("pct0").textContent = "\u2014";
+          document.getElementById("pct1").textContent = "\u2014";
+          document.getElementById("bar0").style.width = "0%";
+          document.getElementById("bar1").style.width = "0%";
+          runTallyLine.innerHTML = "No runs yet — press <b>Run the algorithm once</b> or <b>Run 100 times</b>.";
+          return;
+        }
+        runLine.textContent = "Last run: measured " + expected + "  \u2192  " + (balanced ? "balanced" : "constant");
+        runSub.textContent = runs.oracleCalls + " oracle call" + (runs.oracleCalls === 1 ? "" : "s") +
+          " across " + runs.total + " run" + (runs.total === 1 ? "" : "s") + " — exactly one per run.";
+        var p0 = Math.round(runs.n0 / runs.total * 100);
+        var p1 = Math.round(runs.n1 / runs.total * 100);
+        document.getElementById("pct0").textContent = p0 + "%";
+        document.getElementById("pct1").textContent = p1 + "%";
+        document.getElementById("bar0").style.width = p0 + "%";
+        document.getElementById("bar1").style.width = p1 + "%";
+        runTallyLine.innerHTML = "Ran <b>" + runs.total + "</b> time" + (runs.total === 1 ? "" : "s") +
+          ": 0 came up <b>" + runs.n0 + "</b>, 1 came up <b>" + runs.n1 + "</b>. " +
+          (runs.n0 === 0 || runs.n1 === 0
+            ? "Every run agreed — the answer is certain, not a probability."
+            : "The runs disagreed — that should never happen for this circuit.");
+      }
+
+      function resetRuns() {
+        runs = { n0: 0, n1: 0, total: 0, oracleCalls: 0 };
+        renderRuns();
+      }
+
+      function runAlgorithm(times) {
+        // Deterministic: constant f always measures 0, balanced always 1.
+        var outcome = isBalanced() ? 1 : 0;
+        for (var k = 0; k < times; k++) {
+          if (outcome === 0) { runs.n0++; } else { runs.n1++; }
+          runs.total++;
+          runs.oracleCalls++;
+        }
+        renderRuns();
+      }
+
+      function renderScale() {
+        var n = parseInt(nSlider.value, 10);
+        nVal.textContent = n;
+        var classical = Math.pow(2, n - 1) + 1;
+        classicalQs.textContent = classical;
+        var inputs = Math.pow(2, n);
+        var half = Math.pow(2, n - 1);
+        var suffix = (classical % 10 === 1 && classical % 100 !== 11) ? "st"
+          : (classical % 10 === 2 && classical % 100 !== 12) ? "nd"
+          : (classical % 10 === 3 && classical % 100 !== 13) ? "rd" : "th";
+        scaleNote.innerHTML = "With <b>n = " + n + "</b> input bit" + (n === 1 ? "" : "s") +
+          " there are " + inputs + " possible inputs. A balanced function has " + half +
+          " 0s and " + half + " 1s, so you could ask " + half + " time" + (half === 1 ? "" : "s") +
+          ", see " + half + " 0" + (half === 1 ? "" : "s") + ", and still not know — the " +
+          classical + suffix + " answer settles it. The quantum " +
+          "circuit asks once and reads all zeros for constant, anything else for balanced.";
+      }
+
+      fnButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          fnKey = btn.dataset.fn;
+          renderFunction();
+        });
+      });
+
+      stepButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          step = parseInt(btn.dataset.step, 10);
+          renderCircuit();
+        });
+      });
+
+      document.getElementById("runOnce").addEventListener("click", function () {
+        runAlgorithm(1);
+      });
+
+      document.getElementById("run100").addEventListener("click", function () {
+        runAlgorithm(100);
+      });
+
+      document.getElementById("resetRuns").addEventListener("click", function () {
+        resetRuns();
+      });
+
+      nSlider.addEventListener("input", function () {
+        renderScale();
+      });
+
+      renderFunction();
+      renderCircuit();
+      renderRuns();
+      renderScale();
+    </script>
+  </body>
+</html>

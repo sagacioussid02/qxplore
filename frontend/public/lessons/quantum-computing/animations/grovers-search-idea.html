@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Grover's Search: The Idea — Animation</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --surface: #ffffff;
+        --ink: #1d2430;
+        --ink-soft: #5a6472;
+        --line: #e3ded2;
+        --accent: #2e6f8e;
+        --good: #3e7d4e;
+        --plain: #8a7a5f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1e2126;
+          --ink: #ece9e2;
+          --ink-soft: #a7aeb9;
+          --line: #33373f;
+          --accent: #6db3d8;
+          --good: #6fbf82;
+          --plain: #a89a7d;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 26px 24px;
+        text-align: center;
+      }
+
+      .caption {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+      }
+      .caption .step { color: var(--accent); font-variant-numeric: tabular-nums; }
+      .sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+      .sub b { color: var(--ink); }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 4px 0 16px;
+      }
+      .chip {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 7px 13px;
+        cursor: pointer;
+      }
+      .chip:hover { background: var(--accent); color: #fff; }
+      .chip.active { background: var(--accent); color: #fff; }
+      .chip.ghost {
+        border-color: var(--line);
+        color: var(--ink-soft);
+      }
+      .chip.ghost:hover { background: var(--line); color: var(--ink); }
+      .chip.go {
+        background: var(--accent);
+        color: #fff;
+      }
+      .chip.go:hover { opacity: 0.85; }
+      .chip:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .chip:disabled:hover { background: transparent; color: var(--accent); }
+      .chip.go:disabled:hover { background: var(--accent); color: #fff; }
+
+      .state {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: clamp(13px, 3.6vw, 17px);
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 12px 0 2px;
+        word-break: break-word;
+      }
+      .state-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+
+      .bars { text-align: left; }
+      .bar-row { margin-bottom: 10px; }
+      .bar-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--ink-soft);
+        margin-bottom: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+      .bar-label b { color: var(--ink); }
+      .bar-track {
+        height: 12px;
+        background: var(--line);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: var(--plain);
+        transition: width 0.35s ease;
+      }
+      .bar-fill.marked { background: var(--accent); }
+      .bar-fill.good { background: var(--good); }
+
+      .dial-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin: 6px 0 4px;
+      }
+      .dial-note {
+        font-size: 13px;
+        color: var(--ink-soft);
+        text-align: left;
+        max-width: 260px;
+        line-height: 1.5;
+      }
+      .dial-note b { color: var(--ink); }
+
+      .stats {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 14px 0 4px;
+      }
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 12px;
+        min-width: 110px;
+      }
+      .stat .num {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 18px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+      .log {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        margin: 12px 0 0;
+        min-height: 40px;
+      }
+      .log b { color: var(--ink); }
+
+      .divider {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 20px 0 16px;
+      }
+      .cmp-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink-soft);
+        margin: 0 0 4px;
+      }
+      .cmp-sub {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 0 0 12px;
+        line-height: 1.55;
+      }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      .cmp-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .cmp-cell {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 8px;
+      }
+      .cmp-cell .num {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 17px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .cmp-cell .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; line-height: 1.4; }
+      .cmp-cell.best { border-color: var(--accent); }
+      .cmp-cell.best .num { color: var(--accent); }
+      .measure-out {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        margin: 10px 0 0;
+        min-height: 20px;
+      }
+      .measure-out b { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <p class="caption">Grover's search — <span class="step">amplitude amplification</span></p>
+      <p class="sub">
+        <b>N</b> items, one marked, no order to exploit. Pick a list size, then run the two
+        moves — oracle, diffusion — and watch the marked item's amplitude grow.
+      </p>
+
+      <div class="controls" id="nChips">
+        <button class="chip" data-n="4">N = 4</button>
+        <button class="chip active" data-n="16">N = 16</button>
+        <button class="chip" data-n="64">N = 64</button>
+        <button class="chip" data-n="256">N = 256</button>
+      </div>
+
+      <div class="dial-wrap">
+        <svg id="dial" width="200" height="118" viewBox="0 0 200 118" role="img"
+             aria-label="Rotation dial: the state rotates from all-unmarked toward the marked item">
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--line)"
+                stroke-width="2" />
+          <line x1="20" y1="100" x2="180" y2="100" stroke="var(--line)" stroke-width="2" />
+          <text x="14" y="116" font-size="10" fill="var(--ink-soft)" text-anchor="middle">0° · all unmarked</text>
+          <text x="186" y="116" font-size="10" fill="var(--ink-soft)" text-anchor="middle">90° · marked</text>
+          <line id="dialNeedle" x1="100" y1="100" x2="180" y2="100" stroke="var(--accent)"
+                stroke-width="3" stroke-linecap="round" />
+          <circle cx="100" cy="100" r="4" fill="var(--accent)" />
+        </svg>
+        <p class="dial-note">
+          The state is a rotation: it starts tilted <b id="dialStart">14.5°</b> toward the
+          marked item, and each full iteration turns it <b id="dialStep">29.0°</b> further.
+          Stop near 90° — go past it and the state rotates <b>away</b> again.
+        </p>
+      </div>
+
+      <p class="state" id="stateLine">|ψ⟩ = 0.2500 |marked⟩ + 0.9682 |rest⟩</p>
+      <p class="state-sub" id="stateSub">Every item starts with the same amplitude, 1/√16 = 0.25.</p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-label"><span>Marked item — amplitude</span><b id="valMarked">0.2500</b></div>
+          <div class="bar-track"><div class="bar-fill marked" id="barMarked" style="width: 25%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>Each other item — amplitude</span><b id="valOther">0.2500</b></div>
+          <div class="bar-track"><div class="bar-fill" id="barOther" style="width: 25%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>Chance of measuring the marked item</span><b id="valProb">6.25%</b></div>
+          <div class="bar-track"><div class="bar-fill good" id="barProb" style="width: 6.25%"></div></div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="num" id="statIter">0</div><div class="lbl">Grover iterations</div></div>
+        <div class="stat"><div class="num" id="statAngle">14.5°</div><div class="lbl">rotation angle</div></div>
+        <div class="stat"><div class="num" id="statSweet">3</div><div class="lbl">sweet-spot iterations</div></div>
+      </div>
+
+      <div class="controls">
+        <button class="chip" id="btnOracle">1 · Oracle — flip the marked sign</button>
+        <button class="chip" id="btnDiffusion" disabled>2 · Diffusion — reflect about the average</button>
+      </div>
+      <div class="controls">
+        <button class="chip go" id="btnIter">Run one full iteration</button>
+        <button class="chip go" id="btnSweet">Run to the sweet spot</button>
+        <button class="chip ghost" id="btnReset">Reset</button>
+      </div>
+      <p class="log" id="stepLog">Start: every item has amplitude 1/√16. The oracle flips only the marked item's sign; diffusion then reflects every amplitude about their average.</p>
+
+      <div class="controls">
+        <button class="chip" id="btnMeasure1">Measure once</button>
+        <button class="chip" id="btnMeasure100">Measure 100 fresh copies</button>
+      </div>
+      <p class="measure-out" id="measureOut"></p>
+
+      <hr class="divider" />
+      <p class="cmp-title">Classical vs Grover — how the gap grows</p>
+      <p class="cmp-sub">
+        Slide the list size. Classically you check items one at a time; Grover needs
+        about (π/4)·√N oracle calls. The speedup is quadratic — a square root, not an
+        exponential — but at a million items it is the difference between a day and a second.
+      </p>
+      <input type="range" id="nSlider" min="0" max="9" step="1" value="1"
+             aria-label="List size N, logarithmic scale" />
+      <div class="cmp-grid">
+        <div class="cmp-cell"><div class="num" id="cmpN">16</div><div class="lbl">items in the list (N)</div></div>
+        <div class="cmp-cell"><div class="num" id="cmpClass">8</div><div class="lbl">classical checks, on average (N/2)</div></div>
+        <div class="cmp-cell best"><div class="num" id="cmpGrover">3</div><div class="lbl">Grover iterations ≈ (π/4)·√N</div></div>
+      </div>
+      <p class="measure-out" id="cmpNote">Grover: ~3 queries instead of ~8 — about 2.7× fewer.</p>
+    </div>
+
+    <script>
+      "use strict";
+      var $ = function (id) { return document.getElementById(id); };
+
+      var N = 16;
+      var aM = 0;   // amplitude of the marked item
+      var aU = 0;   // amplitude of each unmarked item
+      var iters = 0;
+      var oracleApplied = false;
+
+      function theta() { return Math.asin(1 / Math.sqrt(N)); }
+      function sweetSpot() {
+        return Math.max(1, Math.round(Math.PI / (4 * theta()) - 0.5));
+      }
+      function fmt(x, d) {
+        return (x < 0 ? "−" : "") + Math.abs(x).toFixed(d === undefined ? 4 : d);
+      }
+      function pct(x) { return (x * 100).toFixed(x < 0.1 ? 2 : 1) + "%"; }
+
+      function reset() {
+        var a = 1 / Math.sqrt(N);
+        aM = a; aU = a;
+        iters = 0; oracleApplied = false;
+        $("measureOut").textContent = "";
+        $("stepLog").innerHTML =
+          "Start: every item has amplitude 1/√" + N + ". The oracle flips only the marked " +
+          "item's sign; diffusion then reflects every amplitude about their average.";
+        render();
+      }
+
+      function render() {
+        var p = aM * aM;
+        var angleDeg = Math.asin(Math.max(-1, Math.min(1, aM))) * 180 / Math.PI;
+        var rest = Math.sqrt(Math.max(0, 1 - p));
+        $("stateLine").textContent =
+          "|ψ⟩ = " + fmt(aM) + " |marked⟩ + " + fmt(rest) + " |rest⟩";
+        $("stateSub").textContent =
+          "Marked amplitude " + fmt(aM) + "; each of the other " + (N - 1) +
+          " items has amplitude " + fmt(aU) + ".";
+        $("valMarked").textContent = fmt(aM);
+        $("valOther").textContent = fmt(aU);
+        $("valProb").textContent = pct(p);
+        $("barMarked").style.width = (Math.abs(aM) * 100).toFixed(1) + "%";
+        $("barOther").style.width = (Math.abs(aU) * 100).toFixed(1) + "%";
+        $("barProb").style.width = (p * 100).toFixed(2) + "%";
+        $("statIter").textContent = iters;
+        $("statAngle").textContent = angleDeg.toFixed(1) + "°";
+        $("statSweet").textContent = sweetSpot();
+        $("dialStart").textContent = (theta() * 180 / Math.PI).toFixed(1) + "°";
+        $("dialStep").textContent = (2 * theta() * 180 / Math.PI).toFixed(1) + "°";
+        // Needle: 0° points right (all unmarked), 90° points up (marked).
+        var rad = Math.asin(Math.max(-1, Math.min(1, aM)));
+        var x2 = 100 + 80 * Math.cos(rad);
+        var y2 = 100 - 80 * Math.sin(rad);
+        $("dialNeedle").setAttribute("x2", x2.toFixed(1));
+        $("dialNeedle").setAttribute("y2", y2.toFixed(1));
+        $("btnOracle").disabled = oracleApplied;
+        $("btnDiffusion").disabled = !oracleApplied;
+        var k = sweetSpot();
+        if (iters === k && !oracleApplied) {
+          $("stepLog").innerHTML =
+            "<b>Sweet spot.</b> After " + k + " iteration" + (k === 1 ? "" : "s") +
+            ", the marked item holds " + pct(p) + " of the probability — measure now. " +
+            "One more iteration rotates past 90° and the chance starts falling.";
+        }
+      }
+
+      function doOracle() {
+        if (oracleApplied) return;
+        aM = -aM;
+        oracleApplied = true;
+        $("stepLog").innerHTML =
+          "<b>Oracle.</b> The marked amplitude flipped sign: " + fmt(-aM) + " → " + fmt(aM) +
+          ". The other " + (N - 1) + " amplitudes are untouched — but now the marked one sits " +
+          "below the average, so diffusion will push it up.";
+        render();
+      }
+
+      function doDiffusion() {
+        if (!oracleApplied) return;
+        var mu = (aM + (N - 1) * aU) / N;
+        var newM = 2 * mu - aM;
+        var newU = 2 * mu - aU;
+        aM = newM; aU = newU;
+        iters += 1;
+        oracleApplied = false;
+        var p = aM * aM;
+        $("stepLog").innerHTML =
+          "<b>Diffusion.</b> Average amplitude was " + fmt(mu) + "; reflecting about it sent " +
+          "the marked amplitude to " + fmt(aM) + " and each other item to " + fmt(aU) +
+          ". Iteration " + iters + " done — the marked item now holds " + pct(p) +
+          " of the probability.";
+        render();
+      }
+
+      function doIteration() { doOracle(); doDiffusion(); }
+
+      function runSweet() {
+        var k = sweetSpot();
+        while (iters < k) { doOracle(); doDiffusion(); }
+        render();
+      }
+
+      function measure(times) {
+        var p = aM * aM;
+        var hits = 0;
+        for (var i = 0; i < times; i++) {
+          if (Math.random() < p) hits += 1;
+        }
+        if (times === 1) {
+          $("measureOut").innerHTML = hits === 1
+            ? "<b>Found it.</b> The measurement returned the marked item (chance was " + pct(p) + ")."
+            : "<b>Missed.</b> The measurement returned one of the other " + (N - 1) +
+              " items (chance of the marked one was " + pct(p) + "). Prepare the state again and retry.";
+        } else {
+          $("measureOut").innerHTML =
+            "<b>" + hits + " of 100</b> fresh copies measured the marked item — about " +
+            pct(p) + " expected. With no Grover iterations it would be about " +
+            (100 / N).toFixed(N <= 16 ? 1 : 2) + " of 100.";
+        }
+      }
+
+      // N picker
+      var chips = document.querySelectorAll("#nChips .chip");
+      chips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          chips.forEach(function (c) { c.classList.remove("active"); });
+          chip.classList.add("active");
+          N = parseInt(chip.getAttribute("data-n"), 10);
+          reset();
+        });
+      });
+
+      $("btnOracle").addEventListener("click", doOracle);
+      $("btnDiffusion").addEventListener("click", doDiffusion);
+      $("btnIter").addEventListener("click", doIteration);
+      $("btnSweet").addEventListener("click", runSweet);
+      $("btnReset").addEventListener("click", reset);
+      $("btnMeasure1").addEventListener("click", function () { measure(1); });
+      $("btnMeasure100").addEventListener("click", function () { measure(100); });
+
+      // Classical-vs-Grover comparison slider (log scale)
+      var cmpNs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1000000];
+      function fmtInt(x) { return x.toLocaleString("en-US"); }
+      function renderCmp() {
+        var n = cmpNs[parseInt($("nSlider").value, 10)];
+        var th = Math.asin(1 / Math.sqrt(n));
+        var k = Math.max(1, Math.round(Math.PI / (4 * th) - 0.5));
+        var avg = n / 2;
+        $("cmpN").textContent = fmtInt(n);
+        $("cmpClass").textContent = fmtInt(avg);
+        $("cmpGrover").textContent = fmtInt(k);
+        var ratio = avg / k;
+        $("cmpNote").textContent =
+          "Grover: ~" + fmtInt(k) + " queries instead of ~" + fmtInt(avg) +
+          " — about " + (ratio >= 100 ? Math.round(ratio).toLocaleString("en-US") : ratio.toFixed(1)) +
+          "× fewer. Classical worst case is all " + fmtInt(n) + " items.";
+      }
+      $("nSlider").addEventListener("input", renderCmp);
+
+      reset();
+      renderCmp();
+    </script>
+  </body>
+</html>
